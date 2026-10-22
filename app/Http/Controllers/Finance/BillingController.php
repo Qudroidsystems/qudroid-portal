@@ -87,6 +87,21 @@ class BillingController extends Controller
         return view('modules.finance.payments.show', ['payment' => $payment, 'staffView' => false]);
     }
 
+    public function invoicePdf(Request $request, Invoice $invoice, \App\Services\Finance\DocumentPdf $pdf)
+    {
+        $this->own($request, $invoice->user_id);
+        abort_if($invoice->status === 'void', 404);
+
+        return $pdf->invoice($invoice, $request->boolean('view'));
+    }
+
+    public function receiptPdf(Request $request, Payment $payment, \App\Services\Finance\DocumentPdf $pdf)
+    {
+        $this->own($request, $payment->user_id);
+
+        return $pdf->receipt($payment, $request->boolean('view'));
+    }
+
     /** People only see their own bills here; finance staff use the Finance module. */
     protected function own(Request $request, int $userId): void
     {

@@ -9,7 +9,7 @@
             @if($invoice->enrollment)<a href="{{ route('academy.cohorts.show', $invoice->enrollment->cohort_id) }}" class="cb-meta-pill text-reset"><i class="ri-book-open-line me-1"></i>{{ $invoice->enrollment->course->title }}</a>@endif
             @if($invoice->creator)<span class="cb-meta-pill">Issued by {{ $invoice->creator->name }}</span>@endif
         </x-slot:pills>
-        <x-slot:actions><button type="button" onclick="window.print()" class="cb-hero-btn"><i class="ri-printer-line"></i>Print</button></x-slot:actions>
+        <x-slot:actions><a href="{{ route('finance.invoices.pdf', $invoice) }}" class="cb-hero-btn"><i class="ri-file-pdf-2-line"></i>Download PDF</a><button type="button" onclick="window.print()" class="cb-hero-btn"><i class="ri-printer-line"></i>Print</button></x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')

@@ -57,4 +57,9 @@ class PaymentController extends Controller
 
         return back()->with('success', 'Payment reversed. The invoice balance has been updated.');
     }
+
+    public function pdf(\Illuminate\Http\Request $request, Payment $payment, \App\Services\Finance\DocumentPdf $pdf)
+    {
+        return $pdf->receipt($payment, $request->boolean('view'));
+    }
 }

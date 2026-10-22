@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('billing')->name('billing.')->group(function () {
     Route::get('/', [BillingController::class, 'index'])->name('index');
     Route::get('/invoices/{invoice}', [BillingController::class, 'invoice'])->name('invoice');
+    Route::get('/invoices/{invoice}/pdf', [BillingController::class, 'invoicePdf'])->name('invoice.pdf');
     Route::post('/invoices/{invoice}/pay', [BillingController::class, 'pay'])->middleware('throttle:10,1')->name('pay');
     Route::get('/paystack/callback', [BillingController::class, 'callback'])->name('paystack.callback');
     Route::get('/receipts/{payment}', [BillingController::class, 'receipt'])->name('receipt');
+    Route::get('/receipts/{payment}/pdf', [BillingController::class, 'receiptPdf'])->name('receipt.pdf');
 });

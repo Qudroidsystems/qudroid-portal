@@ -133,7 +133,7 @@ permissions when first created, so on an existing database give them to the
 Academy Administrator (and `Manage course content` to Instructor) in Roles &
 Permissions after `php artisan db:seed`.
 
-## Finance (phase 2, first part)
+## Finance
 
 `routes/modules/finance.php` (staff), `routes/modules/billing.php` ("My bills"
 for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Finance`.
@@ -158,6 +158,22 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
 - **Course access** opens when the course-fee invoice is paid in full, or when
   the first payment reaches the course's minimum where instalments are
   allowed. Reversing that payment locks access again.
+- **PDFs**: invoices and receipts download as PDFs (staff from Finance, the
+  customer from My bills; add `?view=1` to open in the browser).
+  `QUDROID_ADDRESS` prints under the company name.
+- **Ledger** (double entry): issuing an invoice posts Dr Accounts receivable /
+  Cr Course fees (4000) or Services income (4100); a confirmed payment posts
+  Dr Cash, Bank or Paystack clearing / Cr Accounts receivable (any overpayment
+  to Customer credit); voids and payment reversals post the mirror entry. Every
+  entry must balance, and entries are never edited. People with Approve
+  finance can add accounts and post or reverse manual journals (opening
+  balances, capital, bank charges). Reports: chart of accounts with balances,
+  account ledger with running balance, trial balance and profit and loss.
+- **Expenses** (`QUD-EXP-2026-0001`) are recorded with a category and optional
+  receipt (Manage finance), approved or rejected by someone else with Approve
+  finance, then marked paid from a bank or cash account, which posts them.
+- **Budgets** set an amount per expense category and period; the budgets page
+  shows spent, committed (approved, unpaid) and what is left.
 
 ## Adding a module
 

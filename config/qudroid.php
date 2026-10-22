@@ -17,6 +17,7 @@ return [
     'website'    => env('QUDROID_WEBSITE', 'https://qudroids.com'),
     'support_email' => env('QUDROID_SUPPORT_EMAIL', 'support@qudroids.com'),
     'support_phone' => env('QUDROID_SUPPORT_PHONE'),
+    'address'    => env('QUDROID_ADDRESS'),          // shown on invoices and receipts
 
     // Brand colour used by the layout accents and the mobile app theme.
     'primary_color' => env('QUDROID_PRIMARY_COLOR', '#405189'),
