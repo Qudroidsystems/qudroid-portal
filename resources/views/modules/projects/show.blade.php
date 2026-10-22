@@ -7,6 +7,9 @@
         <x-slot:actions>
             @if($canManage)<a href="{{ route('projects.edit', $project) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a>@endif
             <a href="{{ route('projects.board', $project) }}" class="cb-hero-btn"><i class="ri-layout-column-line"></i>Board</a>
+            @if(!$client && auth()->user()->can('Use connect') && \Illuminate\Support\Facades\Route::has('connect.project'))
+                <a href="{{ route('connect.project', $project) }}" class="cb-hero-btn"><i class="ri-chat-smile-3-line"></i>Team chat</a>
+            @endif
         </x-slot:actions>
     </x-cb.hero>
 

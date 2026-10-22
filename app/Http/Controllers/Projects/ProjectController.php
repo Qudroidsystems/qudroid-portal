@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Projects;
 
 use App\Http\Controllers\Controller;
-use App\Models\Crm\Company;
-use App\Models\Crm\Deal;
 use App\Models\Projects\Milestone;
 use App\Models\Projects\Project;
 use App\Models\Projects\ProjectMember;
@@ -41,30 +39,14 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function create(Request $request)
+    public function create()
     {
-        $project = new Project(['color' => '#0ea5e9', 'priority' => 'normal', 'status' => 'planning']);
-        $deal = $request->integer('deal') ? Deal::with('company', 'contact')->where('stage', 'won')->whereNull('project_id')->find($request->integer('deal')) : null;
-        if ($deal) {
-            $project->fill([
-                'name' => $deal->title, 'description' => $deal->notes, 'budget' => $deal->value,
-                'company_id' => $deal->company_id, 'client_name' => $deal->company?->name, 'client_id' => $deal->contact?->user_id,
-                'status' => 'active',
-            ]);
-        }
-
-        return view('modules.projects.form', ['project' => $project, 'deal' => $deal, ...$this->pickers()]);
+        return view('modules.projects.form', ['project' => new Project(['color' => '#0ea5e9', 'priority' => 'normal', 'status' => 'planning']), ...$this->pickers()]);
     }
 
     public function store(Request $request)
     {
-        $data = $this->validated($request, true);
-        $deal = !empty($data['deal_id']) ? Deal::where('stage', 'won')->whereNull('project_id')->find($data['deal_id']) : null;
-        if ($deal) {
-            $data['company_id'] ??= $deal->company_id;
-        }
-        $project = $this->projects->create($data, $request->user());
-        $deal?->update(['project_id' => $project->id]);
+        $project = $this->projects->create($this->validated($request, true), $request->user());
 
         return redirect()->route('projects.show', $project)->with('success', 'Project created. Add people and tasks next.');
     }
@@ -75,7 +57,7 @@ class ProjectController extends Controller
         abort_unless($this->projects->canView($project, $user), 403);
         $client = $this->projects->isClientView($project, $user);
 
-        $project->load('manager', 'client', 'company', 'milestones', 'members.user');
+        $project->load('manager', 'client', 'milestones', 'members.user');
         $milestoneCounts = Task::where('project_id', $project->id)->whereNotNull('milestone_id')
             ->when($client, fn ($q) => $q->where('client_visible', true))
             ->selectRaw('milestone_id, count(*) as n, sum(case when status = ? then 1 else 0 end) as done', ['done'])
@@ -203,8 +185,6 @@ class ProjectController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'client_name' => ['nullable', 'string', 'max:150'],
             'client_id'   => ['nullable', Rule::exists('users', 'id')->where('user_type', User::TYPE_CLIENT)],
-            'company_id'  => ['nullable', 'exists:crm_companies,id'],
-            'deal_id'     => $creating ? ['nullable', 'integer'] : ['prohibited'],
             'manager_id'  => ['nullable', Rule::exists('users', 'id')->where('user_type', User::TYPE_STAFF)],
             'priority'    => ['required', Rule::in(array_keys(Project::PRIORITIES))],
             'status'      => $creating ? ['nullable', Rule::in(array_keys(Project::STATUSES))] : ['prohibited'],
@@ -220,7 +200,6 @@ class ProjectController extends Controller
         return [
             'staff'   => User::where('user_type', User::TYPE_STAFF)->orderBy('name')->get(['id', 'name']),
             'clients' => User::where('user_type', User::TYPE_CLIENT)->orderBy('name')->get(['id', 'name']),
-            'companies' => Company::orderBy('name')->get(['id', 'name']),
         ];
     }
 }

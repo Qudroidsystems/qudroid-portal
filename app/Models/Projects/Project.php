@@ -15,7 +15,7 @@ class Project extends Model
     public const PRIORITIES = ['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'urgent' => 'Urgent'];
     public const OPEN = ['planning', 'active', 'on_hold'];
 
-    protected $fillable = ['code', 'name', 'description', 'client_name', 'client_id', 'company_id', 'status', 'priority', 'starts_on', 'due_on',
+    protected $fillable = ['code', 'name', 'description', 'client_name', 'client_id', 'status', 'priority', 'starts_on', 'due_on',
         'budget', 'currency', 'color', 'manager_id', 'created_by', 'task_seq', 'completed_at'];
 
     protected $casts = ['starts_on' => 'date', 'due_on' => 'date', 'budget' => 'decimal:2', 'completed_at' => 'datetime'];
@@ -58,11 +58,6 @@ class Project extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(User::class, 'client_id');
-    }
-
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\Crm\Company::class);
     }
 
     public function scopeOpen(Builder $q): Builder

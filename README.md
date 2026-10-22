@@ -216,6 +216,29 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
   records and deals. The **Sales Officer** role has both (run
   `php artisan db:seed --class=RoleSeeder` to add it to an existing database).
 
+## Qudroid Connect
+
+`routes/modules/connect.php`, `routes/api_v1/connect.php`, `app/{Models,Services}/Connect`,
+`app/Http/Controllers/Connect`.
+
+- **Direct messages** (one per pair of people), private **groups** (admins
+  add and remove people) and open **channels** (staff create them; anyone
+  with Use connect can browse and join; members post).
+- Text, files and photos (up to 25 MB), replies, reactions, editing your own
+  messages, and deleting your own (group admins can delete any). Deleted
+  messages show as "Message deleted"; their files are removed.
+- **Unread counts** come from each person's last read message (sidebar badge
+  and the conversation list). Direct and group messages notify through the
+  bell and phone push, once until the person reads the chat again; channels
+  and muted chats do not notify.
+- The page refreshes itself every 4 seconds while open (no websocket server
+  needed). A **project team chat** (Team chat button on a project) is a group
+  that follows the project's staff members.
+- Mobile app: `GET /api/v1/connect/conversations`, `GET|POST
+  /api/v1/connect/conversations/{id}/messages` (`?after=` / `?before=`),
+  `POST .../read`, `POST /api/v1/connect/direct`, `GET /api/v1/connect/people`,
+  `POST /api/v1/connect/messages/{id}/react`, `DELETE /api/v1/connect/messages/{id}`.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
