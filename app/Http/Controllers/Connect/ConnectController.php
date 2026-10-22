@@ -22,7 +22,11 @@ class ConnectController extends Controller
 
     public function index(Request $request)
     {
-        return view('modules.connect.index', $this->shell($request->user()) + ['conversation' => null]);
+        return view('modules.connect.index', $this->shell($request->user()) + [
+            'conversation' => null, 'participant' => null, 'messages' => collect(), 'isAdmin' => false, 'saved' => [],
+            'pinned' => collect(), 'seenUpTo' => 0, 'around' => null, 'openThread' => null, 'members' => collect(),
+            'liveCall' => null, 'driveFiles' => collect(),
+        ]);
     }
 
     public function show(Request $request, Conversation $conversation)
