@@ -44,6 +44,15 @@
                 @if($employee->notes)<div class="small mt-3 text-muted" style="white-space: pre-line">{{ $employee->notes }}</div>@endif
             </x-cb.card>
 
+            @php $held = Route::has('inventory.assets.show') ? \App\Models\Inventory\Asset::where('assigned_to', $employee->user_id)->where('status', 'assigned')->orderBy('tag')->get() : collect(); @endphp
+            @if($held->isNotEmpty())
+                <x-cb.card title="Equipment held" icon="ri-macbook-line" :count="$held->count()" :flush="true">
+                    <ul class="list-group list-group-flush">
+                        @foreach($held as $a)<li class="list-group-item small">@can('View inventory')<a href="{{ route('inventory.assets.show', $a) }}">{{ $a->tag }}</a>@else{{ $a->tag }}@endcan · {{ $a->name }}</li>@endforeach
+                    </ul>
+                </x-cb.card>
+            @endif
+
             @if($reports->isNotEmpty())
                 <x-cb.card title="Team" icon="ri-team-line" :count="$reports->count()" :flush="true">
                     <ul class="list-group list-group-flush">

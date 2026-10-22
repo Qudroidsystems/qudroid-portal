@@ -7,6 +7,7 @@
     <x-cb.hero title="My leave" icon="ri-suitcase-line" subtitle="Ask for time off and see what you have left this year.">
         <x-slot:actions>
             <a href="{{ route('me.payslips') }}" class="cb-hero-btn"><i class="ri-file-list-3-line"></i>My payslips</a>
+            @if(Route::has('me.assets'))<a href="{{ route('me.assets') }}" class="cb-hero-btn"><i class="ri-macbook-line"></i>My equipment</a>@endif
         </x-slot:actions>
     </x-cb.hero>
 

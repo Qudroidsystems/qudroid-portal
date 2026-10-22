@@ -264,6 +264,28 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
   keeps its tax workings. Check the rates with your accountant before the
   first live run; they live in `config/qudroid.php`.
 
+## Inventory & Assets
+
+`routes/modules/inventory.php`, `app/{Models,Http/Controllers,Services}/Inventory`.
+
+- **Stock items** (SKU, unit, reorder level, usual supplier) held at
+  **locations**. Stock only changes through a movement: received, issued (to a
+  person or project), counted (adjusted with a reason) or moved between
+  locations, so every balance has a history. Receiving keeps a weighted
+  **average cost**, which values the stock. Falling to the reorder level tells
+  everyone with Manage inventory, once a day.
+- **Suppliers** and **purchase orders** (QUD-PO-2026-0001): draft, mark
+  ordered, receive deliveries (partly or in full) into a location, then
+  **send the bill to Finance**, which creates an expense for approval and
+  payment. Lines without a stock item (delivery, services) are allowed.
+- **Asset register** (QUD-AST-0001 …): equipment with serial, cost, supplier,
+  warranty and condition; hand over to staff (they are notified and see it
+  under `/me/assets`), return, repair, retire or report lost. Every step is
+  kept on the asset's history. HR employee pages list the equipment a person
+  holds.
+- View inventory reads everything; Manage inventory makes changes. The
+  **Inventory Officer** role has both.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
