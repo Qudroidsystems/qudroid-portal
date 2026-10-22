@@ -39,6 +39,10 @@ class RoleSeeder extends Seeder
         ]],
 
         // Developers and other staff
+        'Sales Officer' => ['#8b5cf6', [
+            'View dashboard', 'View clients', 'Manage clients', 'View projects', 'Use connect', 'View meetings',
+        ]],
+
         'Staff' => ['#457b9d', [
             'View projects', 'Use connect', 'View meetings',
         ]],

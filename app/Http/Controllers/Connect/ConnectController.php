@@ -30,18 +30,31 @@ class ConnectController extends Controller
         $me = $request->user();
         abort_unless($this->connect->canView($conversation, $me), 404);
         $participant = $this->connect->participant($conversation, $me);
-        $messages = $this->connect->messages($conversation);
+        $around = $request->integer('around') ?: null;
+        $messages = $this->connect->messages($conversation, around: $around);
         if ($participant) $this->connect->markRead($conversation, $me);
+        $conversation->load('members.user', 'project');
 
         return view('modules.connect.index', $this->shell($me) + [
-            'conversation' => $conversation->load('members.user', 'project'),
+            'conversation' => $conversation,
             'participant'  => $participant,
             'messages'     => $messages,
             'isAdmin'      => $participant?->role === 'admin',
+            'saved'        => $this->connect->savedIds($me, $messages->pluck('id')),
+            'pinned'       => $this->connect->pinned($conversation),
+            'seenUpTo'     => $this->connect->seenUpTo($conversation, $me),
+            'around'       => $around,
+            'openThread'   => $request->integer('thread') ?: null,
+            'members'      => $conversation->members->map(fn ($p) => ['id' => $p->user_id, 'name' => $p->user?->name])->filter(fn ($m) => $m['name'] && $m['id'] !== $me->id)->sortBy('name')->values(),
+            'liveCall'     => app(\App\Services\Connect\CallService::class)->live($conversation)?->load('starter'),
+            'driveFiles'   => \Illuminate\Support\Facades\Route::has('drive.send') ? app(\App\Services\Drive\DriveService::class)->recent($me, 15) : collect(),
         ]);
     }
 
-    /** New messages since an id, and the refreshed conversation list. */
+    /**
+     * Everything that changed since the last check: new messages, edits and reactions, the open
+     * thread, who is typing, how far the other person has read, and the conversation list.
+     */
     public function poll(Request $request, ?Conversation $conversation = null)
     {
         $me = $request->user();
@@ -50,18 +63,42 @@ class ConnectController extends Controller
             abort_unless($this->connect->canView($conversation, $me), 404);
             $after = max(0, $request->integer('after'));
             $isAdmin = $this->connect->isAdmin($conversation, $me);
-            $render = fn ($m) => view('modules.connect._message', ['m' => $m, 'me' => $me, 'conversation' => $conversation, 'isAdmin' => $isAdmin])->render();
+            $since = now()->subSeconds(max(5, min(120, $request->integer('since', 10))));
 
             $new = $this->connect->messages($conversation, after: $after ?: null);
+            $changed = Message::with(['user', 'replyTo.user', 'reactions'])->where('conversation_id', $conversation->id)->whereNull('thread_id')
+                ->where('id', '<=', $after)->where('updated_at', '>=', $since)->get();
+            $saved = $this->connect->savedIds($me, $new->pluck('id')->merge($changed->pluck('id')));
+            $render = fn ($m) => $this->render($m, $me, $conversation, $isAdmin, $saved);
+
             $out['html'] = $new->map($render)->implode('');
             $out['last_id'] = max($after, (int) $new->max('id'));
-            // Edits, deletions and reactions on messages already on screen.
-            $since = now()->subSeconds(max(5, min(120, $request->integer('since', 10))));
-            $out['changed'] = Message::with(['user', 'replyTo.user', 'reactions'])->where('conversation_id', $conversation->id)
-                ->where('id', '<=', $after)->where('updated_at', '>=', $since)->get()
-                ->mapWithKeys(fn ($m) => [$m->id => $render($m)]);
+            $out['changed'] = $changed->mapWithKeys(fn ($m) => [$m->id => $render($m)]);
             if ($new->isNotEmpty() && $this->connect->participant($conversation, $me)) {
                 $this->connect->markRead($conversation, $me, $out['last_id']);
+            }
+
+            if ($threadId = $request->integer('thread')) {
+                $root = Message::where('conversation_id', $conversation->id)->find($threadId);
+                if ($root) {
+                    $tAfter = max(0, $request->integer('thread_after'));
+                    $replies = $this->connect->threadReplies($root, $tAfter ?: null);
+                    $tChanged = Message::with(['user', 'replyTo.user', 'reactions'])->where('thread_id', $root->id)->where('id', '<=', $tAfter)->where('updated_at', '>=', $since)->get();
+                    $tSaved = $this->connect->savedIds($me, $replies->pluck('id')->merge($tChanged->pluck('id')));
+                    $out['thread'] = [
+                        'id' => $root->id,
+                        'html' => $replies->map(fn ($m) => $this->render($m, $me, $conversation, $isAdmin, $tSaved))->implode(''),
+                        'last_id' => max($tAfter, (int) $replies->max('id')),
+                        'changed' => $tChanged->mapWithKeys(fn ($m) => [$m->id => $this->render($m, $me, $conversation, $isAdmin, $tSaved)]),
+                    ];
+                }
+            }
+
+            $out['typing'] = $this->connect->typingNames($conversation, $me);
+            $out['seen'] = $this->connect->seenUpTo($conversation, $me);
+            if ($conversation->isDirect()) {
+                $other = $conversation->otherUser($me)?->refresh();
+                $out['presence'] = ConnectService::online($other) ? 'Online' : ($other?->last_seen_at ? 'Last seen ' . $other->last_seen_at->diffForHumans() : '');
             }
         }
         // After marking read, so the counts include what was just shown.
@@ -79,10 +116,28 @@ class ConnectController extends Controller
         abort_unless($this->connect->canView($conversation, $me), 404);
         $older = $this->connect->messages($conversation, before: $request->integer('before'), limit: 40);
         $isAdmin = $this->connect->isAdmin($conversation, $me);
+        $saved = $this->connect->savedIds($me, $older->pluck('id'));
 
         return response()->json([
-            'html' => $older->map(fn ($m) => view('modules.connect._message', ['m' => $m, 'me' => $me, 'conversation' => $conversation, 'isAdmin' => $isAdmin])->render())->implode(''),
+            'html' => $older->map(fn ($m) => $this->render($m, $me, $conversation, $isAdmin, $saved))->implode(''),
             'more' => $older->count() === 40,
+        ]);
+    }
+
+    /** A thread: its first message and every reply. */
+    public function thread(Request $request, Message $message)
+    {
+        $me = $request->user();
+        $conversation = $message->conversation;
+        abort_unless($this->connect->canView($conversation, $me) && !$message->thread_id && !$message->is_system, 404);
+        $isAdmin = $this->connect->isAdmin($conversation, $me);
+        $replies = $this->connect->threadReplies($message);
+        $saved = $this->connect->savedIds($me, $replies->pluck('id')->push($message->id));
+
+        return response()->json([
+            'root' => $this->render($message->load('user', 'replyTo.user', 'reactions'), $me, $conversation, $isAdmin, $saved, inThread: true),
+            'html' => $replies->map(fn ($m) => $this->render($m, $me, $conversation, $isAdmin, $saved))->implode(''),
+            'last_id' => (int) $replies->max('id'),
         ]);
     }
 
@@ -91,13 +146,51 @@ class ConnectController extends Controller
         $data = $request->validate([
             'body'        => ['nullable', 'string', 'max:5000'],
             'reply_to_id' => ['nullable', 'integer'],
+            'thread_id'   => ['nullable', 'integer'],
             'attachment'  => ['nullable', 'file', 'max:25600'],
         ]);
-        $m = $this->connect->send($conversation, $request->user(), $data['body'] ?? null, $request->file('attachment'), $data['reply_to_id'] ?? null);
+        $m = $this->connect->send($conversation, $request->user(), $data['body'] ?? null, $request->file('attachment'), $data['reply_to_id'] ?? null, $data['thread_id'] ?? null);
 
         return $request->expectsJson()
             ? response()->json(['ok' => true, 'id' => $m->id])
             : redirect()->route('connect.show', $conversation);
+    }
+
+    public function typing(Request $request, Conversation $conversation)
+    {
+        $this->connect->typing($conversation, $request->user());
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function pin(Request $request, Message $message)
+    {
+        $on = $this->connect->togglePin($message, $request->user());
+
+        return $request->expectsJson() ? response()->json(['pinned' => $on]) : back()->with('success', $on ? 'Pinned.' : 'Unpinned.');
+    }
+
+    public function save(Request $request, Message $message)
+    {
+        $on = $this->connect->toggleSave($message, $request->user());
+
+        return $request->expectsJson() ? response()->json(['saved' => $on]) : back()->with('success', $on ? 'Saved.' : 'Removed from saved.');
+    }
+
+    public function saved(Request $request)
+    {
+        return view('modules.connect.list', $this->shell($request->user()) + [
+            'title' => 'Saved messages', 'icon' => 'ri-bookmark-line', 'results' => $this->connect->saved($request->user()), 'term' => null,
+        ]);
+    }
+
+    public function search(Request $request)
+    {
+        $term = trim((string) $request->input('q'));
+
+        return view('modules.connect.list', $this->shell($request->user()) + [
+            'title' => 'Search', 'icon' => 'ri-search-line', 'results' => $this->connect->search($request->user(), $term), 'term' => $term,
+        ]);
     }
 
     public function edit(Request $request, Message $message)
@@ -194,6 +287,11 @@ class ConnectController extends Controller
         $this->connect->mute($conversation, $request->user(), $request->boolean('muted'));
 
         return back();
+    }
+
+    protected function render(Message $m, User $me, Conversation $conversation, bool $isAdmin, array $saved, bool $inThread = false): string
+    {
+        return view('modules.connect._message', compact('m', 'me', 'conversation', 'isAdmin', 'saved', 'inThread'))->render();
     }
 
     protected function shell(User $me): array

@@ -45,7 +45,7 @@ class MeetingController extends Controller
             $days[$key] = $items->filter(fn ($i) => $i['start']->toDateString() <= $key && $i['end']->toDateString() >= $key)->values();
         }
 
-        return view('modules.meetings.calendar', ['month' => $month, 'days' => $days]);
+        return view('modules.meetings.calendar', ['month' => $month, 'days' => $days, 'feedUrl' => $this->meetings->feedUrl($request->user())]);
     }
 
     public function create(Request $request)
@@ -86,6 +86,8 @@ class MeetingController extends Controller
             'mine' => $meeting->attendees->firstWhere('user_id', $request->user()->id),
             'canManage' => $this->meetings->canManage($meeting, $request->user()),
             'busy' => $meeting->isCancelled() || $meeting->isOver() ? [] : $this->meetings->busy($meeting->attendees->pluck('user_id')->all(), $meeting->starts_at, $meeting->ends_at, $meeting->id),
+            'liveCall' => ($chat = \App\Models\Connect\Conversation::where('meeting_id', $meeting->id)->first()) && class_exists(\App\Services\Connect\CallService::class)
+                ? app(\App\Services\Connect\CallService::class)->live($chat) : null,
         ]);
     }
 
@@ -192,5 +194,31 @@ class MeetingController extends Controller
             'attendees' => ['array', 'max:100'],
             'attendees.*' => ['integer'],
         ];
+    }
+
+    public function chat(Request $request, Meeting $meeting)
+    {
+        return redirect()->route('connect.show', $this->meetings->chat($meeting, $request->user()));
+    }
+
+    public function call(Request $request, Meeting $meeting)
+    {
+        return redirect()->route('connect.calls.show', $this->meetings->call($meeting, $request->user()));
+    }
+
+    public function resetFeed(Request $request)
+    {
+        $this->meetings->feedUrl($request->user(), reset: true);
+
+        return back()->with('success', 'Your calendar link changed. Calendars using the old one stop updating.');
+    }
+
+    /** A person's private calendar feed (no sign-in: the long random token is the key). */
+    public function feed(string $token)
+    {
+        $ics = $this->meetings->feed($token);
+        abort_unless($ics, 404);
+
+        return response($ics, 200, ['Content-Type' => 'text/calendar; charset=utf-8', 'Content-Disposition' => 'inline; filename="meetings.ics"', 'Cache-Control' => 'private, max-age=600']);
     }
 }

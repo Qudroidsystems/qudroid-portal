@@ -6,12 +6,21 @@
     @php $counts = $meeting->attendees->countBy('response'); @endphp
     <x-cb.hero :title="$meeting->title" icon="ri-video-chat-line" :subtitle="$meeting->whenLabel() . ($meeting->whereLabel() ? ' · ' . $meeting->whereLabel() : '')" :back="route('meetings.index')" back-label="Meetings">
         <x-slot:actions>
+            @if(!$meeting->isCancelled() && auth()->user()->can('Use connect') && \Illuminate\Support\Facades\Route::has('connect.calls.start'))
+                <form method="POST" action="{{ route('meetings.call', $meeting) }}" target="_blank">@csrf<button class="cb-hero-btn"><i class="ri-vidicon-line"></i>{{ $liveCall ? 'Join the call' : 'Start video call' }}</button></form>
+                <form method="POST" action="{{ route('meetings.chat', $meeting) }}">@csrf<button class="cb-hero-btn"><i class="ri-chat-3-line"></i>Meeting chat</button></form>
+            @endif
             <a href="{{ route('meetings.ics', $meeting) }}" class="cb-hero-btn"><i class="ri-calendar-check-line"></i>Add to my calendar</a>
             @if($canManage && !$meeting->isCancelled())<a href="{{ route('meetings.edit', $meeting) }}" class="cb-hero-btn"><i class="ri-pencil-line"></i>Edit</a>@endif
         </x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')
+
+    @if($liveCall)
+        <div class="cb-banner success"><i class="ri-vidicon-line"></i><div>The meeting's call is on now ({{ $liveCall->durationLabel() }}).
+            <form method="POST" action="{{ route('meetings.call', $meeting) }}" target="_blank" class="d-inline">@csrf<button class="btn btn-sm btn-success ms-2">Join</button></form></div></div>
+    @endif
 
     @if($meeting->isCancelled())
         <div class="cb-banner danger"><i class="ri-close-circle-line"></i><div>This meeting was cancelled.@if($meeting->cancel_reason) {{ $meeting->cancel_reason }}@endif</div></div>

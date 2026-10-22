@@ -65,6 +65,7 @@ class InvoiceService
                 'created_by'     => $by->id,
             ]);
             $invoice->items()->createMany($rows);
+            app(LedgerService::class)->invoiceIssued($invoice, $by);
 
             return $invoice;
         });
@@ -111,7 +112,10 @@ class InvoiceService
             throw ValidationException::withMessages(['reason' => 'Payments have been applied to this invoice. Reverse them before voiding it.']);
         }
 
-        $invoice->update(['status' => 'void', 'voided_at' => now(), 'voided_by' => $by->id, 'void_reason' => mb_substr($reason, 0, 255)]);
+        DB::transaction(function () use ($invoice, $by, $reason) {
+            $invoice->update(['status' => 'void', 'voided_at' => now(), 'voided_by' => $by->id, 'void_reason' => mb_substr($reason, 0, 255)]);
+            app(LedgerService::class)->invoiceVoided($invoice, $by);
+        });
 
         return $invoice;
     }

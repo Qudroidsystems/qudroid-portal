@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
  */
 class DocumentNumber
 {
-    public const PREFIXES = ['invoice' => 'INV', 'receipt' => 'RCT'];
+    public const PREFIXES = ['invoice' => 'INV', 'receipt' => 'RCT', 'certificate' => 'CERT', 'journal' => 'JRN', 'expense' => 'EXP', 'purchase_order' => 'PO'];
 
     public static function next(string $key): string
     {

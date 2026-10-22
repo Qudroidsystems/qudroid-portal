@@ -7,6 +7,10 @@
             <li class="nav-item"><a href="{{ route('finance.index') }}" class="nav-link {{ request()->routeIs('finance.index') ? 'active' : '' }}">Overview</a></li>
             <li class="nav-item"><a href="{{ route('finance.invoices.index') }}" class="nav-link {{ request()->routeIs('finance.invoices.*') ? 'active' : '' }}">Invoices</a></li>
             <li class="nav-item"><a href="{{ route('finance.payments.index') }}" class="nav-link {{ request()->routeIs('finance.payments.*') ? 'active' : '' }}">Payments</a></li>
+            <li class="nav-item"><a href="{{ route('finance.expenses.index') }}" class="nav-link {{ request()->routeIs('finance.expenses.*') ? 'active' : '' }}">Expenses</a></li>
+            <li class="nav-item"><a href="{{ route('finance.budgets.index') }}" class="nav-link {{ request()->routeIs('finance.budgets.*') ? 'active' : '' }}">Budgets</a></li>
+            <li class="nav-item"><a href="{{ route('finance.ledger.accounts') }}" class="nav-link {{ request()->routeIs('finance.ledger.*') ? 'active' : '' }}">Ledger</a></li>
+            <li class="nav-item"><a href="{{ route('finance.reports.profit-loss') }}" class="nav-link {{ request()->routeIs('finance.reports.*') ? 'active' : '' }}">Reports</a></li>
         </ul>
     </div>
 </li>

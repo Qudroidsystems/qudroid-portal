@@ -2,6 +2,9 @@
 
 namespace App\Services\Meetings;
 
+use App\Models\Connect\Call;
+use App\Models\Connect\Conversation;
+use App\Models\Connect\Participant;
 use App\Models\Hr\Holiday;
 use App\Models\Hr\LeaveRequest;
 use App\Models\Meetings\Attendee;
@@ -9,11 +12,13 @@ use App\Models\Meetings\Meeting;
 use App\Models\Meetings\Room;
 use App\Models\Projects\Task;
 use App\Models\User;
+use App\Services\Connect\CallService;
 use App\Services\Messaging\PortalNotifier;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -91,6 +96,7 @@ class MeetingService
             $stay = $meeting->attendees()->whereNotIn('user_id', $added)->pluck('user_id')->all();
             $this->tell($meeting, $others($stay), 'Meeting changed: ' . $meeting->title, 'Now ' . $meeting->whenLabel() . $this->where($meeting) . '. Please answer again.');
         }
+        if ($chat = Conversation::where('meeting_id', $meeting->id)->first()) $this->syncChat($meeting, $chat);
 
         return $meeting;
     }
@@ -217,12 +223,110 @@ class MeetingService
     }
 
     /** An .ics file so the meeting can be added to a phone or Google calendar. */
+    // ── Meeting chat and calls ─────────────────────────────────────────
+
+    /** The meeting's own chat: the organiser and everyone invited (who can use Connect). */
+    public function chat(Meeting $m, User $by): Conversation
+    {
+        $this->check(!$this->canView($m, $by), 'meeting', 'You are not invited to this meeting.');
+        $this->check(!$by->can('Use connect'), 'meeting', 'You need access to Connect for meeting chats.');
+
+        return DB::transaction(function () use ($m) {
+            $chat = Conversation::firstOrCreate(['meeting_id' => $m->id, 'type' => 'group'], ['name' => mb_substr($m->title, 0, 100), 'created_by' => $m->organizer_id]);
+
+            return $this->syncChat($m, $chat);
+        });
+    }
+
+    /** Start (or join) the meeting's video call in the portal. */
+    public function call(Meeting $m, User $by): Call
+    {
+        $this->check($m->isCancelled(), 'meeting', 'This meeting was cancelled.');
+
+        return app(CallService::class)->start($this->chat($m, $by), $by, 'video');
+    }
+
+    protected function syncChat(Meeting $m, Conversation $chat): Conversation
+    {
+        $ids = $m->attendees()->pluck('user_id')->push($m->organizer_id)->unique();
+        $users = User::whereIn('id', $ids)->where('is_disabled', false)->get()->filter(fn ($u) => $u->can('Use connect'));
+        foreach ($users as $u) {
+            $p = Participant::firstOrNew(['conversation_id' => $chat->id, 'user_id' => $u->id]);
+            $p->role = $u->id === $m->organizer_id ? 'admin' : 'member';
+            $p->left_at = null;
+            $p->save();
+        }
+        Participant::where('conversation_id', $chat->id)->whereNotIn('user_id', $users->pluck('id'))->whereNull('left_at')->update(['left_at' => now()]);
+        if ($chat->name !== mb_substr($m->title, 0, 100)) $chat->update(['name' => mb_substr($m->title, 0, 100)]);
+
+        return $chat;
+    }
+
+    // ── Calendar files and feeds ───────────────────────────────────────
+
     public function ics(Meeting $m): string
     {
+        return $this->calendarFile([$m]);
+    }
+
+    /** The person's private feed address (made the first time, or new when $reset). */
+    public function feedUrl(User $user, bool $reset = false): string
+    {
+        $feed = DB::table('calendar_feeds')->where('user_id', $user->id)->first();
+        if (!$feed || $reset) {
+            $token = Str::random(48);
+            DB::table('calendar_feeds')->updateOrInsert(['user_id' => $user->id], ['token' => $token, 'created_at' => now(), 'updated_at' => now()]);
+        } else {
+            $token = $feed->token;
+        }
+
+        return route('meetings.feed', $token);
+    }
+
+    /** The calendar a feed shows: the person's meetings from a month ago to six months ahead. */
+    public function feed(string $token): ?string
+    {
+        $feed = DB::table('calendar_feeds')->where('token', $token)->first();
+        $user = $feed ? User::find($feed->user_id) : null;
+        if (!$user || $user->is_disabled || !$user->can('View meetings')) return null;
+        DB::table('calendar_feeds')->where('id', $feed->id)->update(['last_used_at' => now()]);
+
+        $meetings = Meeting::with('organizer', 'room')->for($user)->whereBetween('starts_at', [now()->subMonth(), now()->addMonths(6)])
+            ->whereDoesntHave('attendees', fn ($q) => $q->where('user_id', $user->id)->where('response', 'declined'))
+            ->orderBy('starts_at')->limit(1000)->get();
+
+        return $this->calendarFile($meetings->all(), $user->name . ' · ' . config('qudroid.company', 'Qudroid'));
+    }
+
+    /** @param Meeting[] $meetings */
+    protected function calendarFile(array $meetings, ?string $name = null): string
+    {
         $esc = fn ($s) => str_replace(["\\", ';', ',', "\r\n", "\n"], ['\\\\', '\;', '\,', '\n', '\n'], (string) $s);
+        $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Qudroid Systems//Portal//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+        if ($name) array_push($lines, 'X-WR-CALNAME:' . $esc($name), 'REFRESH-INTERVAL;VALUE=DURATION:PT30M', 'X-PUBLISHED-TTL:PT30M');
+        foreach ($meetings as $m) $lines = array_merge($lines, $this->event($m, $esc));
+        $lines[] = 'END:VCALENDAR';
+
+        // Lines longer than 75 bytes are folded, as the format requires.
+        $fold = function (string $l): string {
+            $parts = [];
+            while (strlen($l) > 74) {
+                $parts[] = $part = mb_strcut($l, 0, 74, 'UTF-8');
+                $l = substr($l, strlen($part));
+            }
+            $parts[] = $l;
+
+            return implode("\r\n ", $parts);
+        };
+
+        return implode("\r\n", array_map($fold, $lines)) . "\r\n";
+    }
+
+    protected function event(Meeting $m, callable $esc): array
+    {
         $utc = fn (Carbon $d) => $d->copy()->utc()->format('Ymd\THis\Z');
         $lines = [
-            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Qudroid Systems//Portal//EN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+            'BEGIN:VEVENT',
             'UID:meeting-' . $m->id . '@' . parse_url(config('app.url'), PHP_URL_HOST),
             'DTSTAMP:' . $utc(now()), 'DTSTART:' . $utc($m->starts_at), 'DTEND:' . $utc($m->ends_at),
             'SUMMARY:' . $esc($m->title),
@@ -232,9 +336,9 @@ class MeetingService
             'STATUS:' . ($m->isCancelled() ? 'CANCELLED' : 'CONFIRMED'),
         ];
         if ($m->online_url) $lines[] = 'URL:' . $m->online_url;
-        $lines = array_merge($lines, ['END:VEVENT', 'END:VCALENDAR']);
+        $lines[] = 'END:VEVENT';
 
-        return implode("\r\n", $lines) . "\r\n";
+        return $lines;
     }
 
     protected function fields(array $data): array

@@ -84,6 +84,19 @@ return [
     ],
 
     /*
+    | Calls in Connect (browser to browser). STUN lets browsers find each
+    | other; a TURN relay is only needed on strict office or mobile networks.
+    */
+    'calls' => [
+        'stun' => array_values(array_filter(explode(',', (string) env('QUDROID_STUN_URLS', 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302')))),
+        'turn_url'        => env('QUDROID_TURN_URL'),            // e.g. turn:turn.example.com:3478
+        'turn_username'   => env('QUDROID_TURN_USERNAME'),
+        'turn_credential' => env('QUDROID_TURN_CREDENTIAL'),
+        // People per call. Each browser sends to every other one, so keep this small.
+        'max_people'      => (int) env('QUDROID_CALL_MAX_PEOPLE', 8),
+    ],
+
+    /*
     | Payroll. PAYE uses the Nigeria Tax Act 2025 personal income tax bands
     | (in force from 1 January 2026): each band is [width in naira a year,
     | rate %], applied in order; null width = everything above. Pension and
@@ -117,6 +130,7 @@ return [
         'attendance'   => ['name' => 'Attendance',          'icon' => 'ri-calendar-check-line', 'route' => 'attendance.index',   'permission' => 'View attendance',   'phase' => 2, 'color' => '#14b8a6', 'description' => 'Class sessions, registers and staff attendance.'],
         'projects'     => ['name' => 'Projects & Tasks',    'icon' => 'ri-layout-column-line',         'route' => 'projects.index',     'permission' => 'View projects',     'phase' => 3, 'color' => '#0ea5e9', 'description' => 'Workspaces, boards, docs, time tracking and approvals.'],
         'crm'          => ['name' => 'Clients & CRM',       'icon' => 'ri-briefcase-4-line',    'route' => 'crm.index',          'permission' => 'View clients',      'phase' => 3, 'color' => '#8b5cf6', 'description' => 'Clients, leads, proposals, contracts and support tickets.'],
+        'workspace'    => ['name' => 'Workspace',           'icon' => 'ri-apps-2-line',         'route' => 'workspace.index',    'permission' => 'Use connect',       'phase' => 4, 'color' => '#14b8a6', 'description' => 'Your chats, calls, meetings and files in one place.'],
         'connect'      => ['name' => 'Qudroid Connect',     'icon' => 'ri-chat-smile-3-line',   'route' => 'connect.index',      'permission' => 'Use connect',       'phase' => 4, 'color' => '#22c55e', 'description' => 'Channels, direct messages, files and calls.'],
         'drive'        => ['name' => 'Drive',               'icon' => 'ri-folder-cloud-line',   'route' => 'drive.index',        'permission' => 'Use connect',       'phase' => 4, 'color' => '#3b82f6', 'description' => 'Your files and folders, project files, sharing and links.'],
         'meetings'     => ['name' => 'Meetings & Calendar', 'icon' => 'ri-video-chat-line',     'route' => 'meetings.index',     'permission' => 'View meetings',     'phase' => 4, 'color' => '#ec4899', 'description' => 'Scheduled meetings, rooms and shared calendars.'],

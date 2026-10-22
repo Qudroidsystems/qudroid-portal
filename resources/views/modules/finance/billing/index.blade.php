@@ -38,7 +38,7 @@
                 <tbody>
                 @foreach($receipts as $p)
                     <tr>
-                        <td data-label="Receipt"><a href="{{ route('billing.receipt', $p) }}" class="fw-semibold">{{ $p->number }}</a><div class="small text-muted">{{ $p->method_label }} · {{ ($p->paid_at ?? $p->created_at)->format('j M Y') }}</div></td>
+                        <td data-label="Receipt"><a href="{{ route('billing.receipt', $p) }}" class="fw-semibold">{{ $p->number }}</a> <a href="{{ route('billing.receipt.pdf', $p) }}" class="small ms-1" title="Download PDF"><i class="ri-file-pdf-2-line"></i> PDF</a><div class="small text-muted">{{ $p->method_label }} · {{ ($p->paid_at ?? $p->created_at)->format('j M Y') }}</div></td>
                         <td data-label="Status">@include('modules.finance.pill', ['status' => $p->status, 'label' => $p->status_label])</td>
                         <td data-label="Amount" class="num">{{ \App\Support\Money::format($p->amount, $p->currency) }}</td>
                     </tr>

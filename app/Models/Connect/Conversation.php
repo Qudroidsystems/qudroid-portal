@@ -14,7 +14,7 @@ class Conversation extends Model
 
     protected $table = 'connect_conversations';
 
-    protected $fillable = ['type', 'name', 'description', 'direct_key', 'project_id', 'created_by', 'last_message_id', 'last_message_at', 'archived_at'];
+    protected $fillable = ['type', 'name', 'description', 'direct_key', 'project_id', 'meeting_id', 'created_by', 'last_message_id', 'last_message_at', 'archived_at'];
 
     protected $casts = ['last_message_at' => 'datetime', 'archived_at' => 'datetime'];
 
@@ -42,6 +42,17 @@ class Conversation extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function meeting(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Meetings\Meeting::class);
+    }
+
+    /** Project and meeting chats follow their team or invite list, so people aren't added or removed by hand. */
+    public function isManaged(): bool
+    {
+        return $this->project_id !== null || $this->meeting_id !== null;
     }
 
     public function isDirect(): bool

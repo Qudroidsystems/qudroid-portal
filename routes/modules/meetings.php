@@ -15,6 +15,7 @@ Route::prefix('meetings')->name('meetings.')->middleware('permission:View meetin
     Route::get('/create', [MeetingController::class, 'create'])->name('create');
     Route::post('/', [MeetingController::class, 'store'])->name('store');
     Route::post('/check', [MeetingController::class, 'check'])->name('check');
+    Route::post('/feed/reset', [MeetingController::class, 'resetFeed'])->name('feed.reset');
 
     Route::middleware('permission:Manage meetings')->group(function () {
         Route::get('/rooms', [MeetingController::class, 'rooms'])->name('rooms');
@@ -28,5 +29,7 @@ Route::prefix('meetings')->name('meetings.')->middleware('permission:View meetin
     Route::post('/{meeting}/cancel', [MeetingController::class, 'cancel'])->whereNumber('meeting')->name('cancel');
     Route::post('/{meeting}/respond', [MeetingController::class, 'respond'])->whereNumber('meeting')->name('respond');
     Route::put('/{meeting}/minutes', [MeetingController::class, 'minutes'])->whereNumber('meeting')->name('minutes');
+    Route::post('/{meeting}/chat', [MeetingController::class, 'chat'])->whereNumber('meeting')->name('chat');
+    Route::post('/{meeting}/call', [MeetingController::class, 'call'])->whereNumber('meeting')->name('call');
     Route::get('/{meeting}/ics', [MeetingController::class, 'ics'])->whereNumber('meeting')->name('ics');
 });

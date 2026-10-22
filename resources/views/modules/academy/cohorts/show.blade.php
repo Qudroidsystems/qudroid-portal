@@ -13,7 +13,7 @@
             <span class="cb-meta-pill">{{ \App\Models\Academy\Course::MODES[$cohort->effectiveMode()] ?? $cohort->effectiveMode() }}</span>
             <span class="cb-meta-pill"><i class="ri-money-dollar-circle-line me-1"></i>{{ $money($cohort->effectiveFee()) }}</span>
         </x-slot:pills>
-        <x-slot:actions><a href="{{ route('academy.cohorts.edit', $cohort) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a></x-slot:actions>
+        <x-slot:actions><a href="{{ route('attendance.cohort', $cohort) }}" class="cb-hero-btn"><i class="ri-calendar-check-line"></i>Attendance</a><a href="{{ route('academy.cohorts.gradebook', $cohort) }}" class="cb-hero-btn"><i class="ri-table-line"></i>Gradebook</a><a href="{{ route('academy.cohorts.edit', $cohort) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a></x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')
@@ -40,7 +40,7 @@
                                 <td data-label="Student"><a href="{{ route('academy.students.show', $e->student_id) }}" class="fw-semibold">{{ $e->student->user->name }}</a><div class="small text-muted">{{ $e->student->student_no }}</div></td>
                                 <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $e->status, 'label' => $e->status_label])</td>
                                 <td data-label="Access">@if($e->access_granted)<span class="text-success" title="{{ $e->access_reason }}"><i class="ri-lock-unlock-line"></i> Open</span><div class="small text-muted">{{ $e->access_reason }}</div>@else<span class="text-muted"><i class="ri-lock-line"></i> Locked</span>@endif</td>
-                                <td data-label="Progress">@if($e->access_granted)<div class="d-flex align-items-center gap-2" style="min-width: 110px"><div class="progress flex-grow-1" style="height:6px"><div class="progress-bar bg-success" style="width: {{ $e->progress_percent }}%"></div></div><small>{{ $e->progress_percent }}%</small></div>@if($e->last_activity_at)<div class="small text-muted">{{ $e->last_activity_at->diffForHumans() }}</div>@endif @else — @endif</td>
+                                <td data-label="Progress">@if($e->access_granted)<div class="d-flex align-items-center gap-2" style="min-width: 110px"><div class="progress flex-grow-1" style="height:6px"><div class="progress-bar bg-success" style="width: {{ $e->progress_percent }}%"></div></div><small>{{ $e->progress_percent }}%</small></div>@if($e->grade_percent !== null)<div class="small">Grade {{ rtrim(rtrim(number_format((float) $e->grade_percent, 1), '0'), '.') }}%</div>@endif @if($e->attendance_percent !== null)<div class="small">Attendance {{ rtrim(rtrim(number_format((float) $e->attendance_percent, 1), '0'), '.') }}%</div>@endif @if($e->last_activity_at)<div class="small text-muted">{{ $e->last_activity_at->diffForHumans() }}</div>@endif @else — @endif</td>
                                 <td data-label="Fee" class="num">{{ $money($e->netFee()) }}@if((float) $e->discount_amount > 0)<div class="small text-muted">less {{ $money($e->discount_amount) }}</div>@endif @can('View finance')@foreach($e->invoices as $inv)<div class="small"><a href="{{ route('finance.invoices.show', $inv) }}">{{ $inv->number }}</a> · {{ $inv->status_label }}</div>@endforeach @endcan</td>
                                 <td>@include('modules.academy.partials.enrollment-actions', ['e' => $e])</td>
                             </tr>

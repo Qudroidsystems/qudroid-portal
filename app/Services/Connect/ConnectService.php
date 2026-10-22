@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Messaging\PortalNotifier;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -68,7 +69,7 @@ class ConnectService
             ->selectSub(fn ($q) => $q->from('connect_messages as m')->selectRaw('count(*)')
                 ->whereColumn('m.conversation_id', 'connect_conversations.id')
                 ->whereColumn('m.id', '>', 'p.last_read_message_id')
-                ->where('m.is_system', false)->whereNull('m.deleted_at')
+                ->where('m.is_system', false)->whereNull('m.deleted_at')->whereNull('m.thread_id')
                 ->where(fn ($w) => $w->whereNull('m.user_id')->orWhere('m.user_id', '!=', $user->id)), 'unread')
             ->whereNull('connect_conversations.archived_at')
             ->with(['lastMessage.user', 'members.user'])
@@ -82,20 +83,120 @@ class ConnectService
             ->join('connect_messages as m', 'm.conversation_id', '=', 'p.conversation_id')
             ->where('p.user_id', $user->id)->whereNull('p.left_at')->where('p.muted', false)
             ->whereColumn('m.id', '>', 'p.last_read_message_id')
-            ->where('m.is_system', false)->whereNull('m.deleted_at')
+            ->where('m.is_system', false)->whereNull('m.deleted_at')->whereNull('m.thread_id')
             ->where(fn ($w) => $w->whereNull('m.user_id')->orWhere('m.user_id', '!=', $user->id))
             ->count();
     }
 
-    /** Messages in a conversation, oldest first: the latest page, or those after/before an id. */
-    public function messages(Conversation $c, ?int $after = null, ?int $before = null, int $limit = 50): Collection
+    /**
+     * The main timeline (thread replies left out), oldest first: the latest page, those after/before
+     * an id, or a page around one message (for jumping to a search result).
+     */
+    public function messages(Conversation $c, ?int $after = null, ?int $before = null, int $limit = 50, ?int $around = null): Collection
     {
-        $q = Message::with(['user', 'replyTo.user', 'reactions'])->where('conversation_id', $c->id);
+        $q = fn () => Message::with(['user', 'replyTo.user', 'reactions'])->where('conversation_id', $c->id)->whereNull('thread_id');
         if ($after) {
-            return $q->where('id', '>', $after)->orderBy('id')->limit(200)->get();
+            return $q()->where('id', '>', $after)->orderBy('id')->limit(200)->get();
+        }
+        if ($around) {
+            $older = $q()->where('id', '<=', $around)->orderByDesc('id')->limit(25)->get();
+            $newer = $q()->where('id', '>', $around)->orderBy('id')->limit(25)->get();
+
+            return $older->reverse()->values()->concat($newer)->values();
         }
 
-        return $q->when($before, fn ($w) => $w->where('id', '<', $before))->orderByDesc('id')->limit($limit)->get()->reverse()->values();
+        return $q()->when($before, fn ($w) => $w->where('id', '<', $before))->orderByDesc('id')->limit($limit)->get()->reverse()->values();
+    }
+
+    /** A thread's replies, oldest first (optionally only those after an id). */
+    public function threadReplies(Message $root, ?int $after = null): Collection
+    {
+        return Message::with(['user', 'replyTo.user', 'reactions'])->where('thread_id', $root->id)
+            ->when($after, fn ($q) => $q->where('id', '>', $after))->orderBy('id')->limit(500)->get();
+    }
+
+    public function pinned(Conversation $c): Collection
+    {
+        return Message::with('user', 'pinner')->where('conversation_id', $c->id)->whereNotNull('pinned_at')->whereNull('deleted_at')
+            ->latest('pinned_at')->limit(25)->get();
+    }
+
+    /** Messages the person saved, newest first, from conversations they can still see. */
+    public function saved(User $user): Collection
+    {
+        $ids = DB::table('connect_saved')->where('user_id', $user->id)->orderByDesc('id')->limit(200)->pluck('message_id');
+
+        return Message::with('user', 'conversation')->whereIn('id', $ids)->whereNull('deleted_at')->get()
+            ->filter(fn ($m) => $this->canView($m->conversation, $user))
+            ->sortByDesc(fn ($m) => $ids->search($m->id) === false ? 0 : -$ids->search($m->id))->values();
+    }
+
+    /** @return array<int, true> */
+    public function savedIds(User $user, iterable $messageIds): array
+    {
+        $ids = collect($messageIds)->all();
+        if (!$ids) return [];
+
+        return DB::table('connect_saved')->where('user_id', $user->id)->whereIn('message_id', $ids)->pluck('message_id')->flip()->map(fn () => true)->all();
+    }
+
+    /** Search the person's conversations (and channels they are in) by text or file name. */
+    public function search(User $user, string $term, int $limit = 60): Collection
+    {
+        $term = trim($term);
+        if (mb_strlen($term) < 2) return new Collection();
+        $ids = Participant::where('user_id', $user->id)->whereNull('left_at')->pluck('conversation_id');
+        $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $term) . '%';
+
+        return Message::with('user', 'conversation')->whereIn('conversation_id', $ids)->whereNull('deleted_at')->where('is_system', false)
+            ->where(fn ($q) => $q->where('body', 'like', $like)->orWhere('attachment_name', 'like', $like))
+            ->latest('id')->limit($limit)->get();
+    }
+
+    // ── Presence and typing ────────────────────────────────────────────
+
+    /** Seen in the last two minutes (any page or app request updates last_seen_at). */
+    public static function online(?User $user): bool
+    {
+        return $user && $user->last_seen_at && $user->last_seen_at->gt(now()->subMinutes(2));
+    }
+
+    public function typing(Conversation $c, User $me): void
+    {
+        if (!$this->participant($c, $me)) return;
+        $key = 'cx:typing:' . $c->id;
+        $now = now()->timestamp;
+        $list = array_filter((array) Cache::get($key, []), fn ($t) => ($t['at'] ?? 0) > $now - 6);
+        $list[$me->id] = ['name' => $me->first_name ?: $me->name, 'at' => $now];
+        Cache::put($key, $list, 15);
+    }
+
+    /** First names of the others typing in the conversation right now. */
+    public function typingNames(Conversation $c, User $me): array
+    {
+        $now = now()->timestamp;
+
+        return collect((array) Cache::get('cx:typing:' . $c->id, []))
+            ->filter(fn ($t, $id) => (int) $id !== $me->id && ($t['at'] ?? 0) > $now - 6)
+            ->pluck('name')->values()->all();
+    }
+
+    public function stopTyping(Conversation $c, User $me): void
+    {
+        $key = 'cx:typing:' . $c->id;
+        $list = (array) Cache::get($key, []);
+        if (isset($list[$me->id])) {
+            unset($list[$me->id]);
+            Cache::put($key, $list, 15);
+        }
+    }
+
+    /** How far the other person in a direct chat has read. */
+    public function seenUpTo(Conversation $c, User $me): int
+    {
+        if (!$c->isDirect()) return 0;
+
+        return (int) Participant::where('conversation_id', $c->id)->where('user_id', '!=', $me->id)->value('last_read_message_id');
     }
 
     // ── Starting conversations ──────────────────────────────────────────
@@ -185,7 +286,7 @@ class ConnectService
     public function leave(Conversation $c, User $me): void
     {
         $this->check($c->isDirect(), 'conversation', 'You cannot leave a direct chat.');
-        $this->check($c->project_id !== null, 'conversation', 'Project chats follow the project team.');
+        $this->check($c->isManaged(), 'conversation', $c->meeting_id ? 'Meeting chats follow the invite list.' : 'Project chats follow the project team.');
         $p = $this->participant($c, $me);
         if (!$p) return;
         DB::transaction(function () use ($c, $me, $p) {
@@ -200,7 +301,7 @@ class ConnectService
     /** @param int[] $userIds */
     public function add(Conversation $c, User $by, array $userIds): int
     {
-        $this->check($c->isDirect() || $c->project_id, 'users', 'People cannot be added here.');
+        $this->check($c->isDirect() || $c->isManaged(), 'users', 'People cannot be added here.');
         $this->check($c->type === 'group' && !$this->isAdmin($c, $by), 'users', 'Only group admins add people.');
         $this->check($c->type === 'channel' && !$this->participant($c, $by), 'users', 'Join the channel first.');
 
@@ -219,7 +320,7 @@ class ConnectService
 
     public function remove(Conversation $c, User $by, User $user): void
     {
-        $this->check($c->isDirect() || $c->project_id, 'users', 'People cannot be removed here.');
+        $this->check($c->isDirect() || $c->isManaged(), 'users', 'People cannot be removed here.');
         $this->check(!$this->isAdmin($c, $by), 'users', 'Only admins remove people.');
         $this->check($by->id === $user->id, 'users', 'Use Leave instead.');
         $this->participant($c, $user)?->update(['left_at' => now(), 'role' => 'member']);
@@ -233,7 +334,7 @@ class ConnectService
 
     // ── Messages ────────────────────────────────────────────────────────
 
-    public function send(Conversation $c, User $me, ?string $body, ?UploadedFile $file = null, ?int $replyTo = null): Message
+    public function send(Conversation $c, User $me, ?string $body, ?UploadedFile $file = null, ?int $replyTo = null, ?int $threadId = null): Message
     {
         $p = $this->participant($c, $me);
         $this->check(!$p, 'body', $c->type === 'channel' ? 'Join the channel to post.' : 'You are not in this conversation.');
@@ -243,23 +344,80 @@ class ConnectService
         $this->check(mb_strlen($body) > 5000, 'body', 'That message is too long.');
         $this->check($replyTo && !Message::where('conversation_id', $c->id)->whereKey($replyTo)->exists(), 'reply_to_id', 'That message is not in this conversation.');
 
-        $message = DB::transaction(function () use ($c, $me, $p, $body, $file, $replyTo) {
+        $root = $threadId ? Message::where('conversation_id', $c->id)->whereNull('thread_id')->where('is_system', false)->find($threadId) : null;
+        $this->check($threadId && !$root, 'thread_id', 'That thread is not in this conversation.');
+
+        $message = DB::transaction(function () use ($c, $me, $p, $body, $file, $replyTo, $root) {
             $m = Message::create([
                 'conversation_id' => $c->id, 'user_id' => $me->id, 'body' => $body !== '' ? $body : null, 'reply_to_id' => $replyTo ?: null,
+                'thread_id' => $root?->id, 'mentions' => $this->parseMentions($c, $body, $me),
                 'attachment_path' => $file?->store('connect/' . $c->id, 'local'),
                 'attachment_name' => $file ? mb_substr($file->getClientOriginalName(), 0, 255) : null,
                 'attachment_mime' => $file?->getMimeType(),
                 'attachment_size' => $file?->getSize(),
             ]);
-            $c->update(['last_message_id' => $m->id, 'last_message_at' => $m->created_at]);
-            $p->update(['last_read_message_id' => $m->id]);
+            if ($root) {
+                // Thread replies stay out of the main timeline; the first message shows the count.
+                $root->forceFill(['reply_count' => $root->reply_count + 1, 'last_reply_at' => $m->created_at, 'updated_at' => now()])->save();
+            } else {
+                $c->update(['last_message_id' => $m->id, 'last_message_at' => $m->created_at]);
+                $p->update(['last_read_message_id' => $m->id]);
+            }
 
             return $m;
         });
 
-        $this->notify($c, $me, $message);
+        $this->stopTyping($c, $me);
+        $this->notify($c, $me, $message, $root);
 
         return $message;
+    }
+
+    /**
+     * Who a message mentions: people in the conversation named as "@Full Name" (or "@First" when only
+     * one person there has that first name), or "all" for @all / @everyone / @channel.
+     */
+    public function parseMentions(Conversation $c, string $body, User $me): ?array
+    {
+        if (!str_contains($body, '@')) return null;
+        $ids = [];
+        if (!$c->isDirect() && preg_match('/(^|\W)@(all|everyone|channel|here)\b/i', $body)) $ids[] = 'all';
+
+        $members = User::whereIn('id', Participant::where('conversation_id', $c->id)->whereNull('left_at')->pluck('user_id'))->get(['id', 'name']);
+        $firsts = $members->groupBy(fn ($u) => mb_strtolower((string) $u->first_name));
+        foreach ($members as $u) {
+            if ($u->id === $me->id) continue;
+            $full = preg_quote((string) $u->name, '/');
+            $first = preg_quote((string) $u->first_name, '/');
+            if (preg_match('/(^|\W)@' . $full . '(?!\w)/iu', $body)
+                || ($u->first_name && ($firsts[mb_strtolower((string) $u->first_name)] ?? collect())->count() === 1 && preg_match('/(^|\W)@' . $first . '(?!\w)/iu', $body))) {
+                $ids[] = $u->id;
+            }
+        }
+
+        return $ids ?: null;
+    }
+
+    // ── Pins and saved messages ────────────────────────────────────────
+
+    public function togglePin(Message $m, User $me): bool
+    {
+        $this->check(!$this->participant($m->conversation, $me), 'message', 'Join the conversation first.');
+        $this->check($m->isDeleted() || $m->is_system, 'message', 'You cannot pin this.');
+        $on = !$m->pinned_at;
+        $m->forceFill(['pinned_at' => $on ? now() : null, 'pinned_by' => $on ? $me->id : null, 'updated_at' => now()])->save();
+
+        return $on;
+    }
+
+    public function toggleSave(Message $m, User $me): bool
+    {
+        $this->check(!$this->canView($m->conversation, $me), 'message', 'You cannot see that message.');
+        $key = ['user_id' => $me->id, 'message_id' => $m->id];
+        if (DB::table('connect_saved')->where($key)->delete()) return false;
+        DB::table('connect_saved')->insert($key + ['created_at' => now()]);
+
+        return true;
     }
 
     public function edit(Message $m, User $me, string $body): Message
@@ -268,7 +426,7 @@ class ConnectService
         $this->check($m->isDeleted(), 'body', 'This message was deleted.');
         $body = trim($body);
         $this->check($body === '' && !$m->attachment_path, 'body', 'Write something, or delete the message.');
-        $m->update(['body' => $body ?: null, 'edited_at' => now()]);
+        $m->update(['body' => $body ?: null, 'mentions' => $this->parseMentions($m->conversation, $body, $me), 'edited_at' => now()]);
 
         return $m;
     }
@@ -307,12 +465,36 @@ class ConnectService
 
     // ── Helpers ─────────────────────────────────────────────────────────
 
-    protected function notify(Conversation $c, User $me, Message $m): void
+    protected function notify(Conversation $c, User $me, Message $m, ?Message $root = null): void
     {
+        $where = $c->isDirect() ? '' : ' in ' . $c->titleFor($me);
+        $told = [$me->id];
+
+        // @mentions reach people even in channels and muted chats.
+        $mentions = $m->mentions ?? [];
+        if ($mentions) {
+            $ids = in_array('all', $mentions, true)
+                ? Participant::where('conversation_id', $c->id)->whereNull('left_at')->pluck('user_id')->all()
+                : array_values(array_filter($mentions, 'is_int'));
+            $ids = array_values(array_diff($ids, $told));
+            PortalNotifier::toUsers($ids, $me->name . ' mentioned you' . $where, $m->preview(140), route('connect.show', [$c, 'around' => $root?->id ?? $m->id, 'thread' => $root?->id]), 'message', 'connect-mention:' . $m->id);
+            $told = array_merge($told, $ids);
+        }
+
+        if ($root) {
+            // A thread reply tells the thread's starter and the people who replied before.
+            $ids = Message::where('thread_id', $root->id)->pluck('user_id')->push($root->user_id)->filter()->unique()->diff($told)->values()->all();
+            $muted = Participant::where('conversation_id', $c->id)->whereIn('user_id', $ids)->where('muted', true)->pluck('user_id')->all();
+            PortalNotifier::toUsers(array_values(array_diff($ids, $muted)), $me->name . ' replied in a thread' . $where, $m->preview(140),
+                route('connect.show', [$c, 'around' => $root->id, 'thread' => $root->id]), 'message', 'connect-thread:' . $root->id . ':' . $root->reply_count);
+
+            return;
+        }
+
         if ($c->type === 'channel') return;
 
         $title = $c->isDirect() ? $me->name : $me->name . ' in ' . $c->name;
-        $others = Participant::where('conversation_id', $c->id)->whereNull('left_at')->where('muted', false)->where('user_id', '!=', $me->id)->get();
+        $others = Participant::where('conversation_id', $c->id)->whereNull('left_at')->where('muted', false)->whereNotIn('user_id', $told)->get();
         foreach ($others as $p) {
             // One notification until they read the conversation again.
             PortalNotifier::toUsers([$p->user_id], $title, $m->preview(140), route('connect.show', $c), 'message', 'connect:' . $c->id . ':' . $p->last_read_message_id);

@@ -75,4 +75,9 @@ class InvoiceController extends Controller
 
         return back()->with('success', 'Invoice voided.');
     }
+
+    public function pdf(\Illuminate\Http\Request $request, Invoice $invoice, \App\Services\Finance\DocumentPdf $pdf)
+    {
+        return $pdf->invoice($invoice, $request->boolean('view'));
+    }
 }

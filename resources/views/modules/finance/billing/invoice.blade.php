@@ -4,7 +4,7 @@
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
     <x-cb.hero :title="$invoice->title" icon="ri-file-list-3-line" :subtitle="$invoice->number" :back="route('billing.index')" back-label="My bills">
-        <x-slot:actions><button type="button" onclick="window.print()" class="cb-hero-btn"><i class="ri-printer-line"></i>Print</button></x-slot:actions>
+        <x-slot:actions><a href="{{ route('billing.invoice.pdf', $invoice) }}" class="cb-hero-btn"><i class="ri-file-pdf-2-line"></i>Download PDF</a><button type="button" onclick="window.print()" class="cb-hero-btn"><i class="ri-printer-line"></i>Print</button></x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')

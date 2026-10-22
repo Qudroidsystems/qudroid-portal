@@ -116,6 +116,8 @@ class CourseController extends Controller
             'installments_allowed' => ['nullable', 'boolean'],
             'min_deposit'    => ['nullable', 'numeric', 'min:0', 'lte:fee'],
             'status'         => ['required', Rule::in(array_keys(Course::STATUSES))],
+            'pass_grade'     => ['nullable', 'integer', 'min:0', 'max:100'],
+            'certificate_enabled' => ['nullable', 'boolean'],
             'prerequisites'  => ['nullable', 'array'],
             'prerequisites.*' => ['integer', 'exists:academy_courses,id'],
         ]);
@@ -124,6 +126,8 @@ class CourseController extends Controller
         $data['currency'] = strtoupper($data['currency']);
         $data['installments_allowed'] = $request->boolean('installments_allowed');
         if (!$data['installments_allowed']) $data['min_deposit'] = null;
+        $data['certificate_enabled'] = $request->boolean('certificate_enabled', $course?->certificate_enabled ?? true);
+        $data['pass_grade'] ??= $course?->pass_grade ?? 50;
 
         return $data;
     }

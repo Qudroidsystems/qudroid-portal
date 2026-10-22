@@ -333,6 +333,20 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
   towards `QUDROID_DRIVE_QUOTA_MB` (default 5 GB); single uploads are capped by
   `QUDROID_DRIVE_MAX_UPLOAD_MB` (default 200, and PHP's upload limits).
 
+## Workspace home, live chat and calls
+
+`/workspace` brings everything together: chats waiting for a reply, calls going on now, your next meetings, recent Drive files and who is online.
+
+Live chat (Connect) adds threads (replies stay out of the main timeline), `@name` / `@all` mentions (they notify even in muted chats and channels), pinned and saved messages, search across your conversations, typing indicators, online dots and "seen" in direct chats. Files can be attached straight from Drive, and chat attachments can be saved to Drive.
+
+Calls are built in (WebRTC, no outside service). Press the phone or camera button in any chat; direct and group chats ring their members on any portal page, channels show a "Join" banner. Calls open in their own tab, with mute, camera, screen share and leave (M / V keys). Every browser connects to every other one, so calls suit up to about 8 people (`max_people`). Call history is at **Connect → Calls**.
+
+- Updates use short polling (about every 2 seconds in an open chat, every second on a call page), so no websocket server is needed. Installing Laravel Reverb later would make it instant.
+- Calls need HTTPS (or `localhost`) for the browser to allow the camera and microphone.
+- On strict office or mobile networks some calls need a TURN relay. Set `QUDROID_TURN_URL`, `QUDROID_TURN_USERNAME` and `QUDROID_TURN_CREDENTIAL` (for example from coturn or a hosted TURN service). STUN servers come from `QUDROID_STUN_URLS` (comma separated; Google's public one by default).
+
+Meetings link into the workspace: each meeting has a **Meeting chat** (members follow the invite list) and a **Start video call** button. On the Calendar page each person gets a private **subscribe link** (`/calendar/<token>.ics`) to add to Google Calendar, Outlook or Apple Calendar; it covers one month back to six months ahead, refreshes on the calendar app's schedule, and can be reset if it leaks.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the

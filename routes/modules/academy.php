@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Academy\AcademyController;
 use App\Http\Controllers\Academy\ApplicationController;
+use App\Http\Controllers\Academy\AssessmentController;
 use App\Http\Controllers\Academy\CohortController;
 use App\Http\Controllers\Academy\ContentController;
 use App\Http\Controllers\Academy\CourseController;
 use App\Http\Controllers\Academy\EnrollmentController;
+use App\Http\Controllers\Academy\LearnAssessmentController;
 use App\Http\Controllers\Academy\LearnController;
 use App\Http\Controllers\Academy\ProgrammeController;
 use App\Http\Controllers\Academy\StudentController;
@@ -66,6 +68,26 @@ Route::prefix('academy')->name('academy.')->group(function () {
         Route::post('/lessons/{lesson}/move', [ContentController::class, 'moveLesson'])->name('lessons.move');
     });
 
+    // ── Quizzes and assignments: building and marking ───────────────────
+    Route::middleware('permission:Manage academy|Manage course content')->prefix('/courses/{course}/assessments')->name('assessments.')->group(function () {
+        Route::get('/create', [AssessmentController::class, 'create'])->name('create');
+        Route::post('/', [AssessmentController::class, 'store'])->name('store');
+        Route::get('/{assessment}/edit', [AssessmentController::class, 'edit'])->name('edit');
+        Route::put('/{assessment}', [AssessmentController::class, 'update'])->name('update');
+        Route::delete('/{assessment}', [AssessmentController::class, 'destroy'])->name('destroy');
+        Route::post('/{assessment}/questions', [AssessmentController::class, 'storeQuestion'])->name('questions.store');
+        Route::put('/{assessment}/questions/{question}', [AssessmentController::class, 'updateQuestion'])->name('questions.update');
+        Route::delete('/{assessment}/questions/{question}', [AssessmentController::class, 'destroyQuestion'])->name('questions.destroy');
+        Route::get('/{assessment}/results', [AssessmentController::class, 'results'])->name('results');
+        Route::get('/{assessment}/attempts/{attempt}', [AssessmentController::class, 'attempt'])->name('attempt');
+        Route::post('/{assessment}/attempts/{attempt}/grade', [AssessmentController::class, 'gradeAttempt'])->name('attempt.grade');
+        Route::post('/{assessment}/submissions/{submission}/grade', [AssessmentController::class, 'gradeSubmission'])->name('submission.grade');
+        Route::get('/{assessment}/submissions/{submission}/file', [AssessmentController::class, 'download'])->name('submission.file');
+    });
+
+    Route::get('/cohorts/{cohort}/gradebook', [CohortController::class, 'gradebook'])
+        ->middleware('permission:Manage academy|Manage course content')->name('cohorts.gradebook');
+
     Route::post('/enrollments/{enrollment}/access', [EnrollmentController::class, 'grantAccess'])
         ->middleware('permission:Grant course access')->name('enrollments.access');
 
@@ -82,5 +104,13 @@ Route::prefix('academy')->name('academy.')->group(function () {
         Route::get('/learn/{course}/lessons/{lesson}', [LearnController::class, 'lesson'])->name('learn.lesson');
         Route::post('/learn/{course}/lessons/{lesson}/complete', [LearnController::class, 'complete'])->name('learn.complete');
         Route::get('/learn/{course}/lessons/{lesson}/file', [LearnController::class, 'download'])->name('learn.download');
+
+        // Quizzes and assignments (access checked in LearnAssessmentController / AssessmentService)
+        Route::get('/learn/{course}/assessments/{assessment}', [LearnAssessmentController::class, 'show'])->name('learn.assessment');
+        Route::post('/learn/{course}/assessments/{assessment}/start', [LearnAssessmentController::class, 'start'])->middleware('throttle:20,1')->name('learn.start');
+        Route::post('/learn/{course}/assessments/{assessment}/hand-in', [LearnAssessmentController::class, 'handIn'])->middleware('throttle:20,1')->name('learn.hand-in');
+        Route::get('/learn/{course}/assessments/{assessment}/my-file', [LearnAssessmentController::class, 'file'])->name('learn.my-file');
+        Route::get('/learn/{course}/attempts/{attempt}', [LearnAssessmentController::class, 'attempt'])->name('learn.attempt');
+        Route::post('/learn/{course}/attempts/{attempt}', [LearnAssessmentController::class, 'submit'])->name('learn.submit');
     });
 });

@@ -7,7 +7,7 @@
     <x-cb.hero :title="$payment->number ? 'Receipt ' . $payment->number : 'Payment ' . $payment->reference" icon="ri-receipt-line"
                :subtitle="$m($payment->amount) . ' · ' . $payment->method_label"
                :back="$staffView ? route('finance.payments.index') : route('billing.index')" :back-label="$staffView ? 'Payments' : 'My bills'">
-        <x-slot:actions><button type="button" onclick="window.print()" class="cb-hero-btn"><i class="ri-printer-line"></i>Print</button></x-slot:actions>
+        <x-slot:actions>@if($payment->number)<a href="{{ $staffView ? route('finance.payments.pdf', $payment) : route('billing.receipt.pdf', $payment) }}" class="cb-hero-btn"><i class="ri-file-pdf-2-line"></i>Download PDF</a>@endif<button type="button" onclick="window.print()" class="cb-hero-btn"><i class="ri-printer-line"></i>Print</button></x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')

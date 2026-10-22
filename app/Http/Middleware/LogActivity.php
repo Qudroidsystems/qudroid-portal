@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 class LogActivity
 {
     /** Background / noisy endpoints that aren't worth logging. */
-    protected array $skip = ['notifications.feed', 'notifications.read-all', 'presence.ping', 'management.fee-status', 'system.deadline.status'];
+    protected array $skip = ['notifications.feed', 'notifications.read-all', 'presence.ping', 'management.fee-status', 'system.deadline.status', 'connect.typing', 'connect.calls.signal', 'connect.calls.join', 'connect.calls.leave'];
 
     public function handle(Request $request, Closure $next)
     {

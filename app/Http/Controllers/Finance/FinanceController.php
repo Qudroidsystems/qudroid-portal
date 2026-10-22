@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Finance\Expense;
 use App\Models\Finance\Invoice;
 use App\Models\Finance\Payment;
 use App\Support\Money;
@@ -24,6 +25,8 @@ class FinanceController extends Controller
             'thisMonth'     => $sum(Payment::where('status', 'confirmed')->where('confirmed_at', '>=', now()->startOfMonth())->get(['amount']), 'amount'),
             'today'         => $sum(Payment::where('status', 'confirmed')->where('confirmed_at', '>=', today())->get(['amount']), 'amount'),
             'recent'        => Payment::with('user')->where('status', 'confirmed')->latest('confirmed_at')->limit(8)->get(),
+            'awaiting'      => Expense::where('status', 'submitted')->count(),
+            'toPay'         => Expense::where('status', 'approved')->count(),
             'overdueList'   => Invoice::overdue()->with('user')->orderBy('due_date')->limit(8)->get(),
         ]);
     }

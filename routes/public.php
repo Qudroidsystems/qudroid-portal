@@ -14,8 +14,6 @@ Route::prefix('apply')->name('apply.')->group(function () {
     Route::get('/{cohort}', [ApplyController::class, 'create'])->whereNumber('cohort')->name('create');
     Route::post('/{cohort}', [ApplyController::class, 'store'])->whereNumber('cohort')->middleware('throttle:10,10')->name('store');
 });
-<<<<<<< Updated upstream
-=======
 
 // Certificate check (the QR code on every certificate points here)
 Route::get('/verify/{token}', [\App\Http\Controllers\Certificates\CertificateController::class, 'verify'])
@@ -28,4 +26,7 @@ Route::prefix('s/{token}')->middleware('throttle:120,1')->controller(\App\Http\C
     Route::get('/file/{file}', 'file')->whereNumber('file')->name('drive.public.file');
     Route::get('/zip', 'zip')->name('drive.public.zip');
 });
->>>>>>> Stashed changes
+
+// Private calendar feed (subscribed from Google, Outlook or Apple Calendar; the token is the key)
+Route::get('/calendar/{token}.ics', [\App\Http\Controllers\Meetings\MeetingController::class, 'feed'])
+    ->where('token', '[A-Za-z0-9]{40,64}')->middleware('throttle:60,1')->name('meetings.feed');

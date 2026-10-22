@@ -4,13 +4,21 @@
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
     @php $m = fn ($v) => \App\Support\Money::format($v); @endphp
-    <x-cb.hero title="Finance" icon="ri-money-dollar-circle-line" subtitle="Invoices, payments and receipts.">
+    <x-cb.hero title="Finance" icon="ri-money-dollar-circle-line" subtitle="Invoices, payments, expenses and the books.">
         @can('Manage finance')
             <x-slot:actions><a href="{{ route('finance.invoices.create') }}" class="cb-hero-btn"><i class="ri-add-line"></i>New invoice</a></x-slot:actions>
         @endcan
     </x-cb.hero>
 
     @include('partials.flash')
+
+    @if($awaiting || $toPay)
+        <div class="cb-banner info"><i class="ri-shopping-bag-3-line"></i><div>
+            @if($awaiting)<a href="{{ route('finance.expenses.index', ['status' => 'submitted']) }}">{{ $awaiting }} {{ \Illuminate\Support\Str::plural('expense', $awaiting) }} awaiting approval</a>@endif
+            @if($awaiting && $toPay) · @endif
+            @if($toPay)<a href="{{ route('finance.expenses.index', ['status' => 'approved']) }}">{{ $toPay }} approved and waiting to be paid</a>@endif
+        </div></div>
+    @endif
 
     <div class="row g-3 mb-3">
         <div class="col-xl-3 col-md-6"><x-cb.stat label="Outstanding" :value="$m($outstanding)" icon="ri-file-list-3-line" accent="amber" :hint="$openCount . ' open invoices'" /></div>

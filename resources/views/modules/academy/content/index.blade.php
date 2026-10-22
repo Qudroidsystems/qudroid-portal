@@ -66,6 +66,27 @@
             @endif
         </div>
         <div class="col-xl-4">
+            <x-cb.card title="Quizzes and assignments" icon="ri-questionnaire-line" :count="$assessments->count()" :flush="true">
+                <x-slot:tools>
+                    <a href="{{ route('academy.assessments.create', [$course, 'type' => 'quiz']) }}" class="btn btn-sm btn-soft-primary"><i class="ri-add-line"></i> Quiz</a>
+                    <a href="{{ route('academy.assessments.create', [$course, 'type' => 'assignment']) }}" class="btn btn-sm btn-soft-primary"><i class="ri-add-line"></i> Assignment</a>
+                </x-slot:tools>
+                @if($assessments->isEmpty())
+                    <div class="p-3 small text-muted">None yet. Their weighted results make up the student's grade; the pass grade ({{ $course->pass_grade }}%) is set on the course.</div>
+                @else
+                    <div class="list-group list-group-flush">
+                        @foreach($assessments as $a)
+                            <a href="{{ route('academy.assessments.edit', [$course, $a]) }}" class="list-group-item list-group-item-action d-flex gap-2 align-items-center">
+                                <i class="{{ $a->icon }}"></i>
+                                <span class="flex-grow-1">{{ $a->title }}<span class="d-block small text-muted">{{ $a->type_label }}@if($a->isQuiz()) · {{ $a->questions_count }} questions @endif · weight {{ $a->weight + 0 }}</span></span>
+                                @unless($a->is_published)<span class="badge bg-secondary-subtle text-secondary">Draft</span>@endunless
+                            </a>
+                        @endforeach
+                    </div>
+                    @php $w = $assessments->where('is_published', true)->sum(fn ($a) => (float) $a->weight); @endphp
+                    @if($w > 0 && abs($w - 100) > 0.01)<div class="px-3 py-2 small text-warning border-top">Published weights add up to {{ $w + 0 }}, not 100. Grades are still worked out in proportion.</div>@endif
+                @endif
+            </x-cb.card>
             <x-cb.card title="Add a section" icon="ri-folder-add-line">
                 <form method="POST" action="{{ route('academy.content.sections.store', $course) }}">
                     @csrf

@@ -48,6 +48,11 @@ class Cohort extends Model
         return $this->belongsTo(User::class, 'instructor_id');
     }
 
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(ClassSession::class, 'cohort_id')->orderBy('date')->orderBy('starts_at');
+    }
+
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class, 'cohort_id');

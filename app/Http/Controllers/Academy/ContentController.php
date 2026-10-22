@@ -25,6 +25,7 @@ class ContentController extends Controller
             'course'     => $course,
             'sections'   => $course->sections()->with('lessons')->get(),
             'loose'      => $course->lessons()->whereNull('section_id')->get(),
+            'assessments'=> $course->assessments()->withCount('questions')->get(),
         ]);
     }
 

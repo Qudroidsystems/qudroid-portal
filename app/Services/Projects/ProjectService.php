@@ -324,6 +324,7 @@ class ProjectService
             'description' => $data['description'] ?? null,
             'client_name' => $data['client_name'] ?? null,
             'client_id'   => $data['client_id'] ?? null,
+            'company_id'  => $data['company_id'] ?? null,
             'priority'    => $data['priority'] ?? 'normal',
             'starts_on'   => $data['starts_on'] ?? null,
             'due_on'      => $data['due_on'] ?? null,
@@ -331,7 +332,7 @@ class ProjectService
             'currency'    => strtoupper($data['currency'] ?? config('qudroid.academy.currency', 'NGN')),
             'color'       => $data['color'] ?? null,
             'manager_id'  => $data['manager_id'] ?? null,
-        ], fn ($v, $k) => $v !== null || in_array($k, ['description', 'client_name', 'client_id', 'starts_on', 'due_on', 'budget'], true), ARRAY_FILTER_USE_BOTH);
+        ], fn ($v, $k) => $v !== null || in_array($k, ['description', 'client_name', 'client_id', 'company_id', 'starts_on', 'due_on', 'budget'], true), ARRAY_FILTER_USE_BOTH);
     }
 
     protected function taskFields(array $data): array

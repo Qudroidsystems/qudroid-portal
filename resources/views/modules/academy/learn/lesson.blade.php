@@ -80,6 +80,19 @@
                     @endforeach
                 </div>
             </x-cb.card>
+            @if($assessments->isNotEmpty() && ($learning || $teacher))
+                <x-cb.card title="Quizzes and assignments" icon="ri-questionnaire-line" :flush="true">
+                    <div class="list-group list-group-flush">
+                        @foreach($assessments as $a)
+                            <a href="{{ route('academy.learn.assessment', [$course, $a]) }}" class="list-group-item list-group-item-action d-flex gap-2 align-items-center">
+                                <i class="{{ $a->icon }}"></i><span class="flex-grow-1">{{ $a->title }}@if(!$a->is_published) <span class="badge bg-secondary-subtle text-secondary">Draft</span>@endif</span>
+                                @if($a->due_at)<small class="text-muted">{{ $a->due_at->format('j M') }}</small>@endif
+                            </a>
+                        @endforeach
+                    </div>
+                    @if($learning && $enrollment->grade_percent !== null)<div class="px-3 py-2 border-top small">Your grade so far: <strong>{{ rtrim(rtrim(number_format((float) $enrollment->grade_percent, 1), '0'), '.') }}%</strong> (pass grade {{ $course->pass_grade }}%)</div>@endif
+                </x-cb.card>
+            @endif
             @if(!$learning && !$teacher)
                 <div class="cb-banner info"><i class="ri-lock-unlock-line"></i><div>@if($enrollment)Your course access opens once your payment is confirmed. <a href="{{ route('billing.index') }}">My bills</a>@else Enroll on this course to open every lesson.@endif</div></div>
             @endif

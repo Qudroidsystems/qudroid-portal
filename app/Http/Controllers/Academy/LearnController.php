@@ -58,6 +58,7 @@ class LearnController extends Controller
             'enrollment' => $enrollment,
             'learning'   => $learning,
             'teacher'    => $teacher,
+            'assessments'=> $course->assessments()->when(!$teacher, fn ($q) => $q->where('is_published', true))->get(),
             'prev'       => $index > 0 ? $open[$index - 1] : null,
             'next'       => $index !== false && $index < $open->count() - 1 ? $open[$index + 1] : null,
         ]);

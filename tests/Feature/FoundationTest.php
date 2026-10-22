@@ -13,7 +13,7 @@ beforeEach(function () {
 });
 
 test('seeding creates the roles, permissions and a super administrator', function () {
-    expect(\Spatie\Permission\Models\Role::count())->toBe(11)
+    expect(\Spatie\Permission\Models\Role::count())->toBe(count(\Database\Seeders\RoleSeeder::ROLES))
         ->and($this->admin)->not->toBeNull()
         ->and($this->admin->isSuperAdmin())->toBeTrue()
         ->and($this->admin->can('Manage payroll'))->toBeTrue();

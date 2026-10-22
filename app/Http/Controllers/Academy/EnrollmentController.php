@@ -66,8 +66,10 @@ class EnrollmentController extends Controller
     public function complete(Request $request, Enrollment $enrollment)
     {
         $this->service->complete($enrollment, $request->user());
+        $certificate = $enrollment->certificate()->where('status', 'issued')->first();
+        $blocker = $certificate ? null : app(\App\Services\Academy\CertificateService::class)->blocker($enrollment->fresh());
 
-        return back()->with('success', 'Marked completed.');
+        return back()->with('success', 'Marked completed.' . ($certificate ? " Certificate {$certificate->serial} issued." : ($blocker && $enrollment->course->certificate_enabled ? " No certificate: {$blocker}" : '')));
     }
 
     public function end(Request $request, Enrollment $enrollment)

@@ -138,6 +138,7 @@ class PaymentService
 
         DB::transaction(function () use ($payment, $by, $reason) {
             $payment->update(['status' => 'reversed', 'reversed_at' => now(), 'reversed_by' => $by->id, 'reversal_reason' => mb_substr(trim($reason), 0, 255)]);
+            app(LedgerService::class)->paymentReversed($payment, $by);
             foreach ($payment->allocations()->with('invoice')->get() as $allocation) {
                 $invoice = $this->invoices->refresh($allocation->invoice);
                 if ($invoice->enrollment && !$this->thresholdMet($invoice)) {
@@ -194,6 +195,7 @@ class PaymentService
             }
             $this->invoices->refresh($invoice);
         }
+        app(LedgerService::class)->paymentConfirmed($payment, $by);
 
         return $payment;
     }

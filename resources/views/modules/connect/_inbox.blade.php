@@ -8,8 +8,9 @@
         <span class="cx-avatar {{ $c->type }}">
             @if($other)
                 <img src="{{ $other->avatar_url }}" alt="">
+                @if(\App\Services\Connect\ConnectService::online($other))<span class="cx-dot" title="Online"></span>@endif
             @else
-                <i class="{{ $c->type === 'channel' ? 'ri-hashtag' : ($c->project_id ? 'ri-layout-column-line' : 'ri-group-line') }}"></i>
+                <i class="{{ $c->type === 'channel' ? 'ri-hashtag' : ($c->project_id ? 'ri-layout-column-line' : ($c->meeting_id ? 'ri-video-chat-line' : 'ri-group-line')) }}"></i>
             @endif
         </span>
         <span class="cx-meta">

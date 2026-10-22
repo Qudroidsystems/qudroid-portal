@@ -76,5 +76,19 @@
         </div>
     </x-cb.card>
 
+    <x-cb.card title="See your meetings in Google, Outlook or Apple Calendar" icon="ri-calendar-todo-line">
+        <p class="small text-muted mb-2">Subscribe to this private link once and your portal meetings show up in your usual calendar, updating by themselves (calendars check every few hours). Keep it to yourself: anyone with it can see your meeting list.</p>
+        <div class="input-group input-group-sm mb-2" style="max-width:720px">
+            <input class="form-control" id="feedUrl" value="{{ $feedUrl }}" readonly aria-label="Calendar link">
+            <button class="btn btn-soft-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('feedUrl').value).then(() => { this.textContent = 'Copied'; })">Copy</button>
+        </div>
+        <div class="small text-muted">
+            <strong>Google Calendar:</strong> Other calendars → + → From URL → paste. ·
+            <strong>Outlook:</strong> Add calendar → Subscribe from web. ·
+            <strong>Apple Calendar:</strong> File → New Calendar Subscription.
+        </div>
+        <form method="POST" action="{{ route('meetings.feed.reset') }}" class="mt-2" onsubmit="return confirm('Make a new link? Calendars using the old one stop updating.')">@csrf<button class="btn btn-sm btn-link px-0">Make a new link</button></form>
+    </x-cb.card>
+
 </div></div></div>
 @endsection

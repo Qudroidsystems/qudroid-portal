@@ -428,6 +428,14 @@
                     </li>
                     @endif
 
+                    @if(Route::has('me.leave') && auth()->user()->isStaff() && auth()->user()->employee)
+                    <li class="nav-item">
+                        <a href="{{ route('me.leave') }}" class="nav-link menu-link {{ request()->routeIs('me.*') ? 'active' : '' }}">
+                            <i class="ri-suitcase-line"></i> <span>My leave & pay</span>
+                        </a>
+                    </li>
+                    @endif
+
                     {{-- WORKSPACE — one entry per installed module the user may open.
                          A module can supply its own sub-menu in resources/views/modules/<key>/nav.blade.php --}}
                     @php $navModules = \App\Support\Modules::available(); @endphp
@@ -1432,6 +1440,9 @@
 @if (Route::is('roles.*'))                         @include('layouts.pages-assets.js.role-list-js') @endif
 @if (Route::is('permissions.*'))                   @include('layouts.pages-assets.js.permissions-list-js') @endif
 @stack('scripts')
+@if(auth()->check() && Route::has('connect.calls.ringing') && auth()->user()->can('Use connect'))
+    @include('modules.connect._ring')
+@endif
 
 <script>
 /* Expired session on an AJAX / fetch call (HTTP 419) → go to the login page
