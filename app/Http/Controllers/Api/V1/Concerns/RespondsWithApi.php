@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Concerns;
 
-use App\Models\Schoolsession;
-use App\Models\Schoolterm;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The mobile API response envelope and small shared helpers. Used by
@@ -48,42 +45,6 @@ trait RespondsWithApi
             'per_page'     => $paginator->perPage(),
             'total'        => $paginator->total(),
         ]);
-    }
-
-    protected function currentSessionId(): ?int
-    {
-        $id = Schoolsession::where('status', 'Current')->value('id');
-        return $id ? (int) $id : null;
-    }
-
-    protected function currentTermId(): ?int
-    {
-        $id = Schoolterm::current()?->id;
-        return $id ? (int) $id : null;
-    }
-
-    /** The current session and term, as the app shows them. */
-    protected function currentPeriod(): array
-    {
-        $sessionId = $this->currentSessionId();
-        $termId    = $this->currentTermId();
-
-        return [
-            'session_id' => $sessionId,
-            'session'    => $sessionId ? DB::table('schoolsession')->where('id', $sessionId)->value('session') : null,
-            'term_id'    => $termId,
-            'term'       => $termId ? DB::table('schoolterm')->where('id', $termId)->value('term') : null,
-        ];
-    }
-
-    protected function studentPhotoUrl(?string $picture): ?string
-    {
-        return $picture ? asset('storage/student_avatars/' . basename($picture)) : null;
-    }
-
-    protected function staffPhotoUrl(?string $picture): ?string
-    {
-        return $picture ? asset('storage/staff_avatars/' . basename($picture)) : null;
     }
 
     protected function num($v, int $dp = 2): ?float

@@ -12,7 +12,7 @@
     <div class="row g-3 mb-3">
         <div class="col-md-4 col-6"><x-cb.stat label="Staff online now" :value="$online->count()" icon="ri-user-follow-line" accent="green" /></div>
         <div class="col-md-4 col-6"><x-cb.stat label="Staff signed in today" :value="$todayLogins->count()" icon="ri-login-circle-line" accent="teal" /></div>
-        <div class="col-md-4 col-6"><x-cb.stat label="Students & parents online" :value="$others" icon="ri-group-line" accent="sky" /></div>
+        <div class="col-md-4 col-6"><x-cb.stat label="Students, clients & partners online" :value="$others" icon="ri-group-line" accent="sky" /></div>
     </div>
 
     <div class="row g-3">

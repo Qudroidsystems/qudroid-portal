@@ -3,7 +3,6 @@
 namespace App\Imports;
 
 use App\Models\User;
-use App\Models\BioModel;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -59,22 +58,16 @@ class StaffUsersImport implements
         }
 
         $user = User::create([
-            'name'     => $name,
-            'email'    => $email,
-            'password' => Hash::make($password),
+            'name'      => $name,
+            'email'     => $email,
+            'user_type' => User::TYPE_STAFF,
+            'password'  => Hash::make($password),
         ]);
+        // The password in the sheet is temporary: they choose their own at first sign-in.
+        $user->forceFill(['must_change_password' => true])->save();
 
         // Force the literal role "Staff"
         $user->syncRoles(['Staff']);
-
-        // Optional bio record
-        BioModel::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'firstname' => explode(' ', $name)[0] ?? $name,
-                'lastname'  => explode(' ', $name)[1] ?? '',
-            ]
-        );
 
         $this->created[] = [
             'id'    => $user->id,

@@ -1,7 +1,6 @@
 <?php
 
-test('the application returns a successful response', function () {
-    $response = $this->get('/');
-
-    $response->assertStatus(200);
+test('guests are sent to the sign-in page', function () {
+    $this->get('/')->assertRedirect(route('login'));
+    $this->get('/login')->assertOk()->assertSee(config('qudroid.name'));
 });

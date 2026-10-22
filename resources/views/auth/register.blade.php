@@ -3,9 +3,9 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Sign Up | Vite-ESchool</title>
+    <title>Sign Up | {{ $brand['name'] }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta content="school App" name="description">
+    <meta content="{{ $brand['company'] }} portal" name="description">
     <meta content="Themesbrand" name="author">
     <!-- App favicon -->
     <link rel="shortcut icon" href="{{ asset('theme/layouts/assets/images/favicon.ico')}}">
@@ -409,7 +409,7 @@
                                             <div class="effect-circle-1 position-relative mx-auto rounded-circle d-flex align-items-center justify-content-center" style="animation: pulse 2s infinite;">
                                                 <div class="effect-circle-2 position-relative mx-auto rounded-circle d-flex align-items-center justify-content-center">
                                                     <div class="effect-circle-3 mx-auto rounded-circle position-relative text-white fs-4xl d-flex align-items-center justify-content-center" style="background: rgba(255,255,255,0.1); backdrop-filter: blur(4px);">
-                                                        Welcome to <span class="text-primary ms-1">Vite-ESchool</span>
+                                                        Welcome to <span class="text-primary ms-1">{{ $brand['name'] }}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -454,7 +454,7 @@
 
                                         <div class="text-center">
                                             <p class="text-white opacity-75 mb-0 mt-3">
-                                                &copy; <script>document.write(new Date().getFullYear())</script> Vite-ESchool. Created with <i class="mdi mdi-heart text-danger"></i> by Qudroid Systems
+                                                &copy; <script>document.write(new Date().getFullYear())</script> {{ $brand['company'] }}
                                             </p>
                                         </div>
                                     </div>

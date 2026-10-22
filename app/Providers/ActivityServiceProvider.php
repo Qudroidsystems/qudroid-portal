@@ -10,7 +10,6 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 /** Logs logins / logouts / failed logins and tells watchers when staff sign in. */
@@ -22,10 +21,9 @@ class ActivityServiceProvider extends ServiceProvider
             $u = $e->user;
             ActivityLogger::log($u->id, 'login', 'Signed in');
             try {
-                $upd = ['last_seen_at' => now()];
-                if (Schema::hasColumn('users', 'last_login_ip')) $upd['last_login_ip'] = request()->ip();
-                if (Schema::hasColumn('users', 'last_login_at')) $upd['last_login_at'] = now();
-                DB::table('users')->where('id', $u->id)->update($upd);
+                DB::table('users')->where('id', $u->id)->update([
+                    'last_seen_at' => now(), 'last_login_at' => now(), 'last_login_ip' => request()->ip(),
+                ]);
             } catch (\Throwable $ex) {}
             $this->notifyWatchers($u);
         });
@@ -48,7 +46,7 @@ class ActivityServiceProvider extends ServiceProvider
     {
         try {
             if (!class_exists(\App\Services\Messaging\PortalNotifier::class)) return;
-            if (!empty($user->student_id) || (method_exists($user, 'hasRole') && $user->hasRole(['Student', 'Parent']))) return;
+            if (($user->user_type ?? 'staff') !== 'staff') return;
             if (!Cache::add('login-notice:' . $user->id, 1, now()->addHours(2))) return;
 
             $watchers = Cache::remember('online-watchers', 600, function () {

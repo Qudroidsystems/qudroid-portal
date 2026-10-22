@@ -47,7 +47,12 @@ class NotificationController extends Controller
         $n = $request->user()->notifications()->where('id', $id)->firstOrFail();
         $n->markAsRead();
         $url = $n->data['url'] ?? null;
-        return $url ? redirect()->to($url) : redirect()->route('notifications.index');
+        // Only follow links inside the portal.
+        $host = $url ? parse_url($url, PHP_URL_HOST) : null;
+        if ($url && (!$host || $host === $request->getHost())) {
+            return redirect()->to($url);
+        }
+        return redirect()->route('notifications.index');
     }
 
     public function readAll(Request $request)

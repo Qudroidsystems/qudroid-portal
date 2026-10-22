@@ -2,31 +2,48 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Spatie\Permission\PermissionRegistrar;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
+/**
+ * One account per person, whatever their relationship with Qudroid:
+ * staff, students, clients and partners all sign in here. `user_type`
+ * says which part of the portal is their home; roles and permissions
+ * (spatie/laravel-permission) say what they may do.
+ *
+ * Module records (employee files, student records, client accounts …)
+ * link back to users.id rather than copying names and e-mails.
+ */
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
+    public const TYPE_STAFF   = 'staff';
+    public const TYPE_STUDENT = 'student';
+    public const TYPE_CLIENT  = 'client';
+    public const TYPE_PARTNER = 'partner';
+
+    /** Folder on the "public" disk that holds profile photos. */
+    public const AVATAR_DIR = 'avatars';
+
     protected $fillable = [
         'name',
         'email',
-        'password',
-        'student_id',
+        'username',
         'phone_number',
+        'user_type',
+        'avatar',
         'gender',
         'date_of_birth',
-        'profile_image',
-        'avatar',
+        'job_title',
+        'address',
+        'bio',
+        'password',
     ];
 
     protected $hidden = [
@@ -34,156 +51,120 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'date_of_birth' => 'date',
-        'must_change_password' => 'boolean',
-        'is_disabled' => 'boolean',
-        'last_login_at' => 'datetime',
-        'credentials_sent_at' => 'datetime',
-    ];
-
-    /** This user's staff record (staffbioinfo). */
-    public function staff(): HasOne
+    protected function casts(): array
     {
-        return $this->hasOne(Staff::class, 'userid', 'id');
+        return [
+            'email_verified_at'    => 'datetime',
+            'date_of_birth'        => 'date',
+            'must_change_password' => 'boolean',
+            'is_disabled'          => 'boolean',
+            'last_login_at'        => 'datetime',
+            'last_seen_at'         => 'datetime',
+            'password'             => 'hashed',
+        ];
     }
 
-    /** Parent portal: children linked to this parent account. */
-    public function parentChildren(): BelongsToMany
-    {
-        return $this->belongsToMany(Student::class, 'parent_student', 'user_id', 'student_id')
-            ->withPivot('relationship', 'source')->withTimestamps();
-    }
+    // ── Account type ───────────────────────────────────────────────────
 
-    // Staff picture relationship
-    public function staffPicture(): HasOne
-    {
-        return $this->hasOne(Staffpicture::class, 'staffId', 'id');
-    }
-
-    // Staff employment details
-    public function staffemploymentDetails(): HasOne
-    {
-        return $this->hasOne(Staff::class, 'userid', 'id');
-    }
-
-    // Bio information
-    public function bio(): HasOne
-    {
-        return $this->hasOne(BioModel::class, 'user_id');
-    }
-
-    // Qualifications (for staff)
-    public function qualifications(): HasMany
-    {
-        return $this->hasMany(StaffQualification::class, 'user_id');
-    }
-
-    // Student record (if user is a student)
-    public function student(): HasOne
-    {
-        return $this->hasOne(Student::class, 'id', 'student_id');
-    }
-
-    // ADD THIS RELATIONSHIP - Subject teachings for teachers
-    public function subjectTeachings(): HasMany
-    {
-        return $this->hasMany(SubjectTeacher::class, 'staffid', 'id');
-    }
-
-    // Alternative relationship if you need to get subjects directly
-    public function subjects()
-    {
-        return $this->belongsToMany(Subject::class, 'subjectteacher', 'staffid', 'subjectid')
-                    ->withPivot('termid', 'sessionid')
-                    ->withTimestamps();
-    }
-
-    // Check if user has Staff role
     public function isStaff(): bool
     {
-        return $this->hasRole('Staff');
+        return $this->user_type === self::TYPE_STAFF;
     }
 
-    // Check if user has Student role
     public function isStudent(): bool
     {
-        return $this->hasRole('Student') || !is_null($this->student_id);
+        return $this->user_type === self::TYPE_STUDENT;
     }
 
-    // Get user's first name
-    public function getFirstNameAttribute(): string
+    public function isClient(): bool
     {
-        $parts = explode(' ', trim($this->name));
-        return $parts[0] ?? '';
+        return $this->user_type === self::TYPE_CLIENT;
     }
 
-    // Get user's last name
-    public function getLastNameAttribute(): string
+    public function isPartner(): bool
     {
-        $parts = explode(' ', trim($this->name));
-        return isset($parts[1]) ? $parts[1] : '';
+        return $this->user_type === self::TYPE_PARTNER;
     }
 
-    // Get avatar URL (safe fallback)
-    public function getAvatarUrlAttribute(): string
+    public function isSuperAdmin(): bool
     {
-        // Staff picture
-        if ($this->isStaff() && $this->staffPicture?->picture) {
-            return asset('storage/staff_avatars/' . $this->staffPicture->picture);
-        }
-
-        // Student picture
-        if ($this->isStudent() && $this->student_id) {
-            $studentPicture = \App\Models\Studentpicture::where('studentid', $this->student_id)->first();
-            if ($studentPicture?->picture) {
-                return asset('storage/student_avatars/' . $studentPicture->picture);
-            }
-        }
-
-        // General avatar column
-        if ($this->avatar) {
-            return asset('storage/avatars/' . $this->avatar);
-        }
-
-        // Legacy profile_image
-        if ($this->profile_image) {
-            return asset('storage/' . $this->profile_image);
-        }
-
-        // Default fallback
-        $initials = strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name, 0, 1));
-        return "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&color=7F9CF5&background=EBF4FF";
+        return $this->hasRole(config('qudroid.super_admin_role', 'Super Administrator'));
     }
 
-    // Get admission number (for students)
-    public function getAdmissionNoAttribute(): ?string
-    {
-        return $this->isStudent() && $this->student?->admissionNo ? $this->student->admissionNo : null;
-    }
-
-    // Check if user is active
     public function isActive(): bool
     {
-        return true; // Customize if needed
+        return !$this->is_disabled;
     }
 
-    // Get formatted date of birth
+    public function getUserTypeLabelAttribute(): string
+    {
+        return config('qudroid.user_types.' . $this->user_type, ucfirst((string) $this->user_type));
+    }
+
+    // ── Names and photo ────────────────────────────────────────────────
+
+    public function getFirstNameAttribute(): string
+    {
+        return explode(' ', trim((string) $this->name))[0] ?? '';
+    }
+
+    public function getLastNameAttribute(): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $this->name));
+        return count($parts) > 1 ? end($parts) : '';
+    }
+
+    public function getInitialsAttribute(): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $this->name)) ?: [];
+        $initials = collect($parts)->filter()->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->take(2)->implode('');
+        return $initials !== '' ? $initials : 'U';
+    }
+
+    /** Public URL of the profile photo, or null when there is none. */
+    public function getAvatarPathUrlAttribute(): ?string
+    {
+        if (!$this->avatar) return null;
+        $path = self::AVATAR_DIR . '/' . basename($this->avatar);
+        return Storage::disk('public')->exists($path) ? asset('storage/' . $path) : null;
+    }
+
+    /** Profile photo, or a generated initials picture. Always returns a URL. */
+    public function getAvatarUrlAttribute(): string
+    {
+        return $this->avatar_path_url
+            ?? 'https://ui-avatars.com/api/?name=' . urlencode((string) $this->name) . '&color=FFFFFF&background=' . ltrim((string) config('qudroid.primary_color', '#405189'), '#');
+    }
+
     public function getFormattedDobAttribute(): ?string
     {
         return $this->date_of_birth?->format('d M Y');
     }
 
-    // Scope for staff users
-    public function scopeStaff($query)
+    // ── Scopes ─────────────────────────────────────────────────────────
+
+    public function scopeOfType(Builder $query, string $type): Builder
     {
-        return $query->whereHas('roles', fn($q) => $q->where('name', 'Staff'));
+        return $query->where('user_type', $type);
     }
 
-    // Scope for student users
-    public function scopeStudents($query)
+    public function scopeStaff(Builder $query): Builder
     {
-        return $query->whereHas('roles', fn($q) => $q->where('name', 'Student'));
+        return $query->where('user_type', self::TYPE_STAFF);
+    }
+
+    public function scopeStudents(Builder $query): Builder
+    {
+        return $query->where('user_type', self::TYPE_STUDENT);
+    }
+
+    public function scopeClients(Builder $query): Builder
+    {
+        return $query->where('user_type', self::TYPE_CLIENT);
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_disabled', false);
     }
 }

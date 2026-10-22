@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\BadgeModel;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,11 +18,12 @@ class RoleController extends Controller
 {
     function __construct()
     {
-        $this->middleware('permission:View role|Create role|Update role|Delete role|Add user-role|Update user-role|Remove user-role', ['only' => ['index', 'store']]);
+        $this->middleware('permission:View role|Create role|Update role|Delete role|Update user-role|Remove user-role', ['only' => ['index', 'show', 'getRoleUsers']]);
         $this->middleware('permission:Create role', ['only' => ['create', 'store']]);
         $this->middleware('permission:Update role', ['only' => ['edit', 'update']]);
-        $this->middleware('permission:Delete role', ['only' => ['destroy', 'removeuserRole']]);
+        $this->middleware('permission:Delete role', ['only' => ['destroy']]);
         $this->middleware('permission:Update user-role', ['only' => ['adduser', 'updateuserrole']]);
+        $this->middleware('permission:Remove user-role', ['only' => ['removeuserrole', 'bulkRemoveUsers']]);
     }
 
     public function index(Request $request): View
@@ -48,10 +48,10 @@ class RoleController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    public function create(): View
+    /** Roles are created from the modal on the roles page. */
+    public function create(): RedirectResponse
     {
-        $permission = Permission::get();
-        return view('roles.create', compact('permission'));
+        return redirect()->route('roles.index');
     }
 
     public function store(Request $request): RedirectResponse
@@ -62,14 +62,13 @@ class RoleController extends Controller
             'name'           => 'required|unique:roles,name',
             'permission'     => 'required|array',
             'permission.*'   => 'exists:permissions,id',
-            'title'          => 'nullable|string',
             'badge'          => 'nullable|string',
         ]);
 
         $role = Role::create([
-            'name'  => $request->input('name'),
-            'title' => $request->input('title'),
-            'badge' => $request->input('badge'),
+            'name'       => $request->input('name'),
+            'badge'      => $request->input('badge'),
+            'guard_name' => 'web',
         ]);
 
         $permissionIds = $request->input('permission');
@@ -130,28 +129,10 @@ class RoleController extends Controller
         ))->with('perm_title', $ex);
     }
 
-    public function edit($id): View
+    /** Roles are edited on the role page. */
+    public function edit($id): RedirectResponse
     {
-        $pagetitle = "Role Management";
-
-        $role = Role::find($id);
-        $rolePermissions = DB::table("role_has_permissions")
-            ->where("role_has_permissions.role_id", $id)
-            ->pluck('role_has_permissions.permission_id', 'role_has_permissions.permission_id')
-            ->all();
-        $permission = Permission::get();
-        $perm_title = Permission::get(['title']);
-        $array = [];
-        foreach ($perm_title as $title) {
-            $array[] = $title->title;
-        }
-
-        $ar = implode(',', $array);
-        $ex = explode(',', $ar);
-
-        return view('roles.edit', compact('role', 'permission', 'rolePermissions'))
-            ->with('perm_title', $ex)
-            ->with('pagetitle', $pagetitle);
+        return redirect()->route('roles.show', $id);
     }
 
     public function update(Request $request, $id): RedirectResponse
@@ -166,8 +147,10 @@ class RoleController extends Controller
         ]);
 
         $role = Role::findOrFail($id);
+        $isSuper = $role->name === $this->superRole();
         $role->update([
-            'name'  => $request->input('name'),
+            // The Super Administrator role keeps its name: the permission bypass depends on it.
+            'name'  => $isSuper ? $role->name : $request->input('name'),
             'badge' => $request->input('badge'),
         ]);
 
@@ -202,11 +185,7 @@ class RoleController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    /**
-     * Assign role(s) to users.
-     * When the student role is assigned, auto-populate users.student_id
-     * from studentRegistration (matched by email, then by name).
-     */
+    /** Assign a role to users. */
     public function updateuserrole(Request $request): RedirectResponse
     {
         $pagetitle = "Role Management";
@@ -217,77 +196,15 @@ class RoleController extends Controller
             'roleid'   => 'required|exists:roles,id',
         ]);
 
-        $role    = Role::findOrFail($request->input('roleid'));
-        $userIds = $request->input('users');
+        $role = Role::findOrFail($request->input('roleid'));
 
-        $isStudentRole = strtolower($role->name) === 'student';
-
-        foreach ($userIds as $userId) {
-            $user = User::findOrFail($userId);
-            $user->assignRole($role->name);
-
-            // When assigning the student role, link the user to studentRegistration
-            if ($isStudentRole && is_null($user->student_id)) {
-                $this->linkUserToStudentRecord($user);
-            }
+        foreach ($request->input('users') as $userId) {
+            User::findOrFail($userId)->assignRole($role->name);
         }
 
         return redirect()->route('roles.show', $role->id)
             ->with('success', 'Users added to role successfully')
             ->with('pagetitle', $pagetitle);
-    }
-
-    /**
-     * Try to find the matching studentRegistration row for a user and
-     * write its id into users.student_id.
-     *
-     * Matching priority:
-     *   1. Email match (most reliable)
-     *   2. Full name match  (CONCAT firstname + ' ' + lastname)
-     */
-    private function linkUserToStudentRecord(User $user): void
-    {
-        try {
-            $studentReg = null;
-
-            // 1 — try email match first
-            if (!empty($user->email)) {
-                $studentReg = DB::table('studentRegistration')
-                    ->where('email', $user->email)
-                    ->select('id')
-                    ->first();
-            }
-
-            // 2 — fall back to full-name match
-            if (!$studentReg && !empty($user->name)) {
-                $studentReg = DB::table('studentRegistration')
-                    ->whereRaw("TRIM(CONCAT(firstname, ' ', lastname)) = ?", [trim($user->name)])
-                    ->select('id')
-                    ->first();
-            }
-
-            if ($studentReg) {
-                $user->update(['student_id' => $studentReg->id]);
-
-                Log::info('Linked user to studentRegistration', [
-                    'user_id'        => $user->id,
-                    'user_name'      => $user->name,
-                    'student_reg_id' => $studentReg->id,
-                ]);
-            } else {
-                Log::warning('Could not find matching studentRegistration for user', [
-                    'user_id'   => $user->id,
-                    'user_name' => $user->name,
-                    'email'     => $user->email,
-                ]);
-            }
-        } catch (\Exception $e) {
-            // Non-fatal — role was still assigned, just log the failure
-            Log::error('Error linking user to studentRegistration', [
-                'user_id' => $user->id,
-                'error'   => $e->getMessage(),
-            ]);
-        }
     }
 
     /**
@@ -300,6 +217,9 @@ class RoleController extends Controller
         try {
             $user = User::findOrFail($userid);
             $role = Role::findOrFail($roleid);
+            if ($role->name === $this->superRole() && $role->users()->count() <= 1) {
+                return response()->json(['success' => false, 'message' => 'There must always be at least one Super Administrator.'], 422);
+            }
             $user->removeRole($role->name);
 
             return response()->json(['success' => true, 'message' => 'User role removed successfully']);
@@ -314,29 +234,15 @@ class RoleController extends Controller
         }
     }
 
-    public function delete($id)
-    {
-        $delete = User::destroy($id);
-
-        if ($delete == 1) {
-            $success = true;
-            $message = "User deleted successfully";
-        } else {
-            $success = true;
-            $message = "User not found";
-        }
-
-        return response()->json([
-            'success' => $success,
-            'message' => $message,
-        ]);
-    }
-
     public function destroy($id): RedirectResponse
     {
         $pagetitle = "Role Management";
 
-        DB::table("roles")->where('id', $id)->delete();
+        $role = Role::findOrFail($id);
+        if ($role->name === $this->superRole()) {
+            return redirect()->route('roles.index')->with('error', 'The Super Administrator role cannot be deleted.');
+        }
+        $role->delete();
 
         return redirect()->route('roles.index')
             ->with('success', 'Role deleted successfully')
@@ -354,6 +260,13 @@ class RoleController extends Controller
 
             $role  = Role::findOrFail($request->role_id);
             $users = User::whereIn('id', $request->selected_users)->get();
+
+            if ($role->name === $this->superRole() && $role->users()->whereNotIn('users.id', $users->pluck('id'))->count() === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'There must always be at least one Super Administrator.',
+                ], 422);
+            }
 
             $removedCount = 0;
             $removedNames = [];
@@ -396,7 +309,7 @@ class RoleController extends Controller
             $page    = $request->get('page', 1);
 
             $usersWithRole = $role->users()
-                ->with(['student.currentClass.class', 'staffemploymentDetails'])
+                ->with('roles')
                 ->orderBy('name')
                 ->paginate($perPage, ['*'], 'page', $page);
 
@@ -435,5 +348,10 @@ class RoleController extends Controller
 
             return back()->with('error', 'Failed to load users: ' . $e->getMessage());
         }
+    }
+
+    protected function superRole(): string
+    {
+        return (string) config('qudroid.super_admin_role', 'Super Administrator');
     }
 }

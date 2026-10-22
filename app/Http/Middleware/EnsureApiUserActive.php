@@ -27,7 +27,7 @@ class EnsureApiUserActive
             return response()->json([
                 'success' => false,
                 'code'    => 'account_disabled',
-                'message' => 'This account has been disabled. Please contact the school.',
+                'message' => 'This account has been disabled. Please contact your administrator.',
             ], 403);
         }
 

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',  
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -18,24 +18,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            // Device authentication
-            'device.auth' => \App\Http\Middleware\DeviceAuthMiddleware::class,
             'force.password' => \App\Http\Middleware\ForcePasswordChange::class,
-            'maintenance.mode' => \App\Http\Middleware\MaintenanceMode::class,
-            'remote.portal' => \App\Http\Middleware\VerifyRemotePortal::class,
             // Mobile app API (routes/api_v1.php)
             'api.active' => \App\Http\Middleware\EnsureApiUserActive::class,
-            'api.website' => \App\Http\Middleware\VerifyWebsiteKey::class,
-            'api.feature' => \App\Http\Middleware\ApiFeatureEnabled::class,
         ]);
 
-        // Temporary passwords (new parent accounts) must be changed first.
-        $middleware->web(append: [\App\Http\Middleware\MaintenanceMode::class, \App\Http\Middleware\FeatureRouteGuard::class, \App\Http\Middleware\ForcePasswordChange::class, \App\Http\Middleware\LogActivity::class]);
+        // Temporary passwords must be changed first; every change is logged.
+        $middleware->web(append: [\App\Http\Middleware\ForcePasswordChange::class, \App\Http\Middleware\LogActivity::class]);
 
+        // Payment-gateway callbacks (Paystack etc.) will live under webhook/*.
         $middleware->validateCsrfTokens(except: [
-            'cbt/submit',
             'webhook/*',
-            'payment/callback',
         ]);
 
         // ============================================

@@ -3,28 +3,25 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CleanupOldNotifications extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'app:cleanup-old-notifications';
+    protected $signature = 'notifications:prune {--days=180 : remove read notifications older than this}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Command description';
+    protected $description = 'Delete read notifications older than the given number of days';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(): int
     {
-        //
+        if (!Schema::hasTable('notifications')) return self::SUCCESS;
+
+        $n = DB::table('notifications')
+            ->whereNotNull('read_at')
+            ->where('created_at', '<', now()->subDays((int) $this->option('days')))
+            ->delete();
+
+        $this->info("Removed {$n} old notifications.");
+        return self::SUCCESS;
     }
 }

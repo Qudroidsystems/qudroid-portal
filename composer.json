@@ -1,13 +1,15 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "qudroid/hub",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Qudroid Hub \u2014 business, learning and collaboration portal for Qudroid Systems.",
     "keywords": [
-        "laravel",
-        "framework"
+        "qudroid",
+        "erp",
+        "lms",
+        "portal"
     ],
-    "license": "MIT",
+    "license": "proprietary",
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
