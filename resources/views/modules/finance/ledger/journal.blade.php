@@ -38,6 +38,7 @@
                                 $src instanceof \App\Models\Finance\Invoice => [route('finance.invoices.show', $src), 'Invoice ' . $src->number],
                                 $src instanceof \App\Models\Finance\Payment => [route('finance.payments.show', $src), 'Receipt ' . ($src->number ?? $src->reference)],
                                 $src instanceof \App\Models\Finance\Expense => [route('finance.expenses.show', $src), 'Expense ' . $src->number],
+                                $src instanceof \App\Models\Hr\PayrollRun && Route::has('hr.payroll.show') => [route('hr.payroll.show', $src), 'Payroll ' . $src->label],
                                 default => null,
                             };
                         @endphp

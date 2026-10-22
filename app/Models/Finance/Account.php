@@ -16,7 +16,8 @@ class Account extends Model
 
     /** Codes the automatic postings use. */
     public const CASH = '1000', BANK = '1010', PAYSTACK = '1020', RECEIVABLE = '1100', CUSTOMER_CREDIT = '2100',
-        COURSE_FEES = '4000', SERVICES = '4100';
+        COURSE_FEES = '4000', SERVICES = '4100',
+        TAXES_PAYABLE = '2200', PENSION_PAYABLE = '2300', NHF_PAYABLE = '2400', PAYROLL_DEDUCTIONS = '2500', SALARIES = '5000';
 
     protected $table = 'finance_accounts';
 

@@ -77,6 +77,25 @@ return [
     ],
 
     /*
+    | Payroll. PAYE uses the Nigeria Tax Act 2025 personal income tax bands
+    | (in force from 1 January 2026): each band is [width in naira a year,
+    | rate %], applied in order; null width = everything above. Pension and
+    | NHF contributions and rent relief (20% of annual rent, at most
+    | N500,000) are deducted before tax. Check these with your accountant
+    | and change them here if the law changes.
+    */
+    'payroll' => [
+        'employee_prefix'     => env('QUDROID_EMPLOYEE_PREFIX', 'QS'),
+        'tax_bands'           => [[800000, 0], [2200000, 15], [9000000, 18], [13000000, 21], [25000000, 23], [null, 25]],
+        'pension_employee'    => 8,      // % of basic + housing + transport
+        'pension_employer'    => 10,
+        'nhf_rate'            => 2.5,    // % of basic
+        'rent_relief_rate'    => 20,     // % of annual rent
+        'rent_relief_cap'     => 500000,
+        'working_days_month'  => 22,     // for unpaid-leave deductions
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Modules (the app launcher on the dashboard and the sidebar)
     |--------------------------------------------------------------------------

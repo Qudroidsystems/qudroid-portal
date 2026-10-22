@@ -9,3 +9,6 @@
 @if(session('client_password'))
     <div class="cb-banner warning"><i class="ri-key-2-line"></i><div>Temporary password: <code class="fs-6">{{ session('client_password') }}</code>. Send it to the client now with the sign-in link; it is not shown again. They will choose their own at first sign-in.</div></div>
 @endif
+@if(session('staff_password'))
+    <div class="cb-banner warning"><i class="ri-key-2-line"></i><div>Temporary password for the new staff account: <code class="fs-6">{{ session('staff_password') }}</code>. Send it to them with the sign-in link; it is not shown again. They will choose their own at first sign-in.</div></div>
+@endif

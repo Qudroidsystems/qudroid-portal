@@ -131,6 +131,25 @@ class LedgerService
         ], $by, 'expense', $expense, $expense->paid_at ? Carbon::parse($expense->paid_at) : null);
     }
 
+    /**
+     * A paid payroll run: salaries and the employer's pension are the cost;
+     * PAYE, pension and NHF are owed on to the authorities; net pay leaves the bank.
+     */
+    public function payrollPaid(\App\Models\Hr\PayrollRun $run, ?User $by): JournalEntry
+    {
+        $sum = fn (string $col) => $run->payslips->sum(fn ($p) => Money::minor($p->{$col}));
+        $gross = $sum('gross');
+        $employer = $sum('employer_pension');
+        $lines = [['account' => Account::SALARIES, 'debit' => Money::major($gross + $employer), 'memo' => $run->payslips->count() . ' payslips']];
+        foreach ([[Account::TAXES_PAYABLE, $sum('paye'), 'PAYE'], [Account::PENSION_PAYABLE, $sum('pension') + $employer, 'Pension, employee and employer'],
+                  [Account::NHF_PAYABLE, $sum('nhf'), 'NHF'], [Account::PAYROLL_DEDUCTIONS, $sum('other_deductions'), 'Other deductions']] as [$code, $amount, $memo]) {
+            if ($amount > 0) $lines[] = ['account' => $code, 'credit' => Money::major($amount), 'memo' => $memo];
+        }
+        $lines[] = ['account' => $run->paid_from_account_id, 'credit' => Money::major($sum('net')), 'memo' => 'Net pay'];
+
+        return $this->post('Payroll ' . $run->label, $lines, $by, 'payroll', $run, $run->paid_at ? Carbon::parse($run->paid_at) : null);
+    }
+
     protected function reverseFor(Model $source, string $kind, string $reason, ?User $by): void
     {
         JournalEntry::where('source_type', $source->getMorphClass())->where('source_id', $source->getKey())

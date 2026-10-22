@@ -239,6 +239,31 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
   `POST .../read`, `POST /api/v1/connect/direct`, `GET /api/v1/connect/people`,
   `POST /api/v1/connect/messages/{id}/react`, `DELETE /api/v1/connect/messages/{id}`.
 
+## HR & Payroll
+
+`routes/modules/hr.php`, `app/{Models,Http/Controllers,Services}/Hr`, `config/qudroid.php` → `payroll`.
+
+- **Employees** (numbered QS-0001 …) are staff accounts with a job, department,
+  manager, start date, next of kin, monthly pay (basic, housing, transport,
+  other), bank, pension and tax details. Adding one can create the staff
+  account (temporary password shown once). Only Manage payroll sees or sets pay.
+- **Leave**: types with a yearly allowance (annual leave uses each person's own
+  allowance), public holidays, and working-day counting (weekends and holidays
+  are free). Staff book leave under **My leave & pay**; their manager (no HR
+  permission needed) or HR approves or declines, and both sides are notified.
+- **Payroll**: one run a month. Prepare (a payslip per active employee with
+  pay), add bonuses and other deductions, have someone else approve it
+  (Manage payroll or Approve finance), then mark it paid from a bank account.
+  Paying posts to the ledger (Dr 5000 salaries + employer pension; Cr 2200
+  PAYE, 2300 pension, 2400 NHF, 2500 other deductions, and the bank for net
+  pay) and releases the payslips to staff, with a PDF for each.
+- **PAYE** follows the Nigeria Tax Act 2025 bands (₦800k at 0%, then 15%,
+  18%, 21%, 23%, 25%) after pension (8% of basic + housing + transport), NHF
+  (2.5% of basic) and rent relief (20% of rent, max ₦500k). A bonus is taxed at
+  the margin. Approved unpaid leave reduces pay by days ÷ 22. Every payslip
+  keeps its tax workings. Check the rates with your accountant before the
+  first live run; they live in `config/qudroid.php`.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the

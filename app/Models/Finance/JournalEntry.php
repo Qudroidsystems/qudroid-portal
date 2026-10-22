@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 /** A journal entry. Its debits equal its credits; it is never edited, only reversed. */
 class JournalEntry extends Model
 {
-    public const KINDS = ['manual' => 'Manual', 'invoice' => 'Invoice', 'payment' => 'Payment', 'expense' => 'Expense', 'reversal' => 'Reversal'];
+    public const KINDS = ['manual' => 'Manual', 'invoice' => 'Invoice', 'payment' => 'Payment', 'expense' => 'Expense', 'payroll' => 'Payroll', 'reversal' => 'Reversal'];
 
     protected $table = 'finance_journal_entries';
 

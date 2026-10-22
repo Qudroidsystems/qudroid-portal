@@ -101,6 +101,12 @@ class User extends Authenticatable
         return config('qudroid.user_types.' . $this->user_type, ucfirst((string) $this->user_type));
     }
 
+    /** The HR record, for staff on the payroll. */
+    public function employee(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Hr\Employee::class);
+    }
+
     // ── Names and photo ────────────────────────────────────────────────
 
     public function getFirstNameAttribute(): string

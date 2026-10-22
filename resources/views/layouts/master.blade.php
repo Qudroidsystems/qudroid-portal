@@ -428,6 +428,14 @@
                     </li>
                     @endif
 
+                    @if(Route::has('me.leave') && auth()->user()->isStaff() && auth()->user()->employee)
+                    <li class="nav-item">
+                        <a href="{{ route('me.leave') }}" class="nav-link menu-link {{ request()->routeIs('me.*') ? 'active' : '' }}">
+                            <i class="ri-suitcase-line"></i> <span>My leave & pay</span>
+                        </a>
+                    </li>
+                    @endif
+
                     {{-- WORKSPACE — one entry per installed module the user may open.
                          A module can supply its own sub-menu in resources/views/modules/<key>/nav.blade.php --}}
                     @php $navModules = \App\Support\Modules::available(); @endphp
