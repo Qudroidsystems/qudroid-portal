@@ -102,6 +102,7 @@ own password straight away.
   see why. **Decline** needs a reason the applicant sees. References are
   `APP-2026-0001`. `ApplicationService` holds the rules.
 
+<<<<<<< HEAD
 - **Quizzes and assignments** (`academy_assessments`, `AssessmentService`):
   built at Academy → course → Content. Quizzes have single, multiple,
   true/false and short-answer questions (marked automatically; several-answer
@@ -128,12 +129,18 @@ own password straight away.
   teach. Rate = (present + late) / marked sessions, leaving out excused
   absences and cancelled sessions. Shown on the cohort, gradebook and My academy.
 
+=======
+>>>>>>> 95943ba07c16060914b93d2003ed391083ccf2be
 `Grant course access` and `Manage course content` are new permissions. Roles only get their starting
 permissions when first created, so on an existing database give them to the
 Academy Administrator (and `Manage course content` to Instructor) in Roles &
 Permissions after `php artisan db:seed`.
 
+<<<<<<< HEAD
 ## Finance
+=======
+## Finance (phase 2, first part)
+>>>>>>> 95943ba07c16060914b93d2003ed391083ccf2be
 
 `routes/modules/finance.php` (staff), `routes/modules/billing.php` ("My bills"
 for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Finance`.
@@ -158,6 +165,7 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
 - **Course access** opens when the course-fee invoice is paid in full, or when
   the first payment reaches the course's minimum where instalments are
   allowed. Reversing that payment locks access again.
+<<<<<<< HEAD
 - **PDFs**: invoices and receipts download as PDFs (staff from Finance, the
   customer from My bills; add `?view=1` to open in the browser).
   `QUDROID_ADDRESS` prints under the company name.
@@ -195,6 +203,8 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
 - **Time**: members log time per task or for the project (billable or not);
   the timesheet totals per person. **My work** lists a person's tasks across
   projects by due date, and their time this week.
+=======
+>>>>>>> 95943ba07c16060914b93d2003ed391083ccf2be
 
 ## Adding a module
 

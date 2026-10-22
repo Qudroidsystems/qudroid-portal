@@ -29,6 +29,12 @@ Auth::routes([
     'verify'   => false,
 ]);
 
+// Payment-provider webhooks (no sign-in; signature-checked)
+require __DIR__ . '/webhooks.php';
+
+// Public pages (online applications)
+require __DIR__ . '/public.php';
+
 // CSRF refresh (keeps long-open pages working)
 Route::get('/refresh-csrf', function () {
     if (request()->ajax()) {

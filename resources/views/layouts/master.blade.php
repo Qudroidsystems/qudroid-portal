@@ -420,6 +420,13 @@
                             <i class="ri-notification-3-line"></i> <span>Notifications</span>
                         </a>
                     </li>
+                    @if(Route::has('billing.index'))
+                    <li class="nav-item">
+                        <a href="{{ route('billing.index') }}" class="nav-link menu-link {{ request()->routeIs('billing.*') ? 'active' : '' }}">
+                            <i class="ri-wallet-3-line"></i> <span>My bills</span>
+                        </a>
+                    </li>
+                    @endif
 
                     {{-- WORKSPACE — one entry per installed module the user may open.
                          A module can supply its own sub-menu in resources/views/modules/<key>/nav.blade.php --}}
