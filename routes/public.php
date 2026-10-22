@@ -14,3 +14,18 @@ Route::prefix('apply')->name('apply.')->group(function () {
     Route::get('/{cohort}', [ApplyController::class, 'create'])->whereNumber('cohort')->name('create');
     Route::post('/{cohort}', [ApplyController::class, 'store'])->whereNumber('cohort')->middleware('throttle:10,10')->name('store');
 });
+<<<<<<< Updated upstream
+=======
+
+// Certificate check (the QR code on every certificate points here)
+Route::get('/verify/{token}', [\App\Http\Controllers\Certificates\CertificateController::class, 'verify'])
+    ->middleware('throttle:60,1')->name('certificates.verify');
+
+// Drive "anyone with the link" pages (view and download only)
+Route::prefix('s/{token}')->middleware('throttle:120,1')->controller(\App\Http\Controllers\Drive\PublicLinkController::class)->group(function () {
+    Route::get('/', 'show')->name('drive.public');
+    Route::get('/folder/{folder}', 'folder')->whereNumber('folder')->name('drive.public.folder');
+    Route::get('/file/{file}', 'file')->whereNumber('file')->name('drive.public.file');
+    Route::get('/zip', 'zip')->name('drive.public.zip');
+});
+>>>>>>> Stashed changes

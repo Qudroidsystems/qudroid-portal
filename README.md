@@ -307,6 +307,32 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
 - Mobile app: `GET /api/v1/meetings` (`?past=1`), `GET /api/v1/meetings/calendar?from=&to=`,
   `GET /api/v1/meetings/{id}`, `POST /api/v1/meetings/{id}/respond`.
 
+## Workspace Drive
+
+`routes/modules/drive.php`, `app/{Models,Http/Controllers,Services}/Drive`. Uses the Use connect permission.
+
+- **My Drive**: each person's own folders and files. Upload many files at once
+  (or drag them onto the page), make folders, rename, move, star, and download
+  a folder as a zip.
+- **Project files**: every project has a shared space (also a "Files" tab on
+  the project). Managers have full control, members edit, viewers view;
+  clients only see what is shared with them directly.
+- **Sharing**: give people view or edit access to a file, or to a folder and
+  everything in it. "Anyone with the link" (`/s/{token}`, optional expiry) lets
+  outsiders view and download without signing in. People hear about shares and
+  about new files in folders shared with them.
+- **Versions**: uploading a new version keeps the earlier ones; any of them can
+  be downloaded or made current again.
+- **Trash**: deleted things can be restored until the owner (or a project
+  manager) deletes them for good, which is when the stored files are removed.
+- **Chats**: "From chats" lists files sent in your conversations ("Save to My
+  Drive" keeps a copy), and any Drive item can be sent into a chat, which gives
+  the people there view access.
+- Files are stored privately on the `local` disk and only served after an
+  access check. HTML and SVG are never shown inline. Each person's files count
+  towards `QUDROID_DRIVE_QUOTA_MB` (default 5 GB); single uploads are capped by
+  `QUDROID_DRIVE_MAX_UPLOAD_MB` (default 200, and PHP's upload limits).
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the

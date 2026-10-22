@@ -76,6 +76,13 @@ return [
         'bank_details'     => env('QUDROID_BANK_DETAILS'),
     ],
 
+    // Workspace Drive. Each person's own files (and earlier versions) count towards their quota.
+    'drive' => [
+        'quota_mb'      => (int) env('QUDROID_DRIVE_QUOTA_MB', 5120),
+        // Largest single upload, in MB (PHP's upload_max_filesize/post_max_size must allow it too).
+        'max_upload_mb' => (int) env('QUDROID_DRIVE_MAX_UPLOAD_MB', 200),
+    ],
+
     /*
     | Payroll. PAYE uses the Nigeria Tax Act 2025 personal income tax bands
     | (in force from 1 January 2026): each band is [width in naira a year,
@@ -111,6 +118,7 @@ return [
         'projects'     => ['name' => 'Projects & Tasks',    'icon' => 'ri-layout-column-line',         'route' => 'projects.index',     'permission' => 'View projects',     'phase' => 3, 'color' => '#0ea5e9', 'description' => 'Workspaces, boards, docs, time tracking and approvals.'],
         'crm'          => ['name' => 'Clients & CRM',       'icon' => 'ri-briefcase-4-line',    'route' => 'crm.index',          'permission' => 'View clients',      'phase' => 3, 'color' => '#8b5cf6', 'description' => 'Clients, leads, proposals, contracts and support tickets.'],
         'connect'      => ['name' => 'Qudroid Connect',     'icon' => 'ri-chat-smile-3-line',   'route' => 'connect.index',      'permission' => 'Use connect',       'phase' => 4, 'color' => '#22c55e', 'description' => 'Channels, direct messages, files and calls.'],
+        'drive'        => ['name' => 'Drive',               'icon' => 'ri-folder-cloud-line',   'route' => 'drive.index',        'permission' => 'Use connect',       'phase' => 4, 'color' => '#3b82f6', 'description' => 'Your files and folders, project files, sharing and links.'],
         'meetings'     => ['name' => 'Meetings & Calendar', 'icon' => 'ri-video-chat-line',     'route' => 'meetings.index',     'permission' => 'View meetings',     'phase' => 4, 'color' => '#ec4899', 'description' => 'Scheduled meetings, rooms and shared calendars.'],
         'finance'      => ['name' => 'Finance & Invoicing', 'icon' => 'ri-money-dollar-circle-line', 'route' => 'finance.index', 'permission' => 'View finance',      'phase' => 2, 'color' => '#10b981', 'description' => 'Invoices, payments, bills, expenses and reports.'],
         'inventory'    => ['name' => 'Inventory & Assets',  'icon' => 'ri-archive-line',        'route' => 'inventory.index',    'permission' => 'View inventory',    'phase' => 5, 'color' => '#f97316', 'description' => 'Stock, procurement, suppliers and the IT asset register.'],

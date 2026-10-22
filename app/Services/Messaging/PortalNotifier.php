@@ -24,6 +24,7 @@ class PortalNotifier
         'project'     => 'ri-folder-chart-line',
         'message'     => 'ri-chat-3-line',
         'meeting'     => 'ri-video-chat-line',
+        'drive'       => 'ri-folder-cloud-line',
         'course'      => 'ri-book-open-line',
         'payment'     => 'ri-money-dollar-circle-line',
         'invoice'     => 'ri-bill-line',
