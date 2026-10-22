@@ -13,6 +13,10 @@
             <form method="POST" action="{{ $editing ? route('projects.update', $project) : route('projects.store') }}">
                 @csrf
                 @if($editing) @method('PUT') @endif
+                @if($deal ?? null)
+                    <input type="hidden" name="deal_id" value="{{ $deal->id }}">
+                    <div class="cb-banner info"><i class="ri-trophy-line"></i><div>Starting from the won deal <strong>{{ $deal->title }}</strong>. The deal will link to this project.</div></div>
+                @endif
                 <div class="row g-3">
                     <div class="col-md-8"><label class="form-label">Name</label><input name="name" class="form-control" value="{{ old('name', $project->name) }}" maxlength="150" required></div>
                     <div class="col-md-4"><label class="form-label">Code</label>
@@ -25,6 +29,14 @@
                     </div>
                     <div class="col-12"><label class="form-label">Description</label><textarea name="description" rows="4" class="form-control" maxlength="5000">{{ old('description', $project->description) }}</textarea></div>
                     <div class="col-md-6"><label class="form-label">Client name</label><input name="client_name" class="form-control" value="{{ old('client_name', $project->client_name) }}" maxlength="150" placeholder="Leave empty for an internal project"></div>
+                    @if($companies->isNotEmpty())
+                        <div class="col-md-6"><label class="form-label">CRM company <span class="text-muted">(optional)</span></label>
+                            <select name="company_id" class="form-select">
+                                <option value="">None</option>
+                                @foreach($companies as $c)<option value="{{ $c->id }}" @selected((int) old('company_id', $project->company_id) === $c->id)>{{ $c->name }}</option>@endforeach
+                            </select>
+                        </div>
+                    @endif
                     <div class="col-md-6"><label class="form-label">Client portal account <span class="text-muted">(optional)</span></label>
                         <select name="client_id" class="form-select">
                             <option value="">None</option>
@@ -46,7 +58,7 @@
                     @unless($editing)
                         <div class="col-md-3"><label class="form-label">Status</label>
                             <select name="status" class="form-select">
-                                @foreach(['planning', 'active'] as $k)<option value="{{ $k }}" @selected(old('status', 'planning') === $k)>{{ \App\Models\Projects\Project::STATUSES[$k] }}</option>@endforeach
+                                @foreach(['planning', 'active'] as $k)<option value="{{ $k }}" @selected(old('status', $project->status ?? 'planning') === $k)>{{ \App\Models\Projects\Project::STATUSES[$k] }}</option>@endforeach
                             </select>
                         </div>
                     @endunless
