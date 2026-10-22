@@ -23,7 +23,7 @@
                 <thead><tr>
                     <th>Student</th>
                     @foreach($columns as $c)<th class="num"><a href="{{ route('academy.assessments.results', [$course, $c]) }}" class="text-reset" title="{{ $c->title }}">{{ \Illuminate\Support\Str::limit($c->title, 18) }}</a><div class="small text-muted fw-normal">{{ $c->weight + 0 }}</div></th>@endforeach
-                    <th class="num">Grade</th><th>Progress</th><th>Status</th><th>Certificate</th>
+                    <th class="num">Grade</th><th>Progress</th><th>Attendance</th><th>Status</th><th>Certificate</th>
                 </tr></thead>
                 <tbody>
                 @foreach($enrollments as $e)
@@ -33,6 +33,7 @@
                         @foreach($columns as $c)<td class="num {{ $r[$c->id] === null ? 'text-muted' : ($r[$c->id] >= $c->pass_mark ? 'text-success' : 'text-danger') }}">{{ $pct($r[$c->id]) }}</td>@endforeach
                         <td class="num fw-semibold {{ $e->grade_percent === null ? '' : ($e->grade_percent >= $course->pass_grade ? 'text-success' : 'text-danger') }}">{{ $pct($e->grade_percent) }}</td>
                         <td>{{ $e->progress_percent }}%</td>
+                        <td>{{ $pct($e->attendance_percent) }}</td>
                         <td>@include('modules.academy.partials.pill', ['status' => $e->status, 'label' => $e->status_label])</td>
                         <td>
                             @if($cert && $cert->status === 'issued')<a href="{{ route('certificates.show', $cert) }}">{{ $cert->serial }}</a>

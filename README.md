@@ -120,6 +120,14 @@ own password straight away.
   `/verify/{token}` page. Print or save as PDF from the certificate page.
   Signatory: `QUDROID_CERT_SIGNATORY`, `QUDROID_CERT_SIGNATORY_TITLE`.
 
+- **Attendance** (Attendance module, `routes/modules/attendance.php`,
+  `AttendanceService`): add a cohort's class sessions one at a time or for a
+  period on chosen weekdays, then take the register (present, late, absent,
+  excused) on or after the day. Academy staff take any register; an
+  instructor with **Manage attendance** takes the registers of cohorts they
+  teach. Rate = (present + late) / marked sessions, leaving out excused
+  absences and cancelled sessions. Shown on the cohort, gradebook and My academy.
+
 `Grant course access` and `Manage course content` are new permissions. Roles only get their starting
 permissions when first created, so on an existing database give them to the
 Academy Administrator (and `Manage course content` to Instructor) in Roles &

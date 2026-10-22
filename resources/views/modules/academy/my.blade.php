@@ -33,6 +33,7 @@
                                     </div>
                                     <a href="{{ route('academy.learn.course', $e->course) }}" class="btn btn-sm btn-soft-success mt-1"><i class="ri-play-line"></i> {{ $e->status === 'completed' ? 'Revise' : ($e->progress_percent ? 'Continue' : 'Start') }}</a>
                                     @if($e->grade_percent !== null)<div class="small mt-1">Grade: <strong>{{ rtrim(rtrim(number_format((float) $e->grade_percent, 1), '0'), '.') }}%</strong></div>@endif
+                                    @if($e->attendance_percent !== null)<div class="small">Attendance: <strong>{{ rtrim(rtrim(number_format((float) $e->attendance_percent, 1), '0'), '.') }}%</strong></div>@endif
                                 @endif
                                 @if($e->certificate && $e->certificate->status === 'issued')
                                     <a href="{{ route('certificates.show', $e->certificate) }}" class="btn btn-sm btn-warning mt-1"><i class="ri-award-line"></i> Certificate</a>
@@ -85,7 +86,7 @@
                         <td data-label="Cohort"><span class="fw-semibold">{{ $c->name }}</span><div class="small text-muted">{{ $c->course->title }}</div></td>
                         <td data-label="Dates">{{ $c->starts_on?->format('j M Y') ?? '—' }} – {{ $c->ends_on?->format('j M Y') ?? '—' }}</td>
                         <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $c->status, 'label' => $c->status_label])</td>
-                        <td data-label="Students" class="num">{{ $c->seats }}</td>
+                        <td data-label="Students" class="num">{{ $c->seats }}@can('View attendance')<div><a href="{{ route('attendance.cohort', $c) }}" class="small">Attendance</a></div>@endcan</td>
                     </tr>
                 @endforeach
                 </tbody>

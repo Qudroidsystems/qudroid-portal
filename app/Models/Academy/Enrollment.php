@@ -31,7 +31,7 @@ class Enrollment extends Model
     protected $fillable = [
         'student_id', 'cohort_id', 'course_id', 'status', 'fee_amount', 'discount_amount', 'currency',
         'access_granted', 'access_granted_at', 'access_granted_by', 'access_reason', 'prerequisites_waived',
-        'enrolled_at', 'enrolled_by', 'completed_at', 'ended_at', 'notes', 'progress_percent', 'grade_percent', 'last_activity_at',
+        'enrolled_at', 'enrolled_by', 'completed_at', 'ended_at', 'notes', 'progress_percent', 'grade_percent', 'attendance_percent', 'last_activity_at',
     ];
 
     protected $casts = [
@@ -46,6 +46,7 @@ class Enrollment extends Model
         'last_activity_at'     => 'datetime',
         'progress_percent'     => 'integer',
         'grade_percent'        => 'decimal:2',
+        'attendance_percent'   => 'decimal:2',
     ];
 
     public function student(): BelongsTo
@@ -86,6 +87,11 @@ class Enrollment extends Model
     public function submissions(): HasMany
     {
         return $this->hasMany(Submission::class, 'enrollment_id');
+    }
+
+    public function attendance(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'enrollment_id');
     }
 
     public function certificate(): \Illuminate\Database\Eloquent\Relations\HasOne
