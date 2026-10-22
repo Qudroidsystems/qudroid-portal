@@ -56,6 +56,22 @@ return [
         'partner' => 'Partner / Vendor',
     ],
 
+    // Academy: student numbers look like QCA/2026/0001; course fees default to this currency.
+    'academy' => [
+        'student_no_prefix' => env('QUDROID_STUDENT_NO_PREFIX', 'QCA'),
+        'currency'          => env('QUDROID_CURRENCY', 'NGN'),
+        // Largest lesson file, in KB (PHP's upload_max_filesize/post_max_size must allow it too).
+        'max_upload_kb'     => (int) env('QUDROID_LESSON_MAX_KB', 51200),
+    ],
+
+    // Finance: invoice and receipt numbers look like QUD-INV-2026-0001.
+    'finance' => [
+        'number_prefix'    => env('QUDROID_DOC_PREFIX', 'QUD'),
+        'default_due_days' => (int) env('QUDROID_INVOICE_DUE_DAYS', 14),
+        // Bank details shown on invoices for people paying by transfer.
+        'bank_details'     => env('QUDROID_BANK_DETAILS'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Modules (the app launcher on the dashboard and the sidebar)

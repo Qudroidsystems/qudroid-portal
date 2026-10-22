@@ -49,6 +49,8 @@ class PermissionSeeder extends Seeder
         'Academy & LMS' => [
             'View academy'   => 'Open the Academy: courses, lessons and learning progress.',
             'Manage academy' => 'Run admissions, courses, fees, assessments and student records.',
+            'Manage course content' => 'Build course sections and lessons (text, video, files, links) and publish them.',
+            'Grant course access' => 'Open course access without a confirmed payment (e.g. approved instalment plan) and waive prerequisites. A reason is recorded.',
         ],
         'Certificates' => [
             'View certificates'   => 'See issued certificates.',
@@ -76,8 +78,8 @@ class PermissionSeeder extends Seeder
         ],
         'Finance & Invoicing' => [
             'View finance'     => 'See invoices, payments, bills and financial reports.',
-            'Manage finance'   => 'Create invoices, record payments and bills.',
-            'Approve finance'  => 'Approve bills, expenses and refunds.',
+            'Manage finance'   => 'Issue invoices and record bank-transfer, cash and POS payments.',
+            'Approve finance'  => 'Void invoices, reverse payments, and approve bills, expenses and refunds.',
         ],
         'Inventory & Assets' => [
             'View inventory'   => 'See stock levels, suppliers and the asset register.',

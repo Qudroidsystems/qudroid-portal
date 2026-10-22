@@ -31,7 +31,7 @@ php artisan key:generate
 # create an empty MySQL database named qudroid_hub, then:
 php artisan migrate --seed
 php artisan storage:link
-php artisan test                # 18 checks of the foundation
+php artisan test                # foundation and academy checks
 ```
 
 Sign in with `QUDROID_ADMIN_EMAIL` / `QUDROID_ADMIN_PASSWORD` from `.env`
@@ -60,6 +60,78 @@ own password straight away.
   failed sign-ins; who's online.
 - **Branding**: `config/qudroid.php` / `QUDROID_*` in `.env`. Put the real logo
   files in `public/images/brand/` (the current ones are placeholders).
+
+## Academy (phase 2, first part)
+
+`routes/modules/academy.php`, `app/{Models,Http/Controllers,Services}/Academy`,
+`resources/views/modules/academy`. Tables start with `academy_`.
+
+- **Programmes** group **courses**. A course has a code, level, delivery mode,
+  duration, fee (and currency), optional instalments and prerequisites, and is
+  draft, published or archived. Students only see published courses.
+- **Cohorts** are intakes of a course: dates, registration window, capacity,
+  instructor, schedule and an optional fee for that intake.
+- **Students** (`academy_students`) sit on a `student` user account. Creating
+  one makes the sign-in (role Student, temporary password) and a student
+  number (`QCA/2026/0001`, prefix `QUDROID_STUDENT_NO_PREFIX`). Status:
+  applicant → admitted → active → completed (or suspended / withdrawn).
+- **Enrollments** go through `App\Services\Academy\EnrollmentService`. It checks
+  admission, cohort status, registration window, seats, duplicates and
+  prerequisites, and copies the fee onto the enrollment. Access stays locked
+  until the net fee is nil, Finance calls `paymentConfirmed()`, or someone with
+  **Grant course access** opens it with a reason.
+
+- **Course content**: sections and lessons (Markdown reading, YouTube/Vimeo
+  video, private file download, or link), with ordering, drafts and free
+  previews. Built by people with **Manage course content** (Academy
+  Administrator, Instructor) at Academy → course → Content. Files are stored on
+  the private `local` disk and served only to people who can open the lesson
+  (`QUDROID_LESSON_MAX_KB`, default 50 MB; raise PHP's `upload_max_filesize`
+  and `post_max_size` to match).
+- **Learning**: students with course access study at `/academy/learn/{course}`,
+  mark lessons complete, and see their progress (published lessons only).
+  Progress is stored per enrollment and shown on My academy and the cohort.
+- **Online applications**: the public page `/apply` (no sign-in, `routes/public.php`)
+  lists published courses whose cohorts are open and inside their registration
+  window. A new applicant gets a student account (status applicant) and a
+  password-reset e-mail to choose a password, so set up `MAIL_*` in `.env`.
+  An e-mail that already has an account must sign in first. Signed-in students
+  apply from My academy. Staff review at Academy → Applications: **Admit**
+  admits the student and enrolls them on the chosen cohort (issuing the
+  invoice); if that fails (e.g. the cohort is full) they stay admitted and staff
+  see why. **Decline** needs a reason the applicant sees. References are
+  `APP-2026-0001`. `ApplicationService` holds the rules.
+
+`Grant course access` and `Manage course content` are new permissions. Roles only get their starting
+permissions when first created, so on an existing database give them to the
+Academy Administrator (and `Manage course content` to Instructor) in Roles &
+Permissions after `php artisan db:seed`.
+
+## Finance (phase 2, first part)
+
+`routes/modules/finance.php` (staff), `routes/modules/billing.php` ("My bills"
+for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Finance`.
+
+- **Invoices** (`QUD-INV-2026-0001`) are issued, never edited: a mistake is
+  voided (Approve finance, with a reason) and re-issued. Enrolling a student
+  issues the course-fee invoice automatically; withdrawing voids it if unpaid.
+- **Payments** get a receipt number (`QUD-RCT-2026-0001`) when confirmed and are
+  **allocated** to invoices; an invoice's paid amount is always recalculated
+  from allocations. A confirmed payment is never edited or deleted, only
+  **reversed** (Approve finance, with a reason).
+- **Manual payments** (bank transfer, cash, POS, cheque) are recorded by
+  Finance (Manage finance) after checking the bank or till.
+- **Paystack**: the payer starts from their invoice in My bills. The payment
+  is confirmed only after the server calls Paystack's verify API and the
+  amount, currency and reference match — from the callback or from the
+  signed webhook, whichever comes first (both are safe to repeat).
+  Set the webhook URL in the Paystack dashboard to `https://<your-domain>/webhook/paystack`.
+  Keys: `PAYSTACK_MODE` (`sandbox`|`live`) and `PAYSTACK_TEST_SECRET_KEY` /
+  `PAYSTACK_LIVE_SECRET_KEY` (or `PAYSTACK_SECRET_KEY`). With no key, students
+  are asked to pay by transfer. `QUDROID_BANK_DETAILS` is printed on invoices.
+- **Course access** opens when the course-fee invoice is paid in full, or when
+  the first payment reaches the course's minimum where instalments are
+  allowed. Reversing that payment locks access again.
 
 ## Adding a module
 

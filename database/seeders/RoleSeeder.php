@@ -20,7 +20,7 @@ class RoleSeeder extends Seeder
         'Managing Director' => ['#6a0572', [
             'View dashboard', 'View user', 'View role', 'View activity log', 'View online staff',
             'View academy', 'View certificates', 'View attendance', 'View projects', 'View clients',
-            'Use connect', 'View meetings', 'View finance', 'View inventory', 'View employees',
+            'Use connect', 'View meetings', 'View finance', 'Approve finance', 'View inventory', 'View employees',
         ]],
 
         'Finance Officer' => ['#10b981', [
@@ -45,12 +45,12 @@ class RoleSeeder extends Seeder
 
         'Academy Administrator' => ['#6366f1', [
             'View dashboard', 'View user', 'Create user', 'Update user',
-            'View academy', 'Manage academy', 'View certificates', 'Manage certificates',
+            'View academy', 'Manage academy', 'Manage course content', 'Grant course access', 'View certificates', 'Manage certificates',
             'View attendance', 'Manage attendance', 'Use connect', 'View meetings',
         ]],
 
         'Instructor' => ['#0a9396', [
-            'View academy', 'View attendance', 'Manage attendance', 'Use connect', 'View meetings',
+            'View academy', 'Manage course content', 'View attendance', 'Manage attendance', 'Use connect', 'View meetings',
         ]],
 
         'Student' => ['#e76f51', [
