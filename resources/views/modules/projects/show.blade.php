@@ -7,6 +7,9 @@
         <x-slot:actions>
             @if($canManage)<a href="{{ route('projects.edit', $project) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a>@endif
             <a href="{{ route('projects.board', $project) }}" class="cb-hero-btn"><i class="ri-layout-column-line"></i>Board</a>
+            @if(!$client && auth()->user()->can('Use connect') && \Illuminate\Support\Facades\Route::has('connect.project'))
+                <a href="{{ route('connect.project', $project) }}" class="cb-hero-btn"><i class="ri-chat-smile-3-line"></i>Team chat</a>
+            @endif
         </x-slot:actions>
     </x-cb.hero>
 
@@ -36,6 +39,9 @@
                     <div class="text-muted">No description.</div>
                 @endif
                 <dl class="row mt-3 mb-0 small">
+                    @if(!$client && $project->company && auth()->user()->can('View clients'))
+                        <dt class="col-sm-3 text-muted fw-normal">Company</dt><dd class="col-sm-9"><a href="{{ route('crm.companies.show', $project->company) }}">{{ $project->company->name }}</a></dd>
+                    @endif
                     <dt class="col-sm-3 text-muted fw-normal">Manager</dt><dd class="col-sm-9">{{ $project->manager?->name ?? '—' }}</dd>
                     <dt class="col-sm-3 text-muted fw-normal">Dates</dt><dd class="col-sm-9">{{ $project->starts_on?->format('j M Y') ?? '—' }} to {{ $project->due_on?->format('j M Y') ?? '—' }}</dd>
                     @if(!$client && $project->budget !== null)<dt class="col-sm-3 text-muted fw-normal">Budget</dt><dd class="col-sm-9">{{ \App\Support\Money::format($project->budget, $project->currency) }}</dd>@endif
