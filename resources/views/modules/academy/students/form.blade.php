@@ -8,7 +8,7 @@
                :subtitle="$editing ? $student->student_no : 'Creates the student\'s sign-in account and academy record. A student number is assigned automatically.'"
                :back="$editing ? route('academy.students.show', $student) : route('academy.students.index')" :back-label="$editing ? 'Student' : 'Students'" />
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <form method="POST" action="{{ $editing ? route('academy.students.update', $student) : route('academy.students.store') }}">
         @csrf @if($editing) @method('PUT') @endif

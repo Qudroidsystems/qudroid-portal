@@ -33,7 +33,7 @@ class CohortController extends Controller
     public function show(Cohort $cohort)
     {
         $cohort->load('course', 'instructor');
-        $enrollments = $cohort->enrollments()->with('student.user', 'accessGrantedBy')->orderByRaw("case status when 'active' then 0 when 'pending' then 1 when 'completed' then 2 else 3 end")->get();
+        $enrollments = $cohort->enrollments()->with('student.user', 'accessGrantedBy', 'invoices')->orderByRaw("case status when 'active' then 0 when 'pending' then 1 when 'completed' then 2 else 3 end")->get();
 
         // Students who can still be added to this cohort.
         $candidates = Student::with('user')->whereIn('status', Student::CAN_ENROLL)

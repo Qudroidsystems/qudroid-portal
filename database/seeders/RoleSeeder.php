@@ -20,7 +20,7 @@ class RoleSeeder extends Seeder
         'Managing Director' => ['#6a0572', [
             'View dashboard', 'View user', 'View role', 'View activity log', 'View online staff',
             'View academy', 'View certificates', 'View attendance', 'View projects', 'View clients',
-            'Use connect', 'View meetings', 'View finance', 'View inventory', 'View employees',
+            'Use connect', 'View meetings', 'View finance', 'Approve finance', 'View inventory', 'View employees',
         ]],
 
         'Finance Officer' => ['#10b981', [

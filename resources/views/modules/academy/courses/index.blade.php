@@ -9,7 +9,7 @@
         @endif
     </x-cb.hero>
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <x-cb.card title="Courses" icon="ri-book-2-line" :count="$courses->total()" :flush="true">
         <form class="cb-toolbar" method="GET">

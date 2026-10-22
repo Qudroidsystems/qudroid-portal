@@ -12,7 +12,7 @@
         <x-slot:actions><a href="{{ route('academy.students.create') }}" class="cb-hero-btn"><i class="ri-user-add-line"></i>New student</a></x-slot:actions>
     </x-cb.hero>
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <x-cb.card title="Students" icon="ri-graduation-cap-line" :count="$students->total()" :flush="true">
         <form class="cb-toolbar" method="GET">

@@ -82,7 +82,7 @@ class StudentController extends Controller
 
         return view('modules.academy.students.show', [
             'student'     => $student,
-            'enrollments' => $student->enrollments()->with('course', 'cohort', 'accessGrantedBy', 'enrolledBy')->get(),
+            'enrollments' => $student->enrollments()->with('course', 'cohort', 'accessGrantedBy', 'enrolledBy', 'invoices')->get(),
             'cohorts'     => Cohort::with('course')->whereIn('status', Cohort::ENROLLABLE)->orderBy('starts_on')->get(),
         ]);
     }

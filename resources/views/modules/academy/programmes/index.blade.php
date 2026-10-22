@@ -5,7 +5,7 @@
 
     <x-cb.hero title="Programmes" icon="ri-stack-line" subtitle="Group courses into tracks such as Web Development, Mobile Development or Data Science." :back="route('academy.index')" back-label="Academy" />
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <div class="row g-3">
         <div class="col-xl-8">

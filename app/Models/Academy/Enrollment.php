@@ -2,9 +2,12 @@
 
 namespace App\Models\Academy;
 
+use App\Models\Finance\Invoice;
 use App\Models\User;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A student's place on a cohort. Changes go through EnrollmentService so the
@@ -62,6 +65,11 @@ class Enrollment extends Model
         return $this->belongsTo(User::class, 'enrolled_by');
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'enrollment_id');
+    }
+
     public function accessGrantedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'access_granted_by');
@@ -70,9 +78,7 @@ class Enrollment extends Model
     /** What the student owes for this enrollment, after discount. */
     public function netFee(): string
     {
-        $kobo = (int) round((float) $this->fee_amount * 100) - (int) round((float) $this->discount_amount * 100);
-
-        return number_format(max(0, $kobo) / 100, 2, '.', '');
+        return Money::major(max(0, Money::minor($this->fee_amount) - Money::minor($this->discount_amount)));
     }
 
     public function isOpen(): bool

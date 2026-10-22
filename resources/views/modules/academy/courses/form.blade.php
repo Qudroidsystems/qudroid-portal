@@ -8,7 +8,7 @@
                subtitle="Fees set here apply to new enrollments. A cohort can override the fee for one intake."
                :back="$editing ? route('academy.courses.show', $course) : route('academy.courses.index')" :back-label="$editing ? 'Course' : 'Courses'" />
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <form method="POST" action="{{ $editing ? route('academy.courses.update', $course) : route('academy.courses.store') }}">
         @csrf @if($editing) @method('PUT') @endif

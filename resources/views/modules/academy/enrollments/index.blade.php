@@ -7,7 +7,7 @@
         <x-slot:actions><a href="{{ route('academy.enrollments.index', ['access' => 'locked']) }}" class="cb-hero-btn"><i class="ri-lock-line"></i>Awaiting access</a></x-slot:actions>
     </x-cb.hero>
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <x-cb.card title="Enrollments" icon="ri-file-list-3-line" :count="$enrollments->total()" :flush="true">
         <form class="cb-toolbar" method="GET">

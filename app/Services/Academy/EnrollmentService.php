@@ -6,6 +6,7 @@ use App\Models\Academy\Cohort;
 use App\Models\Academy\Enrollment;
 use App\Models\Academy\Student;
 use App\Models\User;
+use App\Services\Finance\InvoiceService;
 use App\Services\Messaging\PortalNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +27,8 @@ use Illuminate\Validation\ValidationException;
  */
 class EnrollmentService
 {
+    public function __construct(protected InvoiceService $invoices) {}
+
     /**
      * @param  array{discount_amount?:float|string|null, waive_prerequisites?:bool, notes?:string|null}  $options
      */
@@ -93,6 +96,8 @@ class EnrollmentService
 
             if ((float) $enrollment->netFee() <= 0) {
                 $this->activate($enrollment, null, 'No fee to pay');
+            } else {
+                $this->invoices->forEnrollment($enrollment, $by);
             }
 
             return $enrollment;
@@ -138,6 +143,24 @@ class EnrollmentService
         return $enrollment->fresh();
     }
 
+    /**
+     * A payment that opened access was reversed and the invoice no longer
+     * meets the threshold: lock access again, unless it was opened by hand
+     * for another reason (e.g. an approved instalment plan).
+     */
+    public function paymentReversed(Enrollment $enrollment, string $reason): Enrollment
+    {
+        if ($enrollment->status === 'active' && $enrollment->access_granted
+            && str_starts_with((string) $enrollment->access_reason, 'Payment confirmed')) {
+            $enrollment->update([
+                'status' => 'pending', 'access_granted' => false, 'access_granted_at' => null,
+                'access_reason' => mb_substr($reason, 0, 255),
+            ]);
+        }
+
+        return $enrollment;
+    }
+
     public function complete(Enrollment $enrollment, User $by): Enrollment
     {
         $this->check($enrollment->status !== 'active', 'status', 'Only an active enrollment can be marked completed.');
@@ -153,7 +176,14 @@ class EnrollmentService
         $this->check(!$enrollment->isOpen(), 'status', "This enrollment is already {$enrollment->status_label}.");
 
         $notes = trim(($enrollment->notes ? $enrollment->notes . "\n" : '') . ($note ? now()->format('j M Y') . ' (' . $by->name . '): ' . $note : ''));
-        $enrollment->update(['status' => $status, 'ended_at' => now(), 'access_granted' => false, 'notes' => $notes ?: null]);
+        DB::transaction(function () use ($enrollment, $status, $notes, $by) {
+            $enrollment->update(['status' => $status, 'ended_at' => now(), 'access_granted' => false, 'notes' => $notes ?: null]);
+
+            // An unpaid course-fee invoice goes with it. Paid ones stay for Finance (refunds).
+            foreach ($enrollment->invoices()->where('status', 'issued')->where('amount_paid', 0)->get() as $invoice) {
+                $this->invoices->void($invoice, $by, 'Enrollment ' . $status);
+            }
+        });
 
         return $enrollment;
     }

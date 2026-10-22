@@ -20,7 +20,7 @@
         @endif
     </x-cb.hero>
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <div class="row g-3">
         <div class="col-xl-8">

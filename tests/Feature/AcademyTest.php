@@ -98,7 +98,8 @@ test('enrolling reserves a seat, keeps access locked until payment and notifies 
         ->and($e->access_granted)->toBeFalse()
         ->and($e->netFee())->toBe('100000.00')
         ->and($e->enrolled_by)->toBe($this->admin->id)
-        ->and($student->user->notifications()->count())->toBe(1);
+        ->and($e->invoices()->first()->total)->toBe('100000.00')
+        ->and($student->user->notifications()->count())->toBe(2); // enrollment + invoice
 });
 
 test('a free cohort opens access straight away and makes the student active', function () {

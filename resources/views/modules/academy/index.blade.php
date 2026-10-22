@@ -10,7 +10,7 @@
         </x-slot:actions>
     </x-cb.hero>
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <div class="row g-3 mb-3">
         <div class="col-xl-3 col-md-6"><x-cb.stat label="Active students" :value="number_format($students['active'] ?? 0)" icon="ri-graduation-cap-line" accent="teal" :hint="($students['admitted'] ?? 0) . ' admitted, not yet started'" /></div>

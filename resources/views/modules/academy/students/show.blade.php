@@ -14,7 +14,7 @@
         <x-slot:actions><a href="{{ route('academy.students.edit', $student) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a></x-slot:actions>
     </x-cb.hero>
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <div class="row g-3">
         <div class="col-xl-8">
@@ -30,7 +30,7 @@
                                 <td data-label="Course"><a href="{{ route('academy.cohorts.show', $e->cohort_id) }}" class="fw-semibold">{{ $e->course->title }}</a><div class="small text-muted">{{ $e->cohort->name }} · enrolled {{ $e->enrolled_at?->format('j M Y') }}@if($e->enrolledBy) by {{ $e->enrolledBy->name }}@endif</div>@if($e->notes)<div class="small text-muted" style="white-space: pre-line">{{ $e->notes }}</div>@endif</td>
                                 <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $e->status, 'label' => $e->status_label])@if($e->prerequisites_waived)<div class="small text-warning">Prerequisites waived</div>@endif</td>
                                 <td data-label="Access">@if($e->access_granted)<span class="text-success"><i class="ri-lock-unlock-line"></i> Open</span><div class="small text-muted">{{ $e->access_reason }}@if($e->accessGrantedBy) · {{ $e->accessGrantedBy->name }}@endif</div>@else<span class="text-muted"><i class="ri-lock-line"></i> Locked</span>@endif</td>
-                                <td data-label="Fee" class="num">{{ \App\Support\Money::format($e->netFee(), $e->currency) }}@if((float) $e->discount_amount > 0)<div class="small text-muted">less {{ \App\Support\Money::format($e->discount_amount, $e->currency) }}</div>@endif</td>
+                                <td data-label="Fee" class="num">{{ \App\Support\Money::format($e->netFee(), $e->currency) }}@if((float) $e->discount_amount > 0)<div class="small text-muted">less {{ \App\Support\Money::format($e->discount_amount, $e->currency) }}</div>@endif @can('View finance')@foreach($e->invoices as $inv)<div class="small"><a href="{{ route('finance.invoices.show', $inv) }}">{{ $inv->number }}</a> · {{ $inv->status_label }}</div>@endforeach @endcan</td>
                                 <td>@include('modules.academy.partials.enrollment-actions', ['e' => $e])</td>
                             </tr>
                         @endforeach

@@ -10,7 +10,7 @@
         <x-slot:actions><a href="{{ route('academy.courses.index') }}" class="cb-hero-btn"><i class="ri-book-2-line"></i>Browse courses</a></x-slot:actions>
     </x-cb.hero>
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     @if($student)
         <x-cb.card title="My courses" icon="ri-book-open-line" :count="$enrollments->count()" :flush="true">
@@ -26,7 +26,11 @@
                             <td data-label="Cohort">{{ $e->cohort->name }}<div class="small text-muted">{{ $e->cohort->starts_on?->format('j M Y') }}@if($e->cohort->instructor) · {{ $e->cohort->instructor->name }}@endif</div></td>
                             <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $e->status, 'label' => $e->status_label])</td>
                             <td data-label="Access">@if($e->access_granted)<span class="text-success"><i class="ri-lock-unlock-line"></i> Open</span>@elseif($e->isOpen())<span class="text-muted"><i class="ri-lock-line"></i> After payment</span>@else — @endif</td>
-                            <td data-label="Fee" class="num">{{ \App\Support\Money::format($e->netFee(), $e->currency) }}</td>
+                            <td data-label="Fee" class="num">{{ \App\Support\Money::format($e->netFee(), $e->currency) }}
+                                @php $inv = $e->invoices->firstWhere('status', '!=', 'void'); @endphp
+                                @if($inv && $inv->isOpen())<div><a href="{{ route('billing.invoice', $inv) }}" class="btn btn-sm btn-primary mt-1">Pay {{ \App\Support\Money::format($inv->balance(), $inv->currency) }}</a></div>
+                                @elseif($inv)<div class="small"><a href="{{ route('billing.invoice', $inv) }}">Invoice {{ $inv->status_label }}</a></div>@endif
+                            </td>
                         </tr>
                     @endforeach
                     </tbody>

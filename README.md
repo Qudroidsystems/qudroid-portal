@@ -85,6 +85,32 @@ own password straight away.
 permissions when first created, so on an existing database give it to the
 Academy Administrator role in Roles & Permissions after `php artisan db:seed`.
 
+## Finance (phase 2, first part)
+
+`routes/modules/finance.php` (staff), `routes/modules/billing.php` ("My bills"
+for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Finance`.
+
+- **Invoices** (`QUD-INV-2026-0001`) are issued, never edited: a mistake is
+  voided (Approve finance, with a reason) and re-issued. Enrolling a student
+  issues the course-fee invoice automatically; withdrawing voids it if unpaid.
+- **Payments** get a receipt number (`QUD-RCT-2026-0001`) when confirmed and are
+  **allocated** to invoices; an invoice's paid amount is always recalculated
+  from allocations. A confirmed payment is never edited or deleted, only
+  **reversed** (Approve finance, with a reason).
+- **Manual payments** (bank transfer, cash, POS, cheque) are recorded by
+  Finance (Manage finance) after checking the bank or till.
+- **Paystack**: the payer starts from their invoice in My bills. The payment
+  is confirmed only after the server calls Paystack's verify API and the
+  amount, currency and reference match — from the callback or from the
+  signed webhook, whichever comes first (both are safe to repeat).
+  Set the webhook URL in the Paystack dashboard to `https://<your-domain>/webhook/paystack`.
+  Keys: `PAYSTACK_MODE` (`sandbox`|`live`) and `PAYSTACK_TEST_SECRET_KEY` /
+  `PAYSTACK_LIVE_SECRET_KEY` (or `PAYSTACK_SECRET_KEY`). With no key, students
+  are asked to pay by transfer. `QUDROID_BANK_DETAILS` is printed on invoices.
+- **Course access** opens when the course-fee invoice is paid in full, or when
+  the first payment reaches the course's minimum where instalments are
+  allowed. Reversing that payment locks access again.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the

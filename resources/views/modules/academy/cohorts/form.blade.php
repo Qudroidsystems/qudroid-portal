@@ -7,7 +7,7 @@
     <x-cb.hero :title="$editing ? 'Edit ' . $cohort->name : 'New cohort'" icon="ri-team-line" :subtitle="$course->title"
                :back="$editing ? route('academy.cohorts.show', $cohort) : route('academy.courses.show', $course)" :back-label="$editing ? 'Cohort' : 'Course'" />
 
-    @include('modules.academy.partials.flash')
+    @include('partials.flash')
 
     <form method="POST" action="{{ $editing ? route('academy.cohorts.update', $cohort) : route('academy.cohorts.store', $course) }}">
         @csrf @if($editing) @method('PUT') @endif

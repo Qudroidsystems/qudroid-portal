@@ -62,6 +62,14 @@ return [
         'currency'          => env('QUDROID_CURRENCY', 'NGN'),
     ],
 
+    // Finance: invoice and receipt numbers look like QUD-INV-2026-0001.
+    'finance' => [
+        'number_prefix'    => env('QUDROID_DOC_PREFIX', 'QUD'),
+        'default_due_days' => (int) env('QUDROID_INVOICE_DUE_DAYS', 14),
+        // Bank details shown on invoices for people paying by transfer.
+        'bank_details'     => env('QUDROID_BANK_DETAILS'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Modules (the app launcher on the dashboard and the sidebar)
