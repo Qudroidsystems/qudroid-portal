@@ -17,7 +17,7 @@ class PermissionController extends Controller
      */
     function __construct()
     {
-         $this->middleware('permission:View permission|Create permission|Update permission|Delete permission', ['only' => ['index','store']]);
+         $this->middleware('permission:View permission|Create permission|Update permission|Delete permission', ['only' => ['index', 'show']]);
          $this->middleware('permission:Create permission', ['only' => ['create','store']]);
          $this->middleware('permission:Update permission', ['only' => ['edit','update']]);
          $this->middleware('permission:Delete permission', ['only' => ['destroy']]);
@@ -45,18 +45,10 @@ class PermissionController extends Controller
      */
     public function create()
     {
-         #page title
-         $pagetitle = "Role Management";
-
-        return view('permissions.create')->with('pagetitle', $pagetitle);
+        // Permissions are managed on the permissions page.
+        return redirect()->route('permissions.index');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
          #page title
@@ -80,41 +72,16 @@ class PermissionController extends Controller
      */
     public function show($id)
     {
-
-         #page title
-         $pagetitle = "Role Management";
-
-
-        $permission = Permission::find($id);
-
-        return view('permissions.show', compact('permission'))->with('pagetitle', $pagetitle);
+        // Permissions are managed on the permissions page.
+        return redirect()->route('permissions.index');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function edit($id)
     {
-
-         #page title
-         $pagetitle = "Role Management";
-
-
-        $permission = Permission::find($id);
-
-        return view('permissions.edit', compact('permission'))->with('pagetitle', $pagetitle);
+        // Permissions are managed on the permissions page.
+        return redirect()->route('permissions.index');
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id)
     {
          #page title

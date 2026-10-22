@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-/** Saves the phone's push (FCM) token so the school can notify the app. */
+/** Saves the phone's push (FCM) token so the portal can notify the app. */
 class DeviceController extends ApiController
 {
     public function store(Request $request)

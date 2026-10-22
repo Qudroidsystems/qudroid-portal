@@ -7,12 +7,12 @@
 <head>
 
     <meta charset="utf-8">
-    <title>Password Re-set | Vite-ESchool</title>
+    <title>Reset Password | {{ $brand['name'] }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta content="school  App" name="description">
+    <meta content="{{ $brand['company'] }} portal" name="description">
     <meta content="Themesbrand" name="author">
     <!-- App favicon -->
-    <link rel="shortcut icon" href="{{ asset('theme/layouts/assets/images/favicon.ico')}}">
+    <link rel="shortcut icon" href="{{ asset($brand['favicon']) }}">
 
     <!-- Fonts css load -->
     <link rel="preconnect" href="https://fonts.googleapis.com/">
@@ -45,14 +45,14 @@
                                     <div class="card-body py-5 d-flex justify-content-between flex-column">
                                         <div class="text-center">
                                             <h3 class="text-white">Start your journey with us.</h3>
-                                            <p class="text-white opacity-75 fs-base">It makes school operations SEEMLESS...</p>
+                                            <p class="text-white opacity-75 fs-base">{{ $brand['tagline'] }}</p>
                                         </div>
                         
                                         <div class="auth-effect-main my-5 position-relative rounded-circle d-flex align-items-center justify-content-center mx-auto">
                                             <div class="effect-circle-1 position-relative mx-auto rounded-circle d-flex align-items-center justify-content-center">
                                                 <div class="effect-circle-2 position-relative mx-auto rounded-circle d-flex align-items-center justify-content-center">
                                                     <div class="effect-circle-3 mx-auto rounded-circle position-relative text-white fs-4xl d-flex align-items-center justify-content-center">
-                                                        Welcome to <span class="text-primary ms-1">Vite-ESchool</span>
+                                                        Welcome to <span class="text-primary ms-1">{{ $brand['name'] }}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -97,7 +97,7 @@
                         
                                         <div class="text-center">
                                             <p class="text-white opacity-75 mb-0 mt-3">
-                                                &copy; <script>document.write(new Date().getFullYear())</script> Vite-ESchool. Created with <i class="mdi mdi-heart text-danger"></i> by Qudroid Systems
+                                                &copy; <script>document.write(new Date().getFullYear())</script> {{ $brand['company'] }}
                                             </p>
                                         </div>
                                     </div>
@@ -114,7 +114,16 @@
 
                                         <div class="p-2">
                                             <form method="POST" action="{{ route('password.update') }}">
-                                                    @csrf
+                                                @csrf
+                                                <input type="hidden" name="token" value="{{ $token }}">
+
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="email">Email address</label>
+                                                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" id="email" value="{{ $email ?? old('email') }}" required autocomplete="email">
+                                                    @error('email')
+                                                        <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+                                                    @enderror
+                                                </div>
                             
                                                 <div class="mb-3">
                                                     <label class="form-label" for="password-input">Password</label>
@@ -146,10 +155,6 @@
                                                     <p id="pass-number" class="invalid fs-xs mb-0">A least <b>number</b> (0-9)</p>
                                                 </div>
 
-                                                <div class="form-check form-check-primary">
-                                                    <input class="form-check-input" type="checkbox" value="" id="auth-remember-check">
-                                                    <label class="form-check-label" for="auth-remember-check">Remember me</label>
-                                                </div>
 
                                                 <div class="mt-4">
                                                     <button class="btn btn-primary w-100" type="submit">Reset Password</button>

@@ -495,7 +495,7 @@ body{font-family:var(--rol-font);}
                             {{-- STAFF --}}
                             <div class="tab-pane fade show active" id="staff-tab">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span style="font-size:12px;font-weight:700;color:var(--rol-muted);text-transform:uppercase;letter-spacing:.5px;">Staff Members</span>
+                                    <span style="font-size:12px;font-weight:700;color:var(--rol-muted);text-transform:uppercase;letter-spacing:.5px;">Staff, Clients &amp; Partners</span>
                                     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--rol-accent);">
                                         <input type="checkbox" class="rol-checkbox" id="select-all-staff">
                                         Select All
@@ -506,15 +506,7 @@ body{font-family:var(--rol-font);}
                                         $allUsersNotInRole = \App\Models\User::whereDoesntHave('roles', function ($q) use ($role) {
                                             $q->where('name', $role->name);
                                         })->get();
-                                        $staffUsers = $allUsersNotInRole->filter(function ($user) {
-                                            if ($user->staffemploymentDetails) return true;
-                                            if ($user->staffPicture) return true;
-                                            if (!$user->student_id) return true;
-                                            return false;
-                                        })->reject(function ($user) {
-                                            if ($user->student) return true;
-                                            return false;
-                                        })->sortBy('name');
+                                        $staffUsers = $allUsersNotInRole->filter(fn ($u) => $u->user_type !== 'student')->sortBy('name');
                                     @endphp
                                     @forelse($staffUsers as $staff)
                                     @php $sInit = strtoupper(substr($staff->name,0,1)); @endphp
@@ -523,7 +515,7 @@ body{font-family:var(--rol-font);}
                                             <div class="usr-avatar-sm">{{ $sInit }}</div>
                                             <div class="ucs-info">
                                                 <div class="ucs-name">{{ $staff->name }}</div>
-                                                <div class="ucs-meta">{{ $staff->email }}</div>
+                                                <div class="ucs-meta">{{ $staff->email }} · {{ $staff->user_type_label }}</div>
                                             </div>
                                             <div class="ucs-check">
                                                 <input type="checkbox" value="{{ $staff->id }}" name="users[]"
@@ -548,9 +540,7 @@ body{font-family:var(--rol-font);}
                                 </div>
                                 <div class="row g-2" id="student-list-container">
                                     @php
-                                        $studentUsers = $allUsersNotInRole->filter(function ($user) {
-                                            return $user->student_id || $user->student;
-                                        })->sortBy('name');
+                                        $studentUsers = $allUsersNotInRole->filter(fn ($u) => $u->user_type === 'student')->sortBy('name');
                                     @endphp
                                     @forelse($studentUsers as $studentUser)
                                     @php $stInit = strtoupper(substr($studentUser->name,0,1)); @endphp
@@ -560,11 +550,7 @@ body{font-family:var(--rol-font);}
                                             <div class="ucs-info">
                                                 <div class="ucs-name">{{ $studentUser->name }}</div>
                                                 <div class="ucs-meta">
-                                                    @if($studentUser->student?->admissionNo)
-                                                        {{ $studentUser->student->admissionNo }}
-                                                    @else
-                                                        {{ $studentUser->email }}
-                                                    @endif
+                                                    {{ $studentUser->email }}
                                                 </div>
                                             </div>
                                             <div class="ucs-check">

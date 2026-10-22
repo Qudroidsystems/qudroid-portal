@@ -9,11 +9,10 @@ use Illuminate\Support\Facades\Log;
 /**
  * Firebase Cloud Messaging (HTTP v1) without extra packages.
  *
- * Needs the service-account JSON of the Vite Schools Firebase project
+ * Needs the service-account JSON of the Qudroid Hub Firebase project
  * (Firebase console → Project settings → Service accounts → Generate new
  * private key). Save it as storage/app/fcm-service-account.json, or point
- * FCM_CREDENTIALS in .env at it. The same file is used by every school's
- * portal, because all schools share the one Vite Schools app.
+ * FCM_CREDENTIALS in .env at it.
  */
 class FcmClient
 {
@@ -56,7 +55,7 @@ class FcmClient
             'android' => [
                 'priority' => 'high',
                 'notification' => [
-                    'channel_id' => ($data['type'] ?? '') === 'lesson' ? 'lessons' : 'school',
+                    'channel_id' => in_array($data['type'] ?? '', ['message', 'meeting'], true) ? 'messages' : 'general',
                     'sound' => 'default',
                 ],
             ],

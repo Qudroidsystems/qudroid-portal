@@ -2,33 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Models\SchoolInformation;
 use App\Models\User;
 use App\Services\Api\ApiUserPresenter;
-use App\Services\Messaging\MessagingService;
-use App\Services\Parents\ParentAccountService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rules\Password;
 
 /**
  * Token sign-in for the mobile app (Laravel Sanctum).
  *
- * Same rules as the web login: e-mail or phone number (parents sign in with
- * their phone), disabled accounts are refused, temporary passwords must be
- * changed before anything else. Each phone gets its own token, so signing
- * out on one phone does not sign out the others.
+ * Same rules as the web login: e-mail, username or phone number; disabled
+ * accounts are refused; temporary passwords must be changed first. Each
+ * phone gets its own token, so signing out on one phone keeps the others.
  */
 class AuthController extends ApiController
 {
-    /** Shared with the web reset flow (ParentPasswordController). */
-    protected const RESET_TTL_MINUTES = 10;
-    protected const RESET_MAX_TRIES   = 5;
-
     public function login(Request $request)
     {
         $data = $request->validate([
@@ -48,17 +39,13 @@ class AuthController extends ApiController
             ]);
         }
 
-        if (!empty($user->is_disabled)) {
-            return $this->fail('This account has been disabled. Please contact the school.', 403, 'account_disabled');
+        if ($user->is_disabled) {
+            return $this->fail('This account has been disabled. Please contact your administrator.', 403, 'account_disabled');
         }
 
-        if (Schema::hasColumn('users', 'last_login_at')) {
-            $user->forceFill(['last_login_at' => now()])->saveQuietly();
-        }
+        $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip()])->saveQuietly();
 
-        $deviceName = ($data['device_name'] ?? null) ?: 'Mobile app';
-        $token = $user->createToken($deviceName, ['*']);
-
+        $token = $user->createToken(($data['device_name'] ?? null) ?: 'Mobile app', ['*']);
         $this->rememberDevice($user->id, $token->accessToken->id, $data);
 
         return $this->ok([
@@ -123,85 +110,32 @@ class AuthController extends ApiController
     }
 
     /**
-     * Parents: text a 6-digit reset code to their phone. Always answers the
-     * same way so the endpoint cannot be used to find out which numbers exist.
+     * E-mails a password-reset link (the same link as the web "Forgot password").
+     * Always answers the same way so it cannot reveal which addresses exist.
      */
-    public function forgotPassword(Request $request, MessagingService $messaging)
+    public function forgotPassword(Request $request)
     {
-        $request->validate(['phone' => 'required|string|max:20']);
-        $answer = $this->ok(null, 'If that number belongs to a parent account, a reset code has been sent to it.');
+        $request->validate(['email' => 'required|email|max:191']);
 
-        $phone = MessagingService::normalizePhone($request->phone);
-        $user  = $phone ? ParentAccountService::findByPhone($phone) : null;
-        if (!$user || !$user->hasRole(ParentAccountService::ROLE) || !empty($user->is_disabled)) return $answer;
-        if (Cache::has($this->resetKey($user) . ':sent')) return $answer;
-
-        $code = (string) random_int(100000, 999999);
-        Cache::put($this->resetKey($user), ['hash' => Hash::make($code), 'tries' => 0], now()->addMinutes(self::RESET_TTL_MINUTES));
-        Cache::put($this->resetKey($user) . ':sent', 1, now()->addMinute());
-
-        $school = (SchoolInformation::getActiveSchool() ?? SchoolInformation::first())->school_name ?? config('app.name');
-        $text = "{$school}: your parent portal reset code is {$code}. It expires in " . self::RESET_TTL_MINUTES . ' minutes. Do not share it.';
-
-        foreach (['sms', 'whatsapp'] as $ch) {
-            if (!$messaging->enabled($ch)) continue;
-            $r = $messaging->send($ch, $phone, $text, ['name' => $user->name]);
-            if (($r['status'] ?? '') === 'sent') break;
-            Log::warning('API parent reset code not sent', ['user' => $user->id, 'channel' => $ch, 'error' => $r['error'] ?? null]);
+        try {
+            PasswordBroker::sendResetLink(['email' => strtolower(trim($request->email))]);
+        } catch (\Throwable $e) {
+            report($e);
         }
 
-        return $answer;
-    }
-
-    public function resetPassword(Request $request)
-    {
-        $data = $request->validate([
-            'phone'       => 'required|string|max:20',
-            'code'        => 'required|digits:6',
-            'password'    => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
-            'device_name' => 'nullable|string|max:120',
-        ]);
-
-        $wrong = fn () => $this->fail('That code is wrong or has expired. Request a new one.', 422, 'invalid_code', [
-            'code' => ['That code is wrong or has expired. Request a new one.'],
-        ]);
-
-        $user = ParentAccountService::findByPhone($data['phone']);
-        if (!$user || !$user->hasRole(ParentAccountService::ROLE)) return $wrong();
-
-        $entry = Cache::get($this->resetKey($user));
-        if (!$entry || $entry['tries'] >= self::RESET_MAX_TRIES) return $wrong();
-
-        if (!Hash::check($data['code'], $entry['hash'])) {
-            $entry['tries']++;
-            Cache::put($this->resetKey($user), $entry, now()->addMinutes(self::RESET_TTL_MINUTES));
-            return $wrong();
-        }
-
-        Cache::forget($this->resetKey($user));
-        $user->forceFill(['password' => Hash::make($data['password']), 'must_change_password' => false])->save();
-        $user->tokens()->delete();
-
-        $token = $user->createToken($data['device_name'] ?? 'Mobile app');
-
-        return $this->ok([
-            'token'      => $token->plainTextToken,
-            'token_type' => 'Bearer',
-            'user'       => ApiUserPresenter::present($user),
-        ], 'Your password has been reset.');
+        return $this->ok(null, 'If that address belongs to an account, a reset link has been sent to it.');
     }
 
     // ── helpers ─────────────────────────────────────────────────────────
 
-    /** E-mail, or a phone number matched to its account (as on the web login). */
+    /** E-mail, username or phone number (as on the web login). */
     protected function findUser(string $login): ?User
     {
         if ($login === '') return null;
         if (str_contains($login, '@')) {
-            return User::where('email', $login)->first();
+            return User::where('email', strtolower($login))->first();
         }
-        return ParentAccountService::findByPhone($login)
-            ?? User::where('email', $login)->first();
+        return User::where('username', $login)->orWhere('phone_number', $login)->first();
     }
 
     protected function rememberDevice(int $userId, int $tokenId, array $d): void
@@ -219,10 +153,5 @@ class AuthController extends ApiController
         } else {
             DB::table('mobile_devices')->insert($row + ['created_at' => now()]);
         }
-    }
-
-    protected function resetKey(User $user): string
-    {
-        return 'parent-reset:' . $user->id;
     }
 }

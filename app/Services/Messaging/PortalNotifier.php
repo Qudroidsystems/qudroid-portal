@@ -11,21 +11,28 @@ use Illuminate\Support\Str;
 
 /**
  * Writes in-portal notifications (the bell). Bulk-inserts straight into the
- * notifications table so a whole-school notice stays fast. A `key` makes a
- * notification idempotent per user (e.g. "notice:12").
+ * notifications table so a company-wide announcement stays fast. A `key` makes a
+ * notification idempotent per user (e.g. "task:12:assigned").
  */
 class PortalNotifier
 {
     public const ICONS = [
-        'notice'   => 'ri-megaphone-line',
-        'result'   => 'ri-file-list-3-line',
-        'payment'  => 'ri-money-dollar-circle-line',
-        'absence'  => 'ri-user-unfollow-line',
-        'fees'     => 'ri-bill-line',
-        'birthday' => 'ri-cake-2-line',
-        'system'   => 'ri-notification-3-line',
-        'timetable'=> 'ri-calendar-schedule-line',
-        'approval' => 'ri-shield-check-line',
+        'system'      => 'ri-notification-3-line',
+        'announcement'=> 'ri-broadcast-line',
+        'approval'    => 'ri-shield-check-line',
+        'task'        => 'ri-task-line',
+        'project'     => 'ri-folder-chart-line',
+        'message'     => 'ri-chat-3-line',
+        'meeting'     => 'ri-video-chat-line',
+        'course'      => 'ri-book-open-line',
+        'payment'     => 'ri-money-dollar-circle-line',
+        'invoice'     => 'ri-bill-line',
+        'inventory'   => 'ri-archive-line',
+        'leave'       => 'ri-calendar-event-line',
+        'payroll'     => 'ri-wallet-3-line',
+        'certificate' => 'ri-award-line',
+        'client'      => 'ri-briefcase-4-line',
+        'support'     => 'ri-customer-service-2-line',
     ];
 
     public static function available(): bool
@@ -79,20 +86,24 @@ class PortalNotifier
         }
     }
 
-    /** Student portal accounts (users.student_id) for these students. */
-    public static function toStudents(array $studentIds, string $title, string $body, ?string $url = null, string $type = 'system', ?string $key = null): int
+    /** Every active account of one type (staff, student, client, partner). */
+    public static function userIdsOfType(string $type): array
     {
-        if (!$studentIds) return 0;
-        $users = User::whereIn('student_id', array_map('intval', $studentIds))->pluck('id')->all();
-        $users = array_values(array_unique(array_merge($users, \App\Services\Parents\ParentAccountService::parentUserIds($studentIds))));
-        return self::toUsers($users, $title, $body, $url, $type, $key);
+        return User::where('user_type', $type)->where('is_disabled', false)->pluck('id')->all();
     }
 
-    /** Staff accounts (no student link, not student/parent role). */
     public static function staffIds(): array
     {
-        return User::whereNull('student_id')
-            ->whereDoesntHave('roles', fn ($r) => $r->whereIn('name', ['Student', 'Parent', 'student', 'parent']))
-            ->pluck('id')->all();
+        return self::userIdsOfType(User::TYPE_STAFF);
+    }
+
+    /** Users who hold a permission (directly or through a role). */
+    public static function userIdsWithPermission(string $permission): array
+    {
+        try {
+            return User::permission($permission)->where('is_disabled', false)->pluck('id')->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 }

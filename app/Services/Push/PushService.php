@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Push notifications to the Vite Schools mobile app.
+ * Push notifications to the Qudroid Hub mobile app.
  *
  * Every in-portal notification (the bell) is also pushed to the user's phones
  * — see PortalNotifier::toUsers() and MobileApiServiceProvider. Sending happens

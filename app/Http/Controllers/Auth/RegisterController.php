@@ -28,7 +28,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = '/dashboard';
 
     /**
      * Create a new controller instance.
@@ -63,10 +63,13 @@ class RegisterController extends Controller
      */
     protected function create(array $data)
     {
+        // Self sign-up (off unless QUDROID_ALLOW_REGISTRATION=true) is for
+        // prospective students; staff and clients are invited by an administrator.
         return User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            'name'      => $data['name'],
+            'email'     => strtolower($data['email']),
+            'user_type' => User::TYPE_STUDENT,
+            'password'  => Hash::make($data['password']),
         ]);
     }
 }

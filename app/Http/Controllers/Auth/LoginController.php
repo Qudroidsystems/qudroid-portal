@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
-use App\Services\Parents\ParentAccountService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -26,17 +26,19 @@ class LoginController extends Controller
     }
 
     /**
-     * The login box takes an email or a phone number. A phone number is
-     * matched to its account (parents sign in with their phone).
+     * The login box takes an e-mail address, a username or a phone number.
      */
     protected function credentials(Request $request)
     {
         $login = trim((string) $request->input($this->username()));
+
         if ($login !== '' && !str_contains($login, '@')) {
-            if ($user = ParentAccountService::findByPhone($login)) {
+            $user = User::where('username', $login)->orWhere('phone_number', $login)->first();
+            if ($user) {
                 $login = $user->email;
             }
         }
+
         return ['email' => $login, 'password' => $request->input('password')];
     }
 
@@ -46,25 +48,17 @@ class LoginController extends Controller
             $this->guard()->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            throw ValidationException::withMessages([$this->username() => 'This account has been disabled. Please contact the school.']);
-        }
-
-        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'last_login_at')) {
-            $user->forceFill(['last_login_at' => now()])->saveQuietly();
+            throw ValidationException::withMessages([
+                $this->username() => 'This account has been disabled. Please contact your administrator.',
+            ]);
         }
 
         if (!empty($user->must_change_password)) {
-            return redirect()->route('parent.password');
-        }
-
-        if ($user->hasRole(ParentAccountService::ROLE) && !$user->can('dashboard')) {
-            session()->forget('intended');
-            return redirect()->intended(route('parent.dashboard'));
+            return redirect()->route('password.change');
         }
 
         if ($intendedUrl = session('intended')) {
             session()->forget('intended');
-
             if ($this->isValidIntendedUrl($intendedUrl, $request)) {
                 return redirect($intendedUrl);
             }
@@ -73,15 +67,10 @@ class LoginController extends Controller
         return redirect()->intended($this->redirectPath());
     }
 
-    protected function isValidIntendedUrl($url, $request)
+    protected function isValidIntendedUrl($url, $request): bool
     {
-        $parsedUrl = parse_url($url);
-
-        if (!isset($parsedUrl['host'])) {
-            return true;
-        }
-
-        return $parsedUrl['host'] === $request->getHost();
+        $host = parse_url($url, PHP_URL_HOST);
+        return !$host || $host === $request->getHost();
     }
 
     public function username()
@@ -96,6 +85,6 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect()->route('login');
     }
 }
