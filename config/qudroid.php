@@ -17,6 +17,7 @@ return [
     'website'    => env('QUDROID_WEBSITE', 'https://qudroids.com'),
     'support_email' => env('QUDROID_SUPPORT_EMAIL', 'support@qudroids.com'),
     'support_phone' => env('QUDROID_SUPPORT_PHONE'),
+    'address'    => env('QUDROID_ADDRESS'),          // shown on invoices and receipts
 
     // Brand colour used by the layout accents and the mobile app theme.
     'primary_color' => env('QUDROID_PRIMARY_COLOR', '#405189'),
@@ -62,6 +63,9 @@ return [
         'currency'          => env('QUDROID_CURRENCY', 'NGN'),
         // Largest lesson file, in KB (PHP's upload_max_filesize/post_max_size must allow it too).
         'max_upload_kb'     => (int) env('QUDROID_LESSON_MAX_KB', 51200),
+        // Who signs course certificates.
+        'certificate_signatory'       => env('QUDROID_CERT_SIGNATORY', 'Managing Director'),
+        'certificate_signatory_title' => env('QUDROID_CERT_SIGNATORY_TITLE', 'Qudroid Systems'),
     ],
 
     // Finance: invoice and receipt numbers look like QUD-INV-2026-0001.
@@ -70,6 +74,25 @@ return [
         'default_due_days' => (int) env('QUDROID_INVOICE_DUE_DAYS', 14),
         // Bank details shown on invoices for people paying by transfer.
         'bank_details'     => env('QUDROID_BANK_DETAILS'),
+    ],
+
+    /*
+    | Payroll. PAYE uses the Nigeria Tax Act 2025 personal income tax bands
+    | (in force from 1 January 2026): each band is [width in naira a year,
+    | rate %], applied in order; null width = everything above. Pension and
+    | NHF contributions and rent relief (20% of annual rent, at most
+    | N500,000) are deducted before tax. Check these with your accountant
+    | and change them here if the law changes.
+    */
+    'payroll' => [
+        'employee_prefix'     => env('QUDROID_EMPLOYEE_PREFIX', 'QS'),
+        'tax_bands'           => [[800000, 0], [2200000, 15], [9000000, 18], [13000000, 21], [25000000, 23], [null, 25]],
+        'pension_employee'    => 8,      // % of basic + housing + transport
+        'pension_employer'    => 10,
+        'nhf_rate'            => 2.5,    // % of basic
+        'rent_relief_rate'    => 20,     // % of annual rent
+        'rent_relief_cap'     => 500000,
+        'working_days_month'  => 22,     // for unpaid-leave deductions
     ],
 
     /*
