@@ -7,7 +7,10 @@
         @if($student)
             <x-slot:pills><span class="cb-meta-pill"><i class="ri-user-3-line me-1"></i>{{ $student->status_label }}</span></x-slot:pills>
         @endif
-        <x-slot:actions><a href="{{ route('academy.courses.index') }}" class="cb-hero-btn"><i class="ri-book-2-line"></i>Browse courses</a></x-slot:actions>
+        <x-slot:actions>
+            @if($student)<a href="{{ route('apply.index') }}" class="cb-hero-btn"><i class="ri-file-add-line"></i>Apply for a course</a>@endif
+            <a href="{{ route('academy.courses.index') }}" class="cb-hero-btn"><i class="ri-book-2-line"></i>Browse courses</a>
+        </x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')
@@ -44,6 +47,27 @@
                     </tbody>
                 </table></div>
             @endif
+        </x-cb.card>
+    @endif
+
+    @if($applications->isNotEmpty())
+        <x-cb.card title="My applications" icon="ri-file-list-3-line" :count="$applications->count()" :flush="true">
+            <div class="table-responsive"><table class="cb-table stack">
+                <thead><tr><th>Reference</th><th>Course</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                @foreach($applications as $a)
+                    <tr>
+                        <td data-label="Reference">{{ $a->reference }}<div class="small text-muted">{{ $a->created_at->format('j M Y') }}</div></td>
+                        <td data-label="Course">{{ $a->course->title }}<div class="small text-muted">{{ $a->cohort->name }}</div></td>
+                        <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $a->status, 'label' => $a->status_label])
+                            @if($a->status === 'declined' && $a->decision_note)<div class="small text-muted">{{ $a->decision_note }}</div>@endif</td>
+                        <td class="text-end">@if($a->status === 'submitted')
+                            <form method="POST" action="{{ route('academy.applications.withdraw', $a) }}" onsubmit="return confirm('Withdraw this application?')">@csrf<button class="btn btn-sm btn-soft-danger">Withdraw</button></form>
+                        @endif</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table></div>
         </x-cb.card>
     @endif
 

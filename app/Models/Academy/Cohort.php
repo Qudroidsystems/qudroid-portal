@@ -53,6 +53,24 @@ class Cohort extends Model
         return $this->hasMany(Enrollment::class, 'cohort_id');
     }
 
+    /** Whether the public can apply now: course published, cohort open or running, inside its registration window. */
+    public function acceptingApplications(): bool
+    {
+        return $this->course && $this->course->isPublished() && !$this->course->trashed()
+            && in_array($this->status, self::ENROLLABLE, true)
+            && (!$this->registration_opens_on || today()->gte($this->registration_opens_on))
+            && (!$this->registration_closes_on || today()->lte($this->registration_closes_on))
+            && ($this->capacity === null || $this->seatsLeft() > 0);
+    }
+
+    public function scopeAcceptingApplications(\Illuminate\Database\Eloquent\Builder $q): \Illuminate\Database\Eloquent\Builder
+    {
+        return $q->whereIn('status', self::ENROLLABLE)
+            ->whereHas('course', fn ($c) => $c->where('status', 'published'))
+            ->where(fn ($w) => $w->whereNull('registration_opens_on')->orWhereDate('registration_opens_on', '<=', today()))
+            ->where(fn ($w) => $w->whereNull('registration_closes_on')->orWhereDate('registration_closes_on', '>=', today()));
+    }
+
     /** The fee a new enrollment is charged: the cohort's own fee, or the course fee. */
     public function effectiveFee(): string
     {

@@ -7,6 +7,7 @@
         <ul class="nav nav-sm flex-column">
             @if($manage)
                 <li class="nav-item"><a href="{{ route('academy.index') }}" class="nav-link {{ request()->routeIs('academy.index') ? 'active' : '' }}">Overview</a></li>
+                <li class="nav-item"><a href="{{ route('academy.applications.index') }}" class="nav-link {{ request()->routeIs('academy.applications.*') ? 'active' : '' }}">Applications</a></li>
                 <li class="nav-item"><a href="{{ route('academy.students.index') }}" class="nav-link {{ request()->routeIs('academy.students.*') ? 'active' : '' }}">Students</a></li>
                 <li class="nav-item"><a href="{{ route('academy.enrollments.index') }}" class="nav-link {{ request()->routeIs('academy.enrollments.*') ? 'active' : '' }}">Enrollments</a></li>
             @endif

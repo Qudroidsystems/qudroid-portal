@@ -52,6 +52,11 @@ class Student extends Model
         return $this->hasMany(Enrollment::class, 'student_id')->latest('id');
     }
 
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class, 'student_id')->latest('id');
+    }
+
     public function canEnroll(): bool
     {
         return in_array($this->status, self::CAN_ENROLL, true);

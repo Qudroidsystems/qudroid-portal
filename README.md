@@ -91,6 +91,16 @@ own password straight away.
 - **Learning**: students with course access study at `/academy/learn/{course}`,
   mark lessons complete, and see their progress (published lessons only).
   Progress is stored per enrollment and shown on My academy and the cohort.
+- **Online applications**: the public page `/apply` (no sign-in, `routes/public.php`)
+  lists published courses whose cohorts are open and inside their registration
+  window. A new applicant gets a student account (status applicant) and a
+  password-reset e-mail to choose a password, so set up `MAIL_*` in `.env`.
+  An e-mail that already has an account must sign in first. Signed-in students
+  apply from My academy. Staff review at Academy → Applications: **Admit**
+  admits the student and enrolls them on the chosen cohort (issuing the
+  invoice); if that fails (e.g. the cohort is full) they stay admitted and staff
+  see why. **Decline** needs a reason the applicant sees. References are
+  `APP-2026-0001`. `ApplicationService` holds the rules.
 
 `Grant course access` and `Manage course content` are new permissions. Roles only get their starting
 permissions when first created, so on an existing database give them to the

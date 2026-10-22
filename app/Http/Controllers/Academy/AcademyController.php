@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Academy;
 
 use App\Http\Controllers\Controller;
+use App\Models\Academy\Application;
 use App\Models\Academy\Cohort;
 use App\Models\Academy\Course;
 use App\Models\Academy\Enrollment;
@@ -29,7 +30,8 @@ class AcademyController extends Controller
             'pending'        => Enrollment::where('status', 'pending')->count(),
             'active'         => Enrollment::where('status', 'active')->count(),
             'recent'         => Enrollment::with('student.user', 'course', 'cohort')->latest('enrolled_at')->limit(8)->get(),
-            'applicants'     => Student::with('user')->where('status', 'applicant')->latest()->limit(6)->get(),
+            'applicants'     => Application::with('student.user', 'course')->where('status', 'submitted')->oldest()->limit(6)->get(),
+            'toReview'       => Application::where('status', 'submitted')->count(),
         ]);
     }
 
@@ -42,6 +44,7 @@ class AcademyController extends Controller
         return view('modules.academy.my', [
             'student'     => $student,
             'enrollments' => $student ? $student->enrollments()->with('course', 'cohort.instructor', 'invoices')->get() : collect(),
+            'applications'=> $student ? $student->applications()->with('course', 'cohort')->get() : collect(),
             'teaching'    => Cohort::with('course')->withCount(['enrollments as seats' => fn ($q) => $q->whereIn('status', Enrollment::HOLDS_SEAT)])
                                 ->where('instructor_id', $user->id)->whereNotIn('status', ['cancelled'])->orderByDesc('starts_on')->get(),
         ]);

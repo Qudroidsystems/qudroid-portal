@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Academy\AcademyController;
+use App\Http\Controllers\Academy\ApplicationController;
 use App\Http\Controllers\Academy\CohortController;
 use App\Http\Controllers\Academy\ContentController;
 use App\Http\Controllers\Academy\CourseController;
@@ -39,6 +40,11 @@ Route::prefix('academy')->name('academy.')->group(function () {
         Route::post('/students/{student}/status', [StudentController::class, 'status'])->name('students.status');
         Route::resource('students', StudentController::class)->except('destroy');
 
+        Route::get('/applications', [ApplicationController::class, 'index'])->name('applications.index');
+        Route::get('/applications/{application}', [ApplicationController::class, 'show'])->name('applications.show');
+        Route::post('/applications/{application}/admit', [ApplicationController::class, 'admit'])->name('applications.admit');
+        Route::post('/applications/{application}/decline', [ApplicationController::class, 'decline'])->name('applications.decline');
+
         Route::get('/enrollments', [EnrollmentController::class, 'index'])->name('enrollments.index');
         Route::post('/enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
         Route::post('/enrollments/{enrollment}/complete', [EnrollmentController::class, 'complete'])->name('enrollments.complete');
@@ -67,6 +73,7 @@ Route::prefix('academy')->name('academy.')->group(function () {
     Route::middleware('permission:View academy|Manage academy|Manage course content')->group(function () {
         Route::get('/', [AcademyController::class, 'index'])->name('index');
         Route::get('/my', [AcademyController::class, 'my'])->name('my');
+        Route::post('/my/applications/{application}/withdraw', [ApplicationController::class, 'withdraw'])->name('applications.withdraw');
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
         Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
 

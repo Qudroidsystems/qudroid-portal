@@ -14,7 +14,7 @@
 
     <div class="row g-3 mb-3">
         <div class="col-xl-3 col-md-6"><x-cb.stat label="Active students" :value="number_format($students['active'] ?? 0)" icon="ri-graduation-cap-line" accent="teal" :hint="($students['admitted'] ?? 0) . ' admitted, not yet started'" /></div>
-        <div class="col-xl-3 col-md-6"><x-cb.stat label="Applicants to review" :value="number_format($students['applicant'] ?? 0)" icon="ri-user-search-line" accent="amber" /></div>
+        <div class="col-xl-3 col-md-6"><x-cb.stat label="Applications to review" :value="number_format($toReview)" icon="ri-user-search-line" accent="amber" :hint="($students['applicant'] ?? 0) . ' applicants in total'" /></div>
         <div class="col-xl-3 col-md-6"><x-cb.stat label="Published courses" :value="$courses" icon="ri-book-2-line" accent="sky" :hint="$draftCourses ? $draftCourses . ' in draft' : null" /></div>
         <div class="col-xl-3 col-md-6"><x-cb.stat label="Awaiting payment" :value="number_format($pending)" icon="ri-time-line" accent="rose" :hint="$active . ' active enrollments'" /></div>
     </div>
@@ -62,16 +62,16 @@
         </div>
 
         <div class="col-xl-5">
-            <x-cb.card title="Applicants" icon="ri-user-search-line" :count="$students['applicant'] ?? 0" :flush="true">
-                <x-slot:tools><a href="{{ route('academy.students.index', ['status' => 'applicant']) }}" class="btn btn-sm btn-soft-primary">Review</a></x-slot:tools>
+            <x-cb.card title="Applications" icon="ri-user-search-line" :count="$toReview" :flush="true">
+                <x-slot:tools><a href="{{ route('academy.applications.index') }}" class="btn btn-sm btn-soft-primary">Review</a></x-slot:tools>
                 @if($applicants->isEmpty())
                     <div class="empty-state"><i class="ri-inbox-line"></i><h6>Nobody waiting</h6><p>New applications will show here.</p></div>
                 @else
                     <div class="list-group list-group-flush">
-                        @foreach($applicants as $s)
-                            <a href="{{ route('academy.students.show', $s) }}" class="list-group-item list-group-item-action d-flex justify-content-between">
-                                <span><strong>{{ $s->user->name }}</strong><span class="d-block small text-muted">{{ $s->student_no }} · {{ $s->user->email }}</span></span>
-                                <small class="text-muted">{{ $s->created_at->diffForHumans() }}</small>
+                        @foreach($applicants as $a)
+                            <a href="{{ route('academy.applications.show', $a) }}" class="list-group-item list-group-item-action d-flex justify-content-between">
+                                <span><strong>{{ $a->student->user->name }}</strong><span class="d-block small text-muted">{{ $a->reference }} · {{ $a->course->title }}</span></span>
+                                <small class="text-muted">{{ $a->created_at->diffForHumans() }}</small>
                             </a>
                         @endforeach
                     </div>

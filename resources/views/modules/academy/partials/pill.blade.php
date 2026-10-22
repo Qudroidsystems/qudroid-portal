@@ -2,7 +2,7 @@
 @php
     $tone = [
         'active' => 'success', 'published' => 'success', 'open' => 'success', 'admitted' => 'info', 'running' => 'info',
-        'pending' => 'warning', 'applicant' => 'warning', 'planned' => 'secondary', 'draft' => 'secondary',
+        'pending' => 'warning', 'applicant' => 'warning', 'submitted' => 'warning', 'declined' => 'danger', 'planned' => 'secondary', 'draft' => 'secondary',
         'completed' => 'primary', 'suspended' => 'danger', 'withdrawn' => 'dark', 'cancelled' => 'dark', 'archived' => 'dark',
     ][$status] ?? 'secondary';
 @endphp
