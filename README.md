@@ -286,6 +286,27 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
 - View inventory reads everything; Manage inventory makes changes. The
   **Inventory Officer** role has both.
 
+## Meetings & Calendar
+
+`routes/modules/meetings.php`, `routes/api_v1/meetings.php`, `app/{Models,Http/Controllers,Services}/Meetings`.
+
+- Anyone with View meetings **schedules** their own meetings: time, room or
+  place, video link, agenda, project or client, colleagues to invite, and
+  outside guests by name. The organiser (or Manage meetings) edits or cancels.
+  Rooms can't be double-booked, and the form warns when an invitee already has
+  a meeting or approved leave at that time.
+- Invitees answer **going / maybe / not going** (organiser hears about the last
+  two). Moving a meeting asks everyone to answer again. Every change notifies
+  the people affected. "Add to my calendar" downloads an `.ics` file.
+- **Reminders**: `php artisan meetings:remind` runs every minute from the
+  scheduler (one cron line, see `routes/console.php`) and reminds people still
+  coming at each meeting's chosen time.
+- **Minutes** can be written after the meeting; attendees are told.
+- **Calendar**: a month view of your meetings, task due dates, public holidays
+  and leave (your own and your team's; everyone's with View employees).
+- Mobile app: `GET /api/v1/meetings` (`?past=1`), `GET /api/v1/meetings/calendar?from=&to=`,
+  `GET /api/v1/meetings/{id}`, `POST /api/v1/meetings/{id}/respond`.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the

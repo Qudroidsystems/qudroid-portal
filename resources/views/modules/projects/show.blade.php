@@ -10,6 +10,9 @@
             @if(!$client && auth()->user()->can('Use connect') && \Illuminate\Support\Facades\Route::has('connect.project'))
                 <a href="{{ route('connect.project', $project) }}" class="cb-hero-btn"><i class="ri-chat-smile-3-line"></i>Team chat</a>
             @endif
+            @if(!$client && auth()->user()->can('View meetings') && \Illuminate\Support\Facades\Route::has('meetings.create'))
+                <a href="{{ route('meetings.create', ['project' => $project->id]) }}" class="cb-hero-btn"><i class="ri-video-chat-line"></i>Meeting</a>
+            @endif
         </x-slot:actions>
     </x-cb.hero>
 

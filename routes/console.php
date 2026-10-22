@@ -18,3 +18,6 @@ Schedule::command('activity:prune --days=365')->dailyAt('02:30');
 
 // Read notifications older than 6 months are removed.
 Schedule::command('notifications:prune --days=180')->dailyAt('02:45');
+
+// Meeting reminders (each meeting's own "remind me" time before it starts).
+Schedule::command('meetings:remind')->everyMinute()->withoutOverlapping(2);

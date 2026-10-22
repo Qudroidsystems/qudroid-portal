@@ -6,6 +6,7 @@
     <x-cb.hero :title="$company->name" icon="ri-building-line" :subtitle="collect([$company->industry, $company->city, $company->owner ? 'Owner: ' . $company->owner->name : null])->filter()->implode(' · ')" :back="route('crm.companies.index')" back-label="Companies">
         <x-slot:actions>
             @can('Manage clients')<a href="{{ route('crm.companies.edit', $company) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a>@endcan
+            @if(auth()->user()->can('View meetings') && Route::has('meetings.create'))<a href="{{ route('meetings.create', ['company' => $company->id]) }}" class="cb-hero-btn"><i class="ri-video-chat-line"></i>Meeting</a>@endif
         </x-slot:actions>
     </x-cb.hero>
 
