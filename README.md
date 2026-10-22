@@ -175,6 +175,47 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
 - **Budgets** set an amount per expense category and period; the budgets page
   shows spent, committed (approved, unpaid) and what is left.
 
+## Projects & Tasks
+
+`routes/modules/projects.php`, `app/{Models,Http/Controllers,Services}/Projects`.
+
+- **Projects** have a short code (`WEB`) used in task numbers (`WEB-14`), a
+  manager, an optional client (name, plus a client portal account), dates,
+  budget and status (planning, active, on hold, completed, cancelled).
+  Creating projects needs Manage projects; everything else depends on the
+  person's **role in the project**: manager (runs it), member (works on
+  tasks, logs time), viewer (reads and comments) or client.
+- **Clients** see the overview, milestones and only the tasks marked
+  "visible to the client". Comments marked internal are hidden from them.
+- **Board**: To do, In progress, In review, Done; drag cards between columns
+  (SortableJS from the theme). Status changes and reassignments are written
+  to the task's history. The assignee, reporter and earlier commenters are
+  notified of comments; the reporter is told when a task reaches review.
+- **Milestones** group tasks and show progress; **checklists** live on tasks.
+- **Time**: members log time per task or for the project (billable or not);
+  the timesheet totals per person. **My work** lists a person's tasks across
+  projects by due date, and their time this week.
+
+## Clients & CRM
+
+`routes/modules/crm.php`, `app/{Models,Http/Controllers,Services}/Crm`.
+
+- **Companies** (prospect, client, inactive) with an account owner, and their
+  **contacts**. A contact can be given a **client portal account** (user type
+  client, role Client, temporary password shown once); they then see the
+  projects they are added to.
+- **Pipeline**: deals move across New, Contacted, Qualified, Proposal sent and
+  Negotiation on a drag-and-drop board; the chance of winning follows the
+  stage unless set by hand. A deal is then marked **won** (its company becomes
+  a client) or **lost** with a reason, and can be reopened. A won deal can
+  start a project (Manage projects), which links back to the deal and company.
+- **Timeline**: notes, calls, emails and meetings on a company, contact or
+  deal, plus **follow-ups** with a due time and a person (who is notified).
+  Stage changes are written automatically.
+- View clients reads everything and logs activity; Manage clients edits
+  records and deals. The **Sales Officer** role has both (run
+  `php artisan db:seed --class=RoleSeeder` to add it to an existing database).
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
