@@ -239,6 +239,74 @@ for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Fi
   `POST .../read`, `POST /api/v1/connect/direct`, `GET /api/v1/connect/people`,
   `POST /api/v1/connect/messages/{id}/react`, `DELETE /api/v1/connect/messages/{id}`.
 
+## HR & Payroll
+
+`routes/modules/hr.php`, `app/{Models,Http/Controllers,Services}/Hr`, `config/qudroid.php` → `payroll`.
+
+- **Employees** (numbered QS-0001 …) are staff accounts with a job, department,
+  manager, start date, next of kin, monthly pay (basic, housing, transport,
+  other), bank, pension and tax details. Adding one can create the staff
+  account (temporary password shown once). Only Manage payroll sees or sets pay.
+- **Leave**: types with a yearly allowance (annual leave uses each person's own
+  allowance), public holidays, and working-day counting (weekends and holidays
+  are free). Staff book leave under **My leave & pay**; their manager (no HR
+  permission needed) or HR approves or declines, and both sides are notified.
+- **Payroll**: one run a month. Prepare (a payslip per active employee with
+  pay), add bonuses and other deductions, have someone else approve it
+  (Manage payroll or Approve finance), then mark it paid from a bank account.
+  Paying posts to the ledger (Dr 5000 salaries + employer pension; Cr 2200
+  PAYE, 2300 pension, 2400 NHF, 2500 other deductions, and the bank for net
+  pay) and releases the payslips to staff, with a PDF for each.
+- **PAYE** follows the Nigeria Tax Act 2025 bands (₦800k at 0%, then 15%,
+  18%, 21%, 23%, 25%) after pension (8% of basic + housing + transport), NHF
+  (2.5% of basic) and rent relief (20% of rent, max ₦500k). A bonus is taxed at
+  the margin. Approved unpaid leave reduces pay by days ÷ 22. Every payslip
+  keeps its tax workings. Check the rates with your accountant before the
+  first live run; they live in `config/qudroid.php`.
+
+## Inventory & Assets
+
+`routes/modules/inventory.php`, `app/{Models,Http/Controllers,Services}/Inventory`.
+
+- **Stock items** (SKU, unit, reorder level, usual supplier) held at
+  **locations**. Stock only changes through a movement: received, issued (to a
+  person or project), counted (adjusted with a reason) or moved between
+  locations, so every balance has a history. Receiving keeps a weighted
+  **average cost**, which values the stock. Falling to the reorder level tells
+  everyone with Manage inventory, once a day.
+- **Suppliers** and **purchase orders** (QUD-PO-2026-0001): draft, mark
+  ordered, receive deliveries (partly or in full) into a location, then
+  **send the bill to Finance**, which creates an expense for approval and
+  payment. Lines without a stock item (delivery, services) are allowed.
+- **Asset register** (QUD-AST-0001 …): equipment with serial, cost, supplier,
+  warranty and condition; hand over to staff (they are notified and see it
+  under `/me/assets`), return, repair, retire or report lost. Every step is
+  kept on the asset's history. HR employee pages list the equipment a person
+  holds.
+- View inventory reads everything; Manage inventory makes changes. The
+  **Inventory Officer** role has both.
+
+## Meetings & Calendar
+
+`routes/modules/meetings.php`, `routes/api_v1/meetings.php`, `app/{Models,Http/Controllers,Services}/Meetings`.
+
+- Anyone with View meetings **schedules** their own meetings: time, room or
+  place, video link, agenda, project or client, colleagues to invite, and
+  outside guests by name. The organiser (or Manage meetings) edits or cancels.
+  Rooms can't be double-booked, and the form warns when an invitee already has
+  a meeting or approved leave at that time.
+- Invitees answer **going / maybe / not going** (organiser hears about the last
+  two). Moving a meeting asks everyone to answer again. Every change notifies
+  the people affected. "Add to my calendar" downloads an `.ics` file.
+- **Reminders**: `php artisan meetings:remind` runs every minute from the
+  scheduler (one cron line, see `routes/console.php`) and reminds people still
+  coming at each meeting's chosen time.
+- **Minutes** can be written after the meeting; attendees are told.
+- **Calendar**: a month view of your meetings, task due dates, public holidays
+  and leave (your own and your team's; everyone's with View employees).
+- Mobile app: `GET /api/v1/meetings` (`?past=1`), `GET /api/v1/meetings/calendar?from=&to=`,
+  `GET /api/v1/meetings/{id}`, `POST /api/v1/meetings/{id}/respond`.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
