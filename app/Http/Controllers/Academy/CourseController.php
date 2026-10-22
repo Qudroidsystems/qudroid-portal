@@ -49,7 +49,7 @@ class CourseController extends Controller
     public function show(Request $request, Course $course)
     {
         $manager = $request->user()->can('Manage academy');
-        abort_unless($manager || $course->isPublished(), 404);
+        abort_unless($manager || $course->isPublished() || $request->user()->can('Manage course content'), 404);
 
         $course->load('programme', 'prerequisites', 'creator');
         $cohorts = $course->cohorts()->with('instructor')
@@ -57,7 +57,12 @@ class CourseController extends Controller
             ->when(!$manager, fn ($q) => $q->whereNotIn('status', ['cancelled']))
             ->get();
 
-        return view('modules.academy.courses.show', compact('course', 'cohorts', 'manager'));
+        $learning = app(\App\Services\Academy\LearningService::class);
+        $teacher = $learning->isTeacher($request->user(), $course);
+        $outline = $learning->outline($course, $teacher);
+        $enrollment = $learning->enrollmentFor($request->user(), $course);
+
+        return view('modules.academy.courses.show', compact('course', 'cohorts', 'manager', 'teacher', 'outline', 'enrollment'));
     }
 
     public function edit(Course $course)

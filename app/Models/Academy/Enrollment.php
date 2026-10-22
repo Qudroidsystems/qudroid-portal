@@ -31,7 +31,7 @@ class Enrollment extends Model
     protected $fillable = [
         'student_id', 'cohort_id', 'course_id', 'status', 'fee_amount', 'discount_amount', 'currency',
         'access_granted', 'access_granted_at', 'access_granted_by', 'access_reason', 'prerequisites_waived',
-        'enrolled_at', 'enrolled_by', 'completed_at', 'ended_at', 'notes',
+        'enrolled_at', 'enrolled_by', 'completed_at', 'ended_at', 'notes', 'progress_percent', 'last_activity_at',
     ];
 
     protected $casts = [
@@ -43,6 +43,8 @@ class Enrollment extends Model
         'enrolled_at'          => 'datetime',
         'completed_at'         => 'datetime',
         'ended_at'             => 'datetime',
+        'last_activity_at'     => 'datetime',
+        'progress_percent'     => 'integer',
     ];
 
     public function student(): BelongsTo
@@ -68,6 +70,17 @@ class Enrollment extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'enrollment_id');
+    }
+
+    public function progress(): HasMany
+    {
+        return $this->hasMany(LessonProgress::class, 'enrollment_id');
+    }
+
+    /** Whether the student can open the full course (completed students keep access to revise). */
+    public function canLearn(): bool
+    {
+        return $this->access_granted && in_array($this->status, ['active', 'completed'], true);
     }
 
     public function accessGrantedBy(): BelongsTo

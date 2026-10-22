@@ -12,12 +12,18 @@
             @if($course->duration_weeks)<span class="cb-meta-pill"><i class="ri-time-line me-1"></i>{{ $course->duration_weeks }} weeks</span>@endif
             @if($manager)<span class="cb-meta-pill">{{ \App\Models\Academy\Course::STATUSES[$course->status] ?? $course->status }}</span>@endif
         </x-slot:pills>
-        @if($manager)
-            <x-slot:actions>
+        <x-slot:actions>
+            @if($enrollment && $enrollment->canLearn())
+                <a href="{{ route('academy.learn.course', $course) }}" class="cb-hero-btn"><i class="ri-play-line"></i>{{ $enrollment->progress_percent ? 'Continue learning' : 'Start learning' }}</a>
+            @endif
+            @canany(['Manage academy', 'Manage course content'])
+                <a href="{{ route('academy.content.index', $course) }}" class="cb-hero-btn"><i class="ri-folder-open-line"></i>Content</a>
+            @endcanany
+            @if($manager)
                 <a href="{{ route('academy.cohorts.create', $course) }}" class="cb-hero-btn"><i class="ri-add-line"></i>New cohort</a>
                 <a href="{{ route('academy.courses.edit', $course) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a>
-            </x-slot:actions>
-        @endif
+            @endif
+        </x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')
@@ -29,6 +35,31 @@
                 @if($course->prerequisites->isNotEmpty())
                     <hr><strong>Complete first:</strong>
                     @foreach($course->prerequisites as $p)<a href="{{ route('academy.courses.show', $p) }}" class="badge bg-light text-body ms-1">{{ $p->title }}</a>@endforeach
+                @endif
+            </x-cb.card>
+
+            <x-cb.card title="Course content" icon="ri-list-ordered" :count="$outline->count()" :flush="true">
+                @if($outline->isEmpty())
+                    <div class="p-3 text-muted small">Lessons will be listed here.</div>
+                @else
+                    @php $currentSection = false; $openAll = $teacher || ($enrollment && $enrollment->canLearn()); @endphp
+                    <div class="list-group list-group-flush">
+                        @foreach($outline as $item)
+                            @if($currentSection !== $item->section_id)
+                                @php $currentSection = $item->section_id; @endphp
+                                <div class="list-group-item bg-light small fw-semibold text-uppercase text-muted">{{ $item->section?->title ?? 'Other lessons' }}</div>
+                            @endif
+                            <div class="list-group-item d-flex gap-2 align-items-center">
+                                <i class="{{ $item->icon }} text-muted"></i>
+                                <span class="flex-grow-1">
+                                    @if($openAll || ($item->is_preview && $item->is_published && $course->isPublished()))<a href="{{ route('academy.learn.lesson', [$course, $item]) }}">{{ $item->title }}</a>@else{{ $item->title }}@endif
+                                    @if($item->is_preview)<span class="badge bg-info-subtle text-info ms-1">Free preview</span>@endif
+                                    @if(!$item->is_published)<span class="badge bg-secondary-subtle text-secondary ms-1">Draft</span>@endif
+                                </span>
+                                @if($item->duration_minutes)<small class="text-muted">{{ $item->duration_minutes }} min</small>@endif
+                            </div>
+                        @endforeach
+                    </div>
                 @endif
             </x-cb.card>
 

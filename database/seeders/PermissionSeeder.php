@@ -49,6 +49,7 @@ class PermissionSeeder extends Seeder
         'Academy & LMS' => [
             'View academy'   => 'Open the Academy: courses, lessons and learning progress.',
             'Manage academy' => 'Run admissions, courses, fees, assessments and student records.',
+            'Manage course content' => 'Build course sections and lessons (text, video, files, links) and publish them.',
             'Grant course access' => 'Open course access without a confirmed payment (e.g. approved instalment plan) and waive prerequisites. A reason is recorded.',
         ],
         'Certificates' => [

@@ -57,6 +57,16 @@ class Course extends Model
         return $this->hasMany(Cohort::class, 'course_id')->orderByDesc('starts_on');
     }
 
+    public function sections(): HasMany
+    {
+        return $this->hasMany(Section::class, 'course_id')->orderBy('position')->orderBy('id');
+    }
+
+    public function lessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class, 'course_id')->orderBy('position')->orderBy('id');
+    }
+
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class, 'course_id');

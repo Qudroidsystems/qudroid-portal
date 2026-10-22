@@ -60,6 +60,8 @@ return [
     'academy' => [
         'student_no_prefix' => env('QUDROID_STUDENT_NO_PREFIX', 'QCA'),
         'currency'          => env('QUDROID_CURRENCY', 'NGN'),
+        // Largest lesson file, in KB (PHP's upload_max_filesize/post_max_size must allow it too).
+        'max_upload_kb'     => (int) env('QUDROID_LESSON_MAX_KB', 51200),
     ],
 
     // Finance: invoice and receipt numbers look like QUD-INV-2026-0001.

@@ -22,7 +22,15 @@
                     <tbody>
                     @foreach($enrollments as $e)
                         <tr>
-                            <td data-label="Course"><a href="{{ route('academy.courses.show', $e->course) }}" class="fw-semibold">{{ $e->course->title }}</a></td>
+                            <td data-label="Course"><a href="{{ route('academy.courses.show', $e->course) }}" class="fw-semibold">{{ $e->course->title }}</a>
+                                @if($e->canLearn())
+                                    <div class="d-flex align-items-center gap-2 mt-1" style="max-width: 260px">
+                                        <div class="progress flex-grow-1" style="height:6px"><div class="progress-bar bg-success" style="width: {{ $e->progress_percent }}%"></div></div>
+                                        <small class="text-muted">{{ $e->progress_percent }}%</small>
+                                    </div>
+                                    <a href="{{ route('academy.learn.course', $e->course) }}" class="btn btn-sm btn-soft-success mt-1"><i class="ri-play-line"></i> {{ $e->progress_percent ? 'Continue' : 'Start' }}</a>
+                                @endif
+                            </td>
                             <td data-label="Cohort">{{ $e->cohort->name }}<div class="small text-muted">{{ $e->cohort->starts_on?->format('j M Y') }}@if($e->cohort->instructor) · {{ $e->cohort->instructor->name }}@endif</div></td>
                             <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $e->status, 'label' => $e->status_label])</td>
                             <td data-label="Access">@if($e->access_granted)<span class="text-success"><i class="ri-lock-unlock-line"></i> Open</span>@elseif($e->isOpen())<span class="text-muted"><i class="ri-lock-line"></i> After payment</span>@else — @endif</td>

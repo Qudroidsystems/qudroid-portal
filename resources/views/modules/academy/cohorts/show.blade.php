@@ -33,13 +33,14 @@
                     <div class="empty-state"><i class="ri-user-add-line"></i><h6>No students yet</h6><p>Enroll students using the form on the right.</p></div>
                 @else
                     <div class="table-responsive"><table class="cb-table stack">
-                        <thead><tr><th>Student</th><th>Status</th><th>Access</th><th class="num">Fee</th><th></th></tr></thead>
+                        <thead><tr><th>Student</th><th>Status</th><th>Access</th><th>Progress</th><th class="num">Fee</th><th></th></tr></thead>
                         <tbody>
                         @foreach($enrollments as $e)
                             <tr>
                                 <td data-label="Student"><a href="{{ route('academy.students.show', $e->student_id) }}" class="fw-semibold">{{ $e->student->user->name }}</a><div class="small text-muted">{{ $e->student->student_no }}</div></td>
                                 <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $e->status, 'label' => $e->status_label])</td>
                                 <td data-label="Access">@if($e->access_granted)<span class="text-success" title="{{ $e->access_reason }}"><i class="ri-lock-unlock-line"></i> Open</span><div class="small text-muted">{{ $e->access_reason }}</div>@else<span class="text-muted"><i class="ri-lock-line"></i> Locked</span>@endif</td>
+                                <td data-label="Progress">@if($e->access_granted)<div class="d-flex align-items-center gap-2" style="min-width: 110px"><div class="progress flex-grow-1" style="height:6px"><div class="progress-bar bg-success" style="width: {{ $e->progress_percent }}%"></div></div><small>{{ $e->progress_percent }}%</small></div>@if($e->last_activity_at)<div class="small text-muted">{{ $e->last_activity_at->diffForHumans() }}</div>@endif @else — @endif</td>
                                 <td data-label="Fee" class="num">{{ $money($e->netFee()) }}@if((float) $e->discount_amount > 0)<div class="small text-muted">less {{ $money($e->discount_amount) }}</div>@endif @can('View finance')@foreach($e->invoices as $inv)<div class="small"><a href="{{ route('finance.invoices.show', $inv) }}">{{ $inv->number }}</a> · {{ $inv->status_label }}</div>@endforeach @endcan</td>
                                 <td>@include('modules.academy.partials.enrollment-actions', ['e' => $e])</td>
                             </tr>

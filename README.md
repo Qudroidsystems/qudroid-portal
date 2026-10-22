@@ -81,9 +81,21 @@ own password straight away.
   until the net fee is nil, Finance calls `paymentConfirmed()`, or someone with
   **Grant course access** opens it with a reason.
 
-`Grant course access` is a new permission. Roles only get their starting
-permissions when first created, so on an existing database give it to the
-Academy Administrator role in Roles & Permissions after `php artisan db:seed`.
+- **Course content**: sections and lessons (Markdown reading, YouTube/Vimeo
+  video, private file download, or link), with ordering, drafts and free
+  previews. Built by people with **Manage course content** (Academy
+  Administrator, Instructor) at Academy → course → Content. Files are stored on
+  the private `local` disk and served only to people who can open the lesson
+  (`QUDROID_LESSON_MAX_KB`, default 50 MB; raise PHP's `upload_max_filesize`
+  and `post_max_size` to match).
+- **Learning**: students with course access study at `/academy/learn/{course}`,
+  mark lessons complete, and see their progress (published lessons only).
+  Progress is stored per enrollment and shown on My academy and the cohort.
+
+`Grant course access` and `Manage course content` are new permissions. Roles only get their starting
+permissions when first created, so on an existing database give them to the
+Academy Administrator (and `Manage course content` to Instructor) in Roles &
+Permissions after `php artisan db:seed`.
 
 ## Finance (phase 2, first part)
 

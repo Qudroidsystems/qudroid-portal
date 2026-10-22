@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Academy\AcademyController;
 use App\Http\Controllers\Academy\CohortController;
+use App\Http\Controllers\Academy\ContentController;
 use App\Http\Controllers\Academy\CourseController;
 use App\Http\Controllers\Academy\EnrollmentController;
+use App\Http\Controllers\Academy\LearnController;
 use App\Http\Controllers\Academy\ProgrammeController;
 use App\Http\Controllers\Academy\StudentController;
 use Illuminate\Support\Facades\Route;
@@ -43,14 +45,35 @@ Route::prefix('academy')->name('academy.')->group(function () {
         Route::post('/enrollments/{enrollment}/end', [EnrollmentController::class, 'end'])->name('enrollments.end');
     });
 
+    // ── Course content (academy staff and instructors) ──────────────────
+    Route::middleware('permission:Manage academy|Manage course content')->prefix('/courses/{course}/content')->name('content.')->group(function () {
+        Route::get('/', [ContentController::class, 'index'])->name('index');
+        Route::post('/sections', [ContentController::class, 'storeSection'])->name('sections.store');
+        Route::put('/sections/{section}', [ContentController::class, 'updateSection'])->name('sections.update');
+        Route::delete('/sections/{section}', [ContentController::class, 'destroySection'])->name('sections.destroy');
+        Route::post('/sections/{section}/move', [ContentController::class, 'moveSection'])->name('sections.move');
+        Route::get('/lessons/create', [ContentController::class, 'createLesson'])->name('lessons.create');
+        Route::post('/lessons', [ContentController::class, 'storeLesson'])->name('lessons.store');
+        Route::get('/lessons/{lesson}/edit', [ContentController::class, 'editLesson'])->name('lessons.edit');
+        Route::put('/lessons/{lesson}', [ContentController::class, 'updateLesson'])->name('lessons.update');
+        Route::delete('/lessons/{lesson}', [ContentController::class, 'destroyLesson'])->name('lessons.destroy');
+        Route::post('/lessons/{lesson}/move', [ContentController::class, 'moveLesson'])->name('lessons.move');
+    });
+
     Route::post('/enrollments/{enrollment}/access', [EnrollmentController::class, 'grantAccess'])
         ->middleware('permission:Grant course access')->name('enrollments.access');
 
     // ── Everyone with academy access (students, instructors, management) ─
-    Route::middleware('permission:View academy|Manage academy')->group(function () {
+    Route::middleware('permission:View academy|Manage academy|Manage course content')->group(function () {
         Route::get('/', [AcademyController::class, 'index'])->name('index');
         Route::get('/my', [AcademyController::class, 'my'])->name('my');
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
         Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+
+        // Learning (access is checked per lesson in LearnController / LearningService)
+        Route::get('/learn/{course}', [LearnController::class, 'course'])->name('learn.course');
+        Route::get('/learn/{course}/lessons/{lesson}', [LearnController::class, 'lesson'])->name('learn.lesson');
+        Route::post('/learn/{course}/lessons/{lesson}/complete', [LearnController::class, 'complete'])->name('learn.complete');
+        Route::get('/learn/{course}/lessons/{lesson}/file', [LearnController::class, 'download'])->name('learn.download');
     });
 });
