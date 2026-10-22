@@ -45,7 +45,7 @@ class RoleSeeder extends Seeder
 
         'Academy Administrator' => ['#6366f1', [
             'View dashboard', 'View user', 'Create user', 'Update user',
-            'View academy', 'Manage academy', 'View certificates', 'Manage certificates',
+            'View academy', 'Manage academy', 'Grant course access', 'View certificates', 'Manage certificates',
             'View attendance', 'Manage attendance', 'Use connect', 'View meetings',
         ]],
 

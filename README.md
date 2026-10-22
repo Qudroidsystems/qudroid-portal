@@ -31,7 +31,7 @@ php artisan key:generate
 # create an empty MySQL database named qudroid_hub, then:
 php artisan migrate --seed
 php artisan storage:link
-php artisan test                # 18 checks of the foundation
+php artisan test                # foundation and academy checks
 ```
 
 Sign in with `QUDROID_ADMIN_EMAIL` / `QUDROID_ADMIN_PASSWORD` from `.env`
@@ -60,6 +60,30 @@ own password straight away.
   failed sign-ins; who's online.
 - **Branding**: `config/qudroid.php` / `QUDROID_*` in `.env`. Put the real logo
   files in `public/images/brand/` (the current ones are placeholders).
+
+## Academy (phase 2, first part)
+
+`routes/modules/academy.php`, `app/{Models,Http/Controllers,Services}/Academy`,
+`resources/views/modules/academy`. Tables start with `academy_`.
+
+- **Programmes** group **courses**. A course has a code, level, delivery mode,
+  duration, fee (and currency), optional instalments and prerequisites, and is
+  draft, published or archived. Students only see published courses.
+- **Cohorts** are intakes of a course: dates, registration window, capacity,
+  instructor, schedule and an optional fee for that intake.
+- **Students** (`academy_students`) sit on a `student` user account. Creating
+  one makes the sign-in (role Student, temporary password) and a student
+  number (`QCA/2026/0001`, prefix `QUDROID_STUDENT_NO_PREFIX`). Status:
+  applicant → admitted → active → completed (or suspended / withdrawn).
+- **Enrollments** go through `App\Services\Academy\EnrollmentService`. It checks
+  admission, cohort status, registration window, seats, duplicates and
+  prerequisites, and copies the fee onto the enrollment. Access stays locked
+  until the net fee is nil, Finance calls `paymentConfirmed()`, or someone with
+  **Grant course access** opens it with a reason.
+
+`Grant course access` is a new permission. Roles only get their starting
+permissions when first created, so on an existing database give it to the
+Academy Administrator role in Roles & Permissions after `php artisan db:seed`.
 
 ## Adding a module
 

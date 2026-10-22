@@ -56,6 +56,12 @@ return [
         'partner' => 'Partner / Vendor',
     ],
 
+    // Academy: student numbers look like QCA/2026/0001; course fees default to this currency.
+    'academy' => [
+        'student_no_prefix' => env('QUDROID_STUDENT_NO_PREFIX', 'QCA'),
+        'currency'          => env('QUDROID_CURRENCY', 'NGN'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Modules (the app launcher on the dashboard and the sidebar)
