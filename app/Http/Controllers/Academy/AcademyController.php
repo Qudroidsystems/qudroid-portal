@@ -43,7 +43,7 @@ class AcademyController extends Controller
 
         return view('modules.academy.my', [
             'student'     => $student,
-            'enrollments' => $student ? $student->enrollments()->with('course', 'cohort.instructor', 'invoices')->get() : collect(),
+            'enrollments' => $student ? $student->enrollments()->with('course', 'cohort.instructor', 'invoices', 'certificate')->get() : collect(),
             'applications'=> $student ? $student->applications()->with('course', 'cohort')->get() : collect(),
             'teaching'    => Cohort::with('course')->withCount(['enrollments as seats' => fn ($q) => $q->whereIn('status', Enrollment::HOLDS_SEAT)])
                                 ->where('instructor_id', $user->id)->whereNotIn('status', ['cancelled'])->orderByDesc('starts_on')->get(),

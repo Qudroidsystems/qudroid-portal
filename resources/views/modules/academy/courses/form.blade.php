@@ -52,6 +52,11 @@
                         <div class="col-12"><label class="form-label">Minimum first payment</label><input name="min_deposit" type="number" step="0.01" min="0" class="form-control" value="{{ old('min_deposit', $course->min_deposit) }}"><div class="form-text">Only used when instalments are allowed.</div></div>
                     </div>
                 </x-cb.card>
+                <x-cb.card title="Grading and certificate" icon="ri-award-line">
+                    <div class="mb-2"><label class="form-label">Pass grade (%)</label><input name="pass_grade" type="number" min="0" max="100" class="form-control" required value="{{ old('pass_grade', $course->pass_grade ?? 50) }}">
+                        <div class="form-text">The weighted grade from the course's quizzes and assignments a student needs for a certificate.</div></div>
+                    <div class="form-check form-switch"><input type="hidden" name="certificate_enabled" value="0"><input class="form-check-input" type="checkbox" id="certon" name="certificate_enabled" value="1" @checked(old('certificate_enabled', $course->certificate_enabled ?? true))><label class="form-check-label" for="certon">Issue a certificate on completion</label></div>
+                </x-cb.card>
                 <x-cb.card title="Publishing" icon="ri-eye-line">
                     <select name="status" class="form-select mb-2">@foreach(\App\Models\Academy\Course::STATUSES as $k => $v)<option value="{{ $k }}" @selected(old('status', $course->status) === $k)>{{ $v }}</option>@endforeach</select>
                     <div class="form-text mb-3">Students only see published courses.</div>

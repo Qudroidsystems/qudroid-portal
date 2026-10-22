@@ -62,6 +62,9 @@ return [
         'currency'          => env('QUDROID_CURRENCY', 'NGN'),
         // Largest lesson file, in KB (PHP's upload_max_filesize/post_max_size must allow it too).
         'max_upload_kb'     => (int) env('QUDROID_LESSON_MAX_KB', 51200),
+        // Who signs course certificates.
+        'certificate_signatory'       => env('QUDROID_CERT_SIGNATORY', 'Managing Director'),
+        'certificate_signatory_title' => env('QUDROID_CERT_SIGNATORY_TITLE', 'Qudroid Systems'),
     ],
 
     // Finance: invoice and receipt numbers look like QUD-INV-2026-0001.

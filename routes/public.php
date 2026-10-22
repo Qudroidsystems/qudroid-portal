@@ -14,3 +14,7 @@ Route::prefix('apply')->name('apply.')->group(function () {
     Route::get('/{cohort}', [ApplyController::class, 'create'])->whereNumber('cohort')->name('create');
     Route::post('/{cohort}', [ApplyController::class, 'store'])->whereNumber('cohort')->middleware('throttle:10,10')->name('store');
 });
+
+// Certificate check (the QR code on every certificate points here)
+Route::get('/verify/{token}', [\App\Http\Controllers\Certificates\CertificateController::class, 'verify'])
+    ->middleware('throttle:60,1')->name('certificates.verify');

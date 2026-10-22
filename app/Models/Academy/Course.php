@@ -25,7 +25,7 @@ class Course extends Model
     protected $fillable = [
         'programme_id', 'code', 'title', 'slug', 'summary', 'description', 'level',
         'delivery_mode', 'duration_weeks', 'fee', 'currency', 'installments_allowed',
-        'min_deposit', 'status', 'created_by',
+        'min_deposit', 'pass_grade', 'certificate_enabled', 'status', 'created_by',
     ];
 
     protected $casts = [
@@ -33,7 +33,11 @@ class Course extends Model
         'min_deposit'          => 'decimal:2',
         'installments_allowed' => 'boolean',
         'duration_weeks'       => 'integer',
+        'pass_grade'           => 'integer',
+        'certificate_enabled'  => 'boolean',
     ];
+
+    protected $attributes = ['pass_grade' => 50, 'certificate_enabled' => true];
 
     protected static function booted(): void
     {
@@ -55,6 +59,11 @@ class Course extends Model
     public function cohorts(): HasMany
     {
         return $this->hasMany(Cohort::class, 'course_id')->orderByDesc('starts_on');
+    }
+
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(Assessment::class, 'course_id')->orderBy('position')->orderBy('id');
     }
 
     public function sections(): HasMany

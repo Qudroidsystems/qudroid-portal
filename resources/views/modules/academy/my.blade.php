@@ -31,7 +31,11 @@
                                         <div class="progress flex-grow-1" style="height:6px"><div class="progress-bar bg-success" style="width: {{ $e->progress_percent }}%"></div></div>
                                         <small class="text-muted">{{ $e->progress_percent }}%</small>
                                     </div>
-                                    <a href="{{ route('academy.learn.course', $e->course) }}" class="btn btn-sm btn-soft-success mt-1"><i class="ri-play-line"></i> {{ $e->progress_percent ? 'Continue' : 'Start' }}</a>
+                                    <a href="{{ route('academy.learn.course', $e->course) }}" class="btn btn-sm btn-soft-success mt-1"><i class="ri-play-line"></i> {{ $e->status === 'completed' ? 'Revise' : ($e->progress_percent ? 'Continue' : 'Start') }}</a>
+                                    @if($e->grade_percent !== null)<div class="small mt-1">Grade: <strong>{{ rtrim(rtrim(number_format((float) $e->grade_percent, 1), '0'), '.') }}%</strong></div>@endif
+                                @endif
+                                @if($e->certificate && $e->certificate->status === 'issued')
+                                    <a href="{{ route('certificates.show', $e->certificate) }}" class="btn btn-sm btn-warning mt-1"><i class="ri-award-line"></i> Certificate</a>
                                 @endif
                             </td>
                             <td data-label="Cohort">{{ $e->cohort->name }}<div class="small text-muted">{{ $e->cohort->starts_on?->format('j M Y') }}@if($e->cohort->instructor) · {{ $e->cohort->instructor->name }}@endif</div></td>

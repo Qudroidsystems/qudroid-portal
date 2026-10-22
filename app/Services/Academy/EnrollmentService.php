@@ -166,6 +166,9 @@ class EnrollmentService
         $this->check($enrollment->status !== 'active', 'status', 'Only an active enrollment can be marked completed.');
         $enrollment->update(['status' => 'completed', 'completed_at' => now()]);
 
+        // A certificate follows straight away when the course awards one and the grade is a pass.
+        app(CertificateService::class)->issueIfEligible($enrollment, $by);
+
         return $enrollment;
     }
 

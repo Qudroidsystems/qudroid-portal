@@ -87,4 +87,18 @@ class CohortController extends Controller
 
         return $data;
     }
+
+    /** Every student's result on each published quiz and assignment, and their grade. */
+    public function gradebook(Cohort $cohort, \App\Services\Academy\AssessmentService $assessments)
+    {
+        $cohort->load('course');
+        $columns = $cohort->course->assessments()->where('is_published', true)->get();
+        $enrollments = $cohort->enrollments()->with('student.user', 'certificate')
+            ->whereIn('status', ['active', 'completed'])->where('access_granted', true)->get()
+            ->sortBy(fn ($e) => $e->student->user->name)->values();
+
+        $results = $enrollments->mapWithKeys(fn ($e) => [$e->id => $assessments->results($e)]);
+
+        return view('modules.academy.cohorts.gradebook', compact('cohort', 'columns', 'enrollments', 'results'));
+    }
 }

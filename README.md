@@ -102,6 +102,24 @@ own password straight away.
   see why. **Decline** needs a reason the applicant sees. References are
   `APP-2026-0001`. `ApplicationService` holds the rules.
 
+- **Quizzes and assignments** (`academy_assessments`, `AssessmentService`):
+  built at Academy → course → Content. Quizzes have single, multiple,
+  true/false and short-answer questions (marked automatically; several-answer
+  questions give part marks) and essays (marked by a teacher). Attempts,
+  time limit (checked on the server, 2 minutes' grace), closing date and
+  shuffling are set per quiz; the best attempt counts. Assignments take text
+  and/or a private file; teachers grade or return them for changes.
+- **Grade**: each assessment has a weight; the enrollment's grade is the
+  weighted average (not-done counts as 0; with no weights, all count equally).
+  Cohort → Gradebook shows everyone's results.
+- **Certificates** (`academy_certificates`, `CertificateService`, Certificates
+  module): marking an enrollment completed issues one when the course awards
+  certificates and the grade reaches the course's pass grade. Someone with
+  **Manage certificates** can issue below the pass grade with a reason, or
+  revoke one. Serials are `QUD-CERT-2026-0001`; the QR code points to the public
+  `/verify/{token}` page. Print or save as PDF from the certificate page.
+  Signatory: `QUDROID_CERT_SIGNATORY`, `QUDROID_CERT_SIGNATORY_TITLE`.
+
 `Grant course access` and `Manage course content` are new permissions. Roles only get their starting
 permissions when first created, so on an existing database give them to the
 Academy Administrator (and `Manage course content` to Instructor) in Roles &
