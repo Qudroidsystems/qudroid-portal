@@ -31,7 +31,7 @@ php artisan key:generate
 # create an empty MySQL database named qudroid_hub, then:
 php artisan migrate --seed
 php artisan storage:link
-php artisan test                # 18 checks of the foundation
+php artisan test                # foundation and academy checks
 ```
 
 Sign in with `QUDROID_ADMIN_EMAIL` / `QUDROID_ADMIN_PASSWORD` from `.env`
@@ -60,6 +60,141 @@ own password straight away.
   failed sign-ins; who's online.
 - **Branding**: `config/qudroid.php` / `QUDROID_*` in `.env`. Put the real logo
   files in `public/images/brand/` (the current ones are placeholders).
+
+## Academy (phase 2, first part)
+
+`routes/modules/academy.php`, `app/{Models,Http/Controllers,Services}/Academy`,
+`resources/views/modules/academy`. Tables start with `academy_`.
+
+- **Programmes** group **courses**. A course has a code, level, delivery mode,
+  duration, fee (and currency), optional instalments and prerequisites, and is
+  draft, published or archived. Students only see published courses.
+- **Cohorts** are intakes of a course: dates, registration window, capacity,
+  instructor, schedule and an optional fee for that intake.
+- **Students** (`academy_students`) sit on a `student` user account. Creating
+  one makes the sign-in (role Student, temporary password) and a student
+  number (`QCA/2026/0001`, prefix `QUDROID_STUDENT_NO_PREFIX`). Status:
+  applicant → admitted → active → completed (or suspended / withdrawn).
+- **Enrollments** go through `App\Services\Academy\EnrollmentService`. It checks
+  admission, cohort status, registration window, seats, duplicates and
+  prerequisites, and copies the fee onto the enrollment. Access stays locked
+  until the net fee is nil, Finance calls `paymentConfirmed()`, or someone with
+  **Grant course access** opens it with a reason.
+
+- **Course content**: sections and lessons (Markdown reading, YouTube/Vimeo
+  video, private file download, or link), with ordering, drafts and free
+  previews. Built by people with **Manage course content** (Academy
+  Administrator, Instructor) at Academy → course → Content. Files are stored on
+  the private `local` disk and served only to people who can open the lesson
+  (`QUDROID_LESSON_MAX_KB`, default 50 MB; raise PHP's `upload_max_filesize`
+  and `post_max_size` to match).
+- **Learning**: students with course access study at `/academy/learn/{course}`,
+  mark lessons complete, and see their progress (published lessons only).
+  Progress is stored per enrollment and shown on My academy and the cohort.
+- **Online applications**: the public page `/apply` (no sign-in, `routes/public.php`)
+  lists published courses whose cohorts are open and inside their registration
+  window. A new applicant gets a student account (status applicant) and a
+  password-reset e-mail to choose a password, so set up `MAIL_*` in `.env`.
+  An e-mail that already has an account must sign in first. Signed-in students
+  apply from My academy. Staff review at Academy → Applications: **Admit**
+  admits the student and enrolls them on the chosen cohort (issuing the
+  invoice); if that fails (e.g. the cohort is full) they stay admitted and staff
+  see why. **Decline** needs a reason the applicant sees. References are
+  `APP-2026-0001`. `ApplicationService` holds the rules.
+
+- **Quizzes and assignments** (`academy_assessments`, `AssessmentService`):
+  built at Academy → course → Content. Quizzes have single, multiple,
+  true/false and short-answer questions (marked automatically; several-answer
+  questions give part marks) and essays (marked by a teacher). Attempts,
+  time limit (checked on the server, 2 minutes' grace), closing date and
+  shuffling are set per quiz; the best attempt counts. Assignments take text
+  and/or a private file; teachers grade or return them for changes.
+- **Grade**: each assessment has a weight; the enrollment's grade is the
+  weighted average (not-done counts as 0; with no weights, all count equally).
+  Cohort → Gradebook shows everyone's results.
+- **Certificates** (`academy_certificates`, `CertificateService`, Certificates
+  module): marking an enrollment completed issues one when the course awards
+  certificates and the grade reaches the course's pass grade. Someone with
+  **Manage certificates** can issue below the pass grade with a reason, or
+  revoke one. Serials are `QUD-CERT-2026-0001`; the QR code points to the public
+  `/verify/{token}` page. Print or save as PDF from the certificate page.
+  Signatory: `QUDROID_CERT_SIGNATORY`, `QUDROID_CERT_SIGNATORY_TITLE`.
+
+- **Attendance** (Attendance module, `routes/modules/attendance.php`,
+  `AttendanceService`): add a cohort's class sessions one at a time or for a
+  period on chosen weekdays, then take the register (present, late, absent,
+  excused) on or after the day. Academy staff take any register; an
+  instructor with **Manage attendance** takes the registers of cohorts they
+  teach. Rate = (present + late) / marked sessions, leaving out excused
+  absences and cancelled sessions. Shown on the cohort, gradebook and My academy.
+
+`Grant course access` and `Manage course content` are new permissions. Roles only get their starting
+permissions when first created, so on an existing database give them to the
+Academy Administrator (and `Manage course content` to Instructor) in Roles &
+Permissions after `php artisan db:seed`.
+
+## Finance
+
+`routes/modules/finance.php` (staff), `routes/modules/billing.php` ("My bills"
+for everyone), `routes/webhooks.php`, `app/{Models,Http/Controllers,Services}/Finance`.
+
+- **Invoices** (`QUD-INV-2026-0001`) are issued, never edited: a mistake is
+  voided (Approve finance, with a reason) and re-issued. Enrolling a student
+  issues the course-fee invoice automatically; withdrawing voids it if unpaid.
+- **Payments** get a receipt number (`QUD-RCT-2026-0001`) when confirmed and are
+  **allocated** to invoices; an invoice's paid amount is always recalculated
+  from allocations. A confirmed payment is never edited or deleted, only
+  **reversed** (Approve finance, with a reason).
+- **Manual payments** (bank transfer, cash, POS, cheque) are recorded by
+  Finance (Manage finance) after checking the bank or till.
+- **Paystack**: the payer starts from their invoice in My bills. The payment
+  is confirmed only after the server calls Paystack's verify API and the
+  amount, currency and reference match — from the callback or from the
+  signed webhook, whichever comes first (both are safe to repeat).
+  Set the webhook URL in the Paystack dashboard to `https://<your-domain>/webhook/paystack`.
+  Keys: `PAYSTACK_MODE` (`sandbox`|`live`) and `PAYSTACK_TEST_SECRET_KEY` /
+  `PAYSTACK_LIVE_SECRET_KEY` (or `PAYSTACK_SECRET_KEY`). With no key, students
+  are asked to pay by transfer. `QUDROID_BANK_DETAILS` is printed on invoices.
+- **Course access** opens when the course-fee invoice is paid in full, or when
+  the first payment reaches the course's minimum where instalments are
+  allowed. Reversing that payment locks access again.
+- **PDFs**: invoices and receipts download as PDFs (staff from Finance, the
+  customer from My bills; add `?view=1` to open in the browser).
+  `QUDROID_ADDRESS` prints under the company name.
+- **Ledger** (double entry): issuing an invoice posts Dr Accounts receivable /
+  Cr Course fees (4000) or Services income (4100); a confirmed payment posts
+  Dr Cash, Bank or Paystack clearing / Cr Accounts receivable (any overpayment
+  to Customer credit); voids and payment reversals post the mirror entry. Every
+  entry must balance, and entries are never edited. People with Approve
+  finance can add accounts and post or reverse manual journals (opening
+  balances, capital, bank charges). Reports: chart of accounts with balances,
+  account ledger with running balance, trial balance and profit and loss.
+- **Expenses** (`QUD-EXP-2026-0001`) are recorded with a category and optional
+  receipt (Manage finance), approved or rejected by someone else with Approve
+  finance, then marked paid from a bank or cash account, which posts them.
+- **Budgets** set an amount per expense category and period; the budgets page
+  shows spent, committed (approved, unpaid) and what is left.
+
+## Projects & Tasks
+
+`routes/modules/projects.php`, `app/{Models,Http/Controllers,Services}/Projects`.
+
+- **Projects** have a short code (`WEB`) used in task numbers (`WEB-14`), a
+  manager, an optional client (name, plus a client portal account), dates,
+  budget and status (planning, active, on hold, completed, cancelled).
+  Creating projects needs Manage projects; everything else depends on the
+  person's **role in the project**: manager (runs it), member (works on
+  tasks, logs time), viewer (reads and comments) or client.
+- **Clients** see the overview, milestones and only the tasks marked
+  "visible to the client". Comments marked internal are hidden from them.
+- **Board**: To do, In progress, In review, Done; drag cards between columns
+  (SortableJS from the theme). Status changes and reassignments are written
+  to the task's history. The assignee, reporter and earlier commenters are
+  notified of comments; the reporter is told when a task reaches review.
+- **Milestones** group tasks and show progress; **checklists** live on tasks.
+- **Time**: members log time per task or for the project (billable or not);
+  the timesheet totals per person. **My work** lists a person's tasks across
+  projects by due date, and their time this week.
 
 ## Adding a module
 
