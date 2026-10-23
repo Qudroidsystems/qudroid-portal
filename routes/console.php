@@ -27,3 +27,6 @@ Schedule::command('connect:later')->everyMinute()->withoutOverlapping(2);
 
 // Workflow automations: waits, overdue checks and scheduled workflows.
 Schedule::command('workflows:tick')->everyMinute()->withoutOverlapping(5);
+
+// Qmail: fetch new mail, wake snoozed conversations, send scheduled messages.
+Schedule::command('mail:sync')->everyMinute()->withoutOverlapping(10);

@@ -105,6 +105,12 @@ class User extends Authenticatable
     }
 
     /** The HR record, for staff on the payroll. */
+    /** Qmail mailboxes this person can read and send from. */
+    public function mailAccounts(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Mail\MailAccount::class, 'mail_account_user')->withPivot('role', 'is_default')->withTimestamps();
+    }
+
     public function employee(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(\App\Models\Hr\Employee::class);

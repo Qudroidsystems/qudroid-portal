@@ -551,6 +551,36 @@ Steps run just after the page responds, so a slow webhook never slows anyone dow
 date) and starts scheduled workflows (within two hours of their time). Workflows that set off other workflows stop
 after three levels and never loop back into themselves. E-mail uses the normal `MAIL_*` settings.
 
+## Qmail (e-mail)
+
+Gmail-style mail inside the portal at `/mail`: conversations, stars, labels (the
+server's other folders), archive, spam and bin, snooze, search (`from:`, `to:`,
+`subject:`, `has:attachment`, `is:unread`, `is:starred`, `in:anywhere`), drafts
+that save as you type, scheduled send, reply / reply all / forward, attachments,
+address suggestions, signatures, Gmail's keyboard shortcuts, and new-mail
+notifications. Mail stays on the mail server (IMAP); the portal keeps a synced
+copy for speed and sends through the account's SMTP server.
+
+- **Mail server.** Any IMAP/SMTP server works. For company addresses we recommend
+  hosting [Stalwart](https://stalw.art) on your domain (set its MX, SPF, DKIM and
+  DMARC records). Put the server and an API key under Settings → Mail; admins
+  with "Manage mail" then create addresses and shared inboxes (support@, sales@)
+  under Qmail → Mailboxes and choose who uses each one.
+- **Own mailboxes.** Anyone with "Use mail" can connect a mailbox they already
+  have (Gmail, Outlook, Zoho, Yahoo with an app password, or any IMAP server).
+  Passwords are stored encrypted and the details are tested before saving.
+- **Background work.** `mail:sync` runs every minute from the scheduler: it fetches
+  new mail, brings snoozed conversations back and sends scheduled messages (a
+  failure goes back to Drafts with the reason, and the writer is notified).
+  Open pages also check every 30 seconds, or instantly with Reverb.
+- **Safety.** Incoming HTML is cleaned (no scripts, forms or frames) and shown in a
+  sandboxed frame whose Content-Security-Policy blocks remote images until you
+  choose "Show images".
+
+Needs the PHP `zip` and `fileinfo` extensions (for `webklex/php-imap`). Code:
+`routes/modules/mail.php`, `routes/api_v1/mail.php`, `app/{Models,Services}/Mail`,
+`app/Http/Controllers/Mail`, `resources/views/modules/mail`.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
@@ -597,6 +627,16 @@ iPhones get a time-sensitive alert; ringing a closed iPhone app needs a VoIP
 Meetings: `GET meetings`, `GET meetings/calendar`, `GET meetings/people`,
 `POST meetings`, `GET|PUT|DELETE meetings/{id}` (DELETE cancels),
 `POST meetings/{id}/respond`. A meeting's `join` gives its chat and live call.
+
+Mail (`mail/…`): `GET accounts` (with unread counts and labels), then per mailbox
+`{account}/`: `GET threads?view=&q=&page=`, `GET threads/{key}` (cleaned
+`body_html`, `has_remote_images`, attachments), `POST act` (`action`: read,
+unread, star, unstar, archive, trash, spam, inbox, delete, snooze with `until`,
+unsnooze, `move:{label id}`; `threads[]` or `messages[]`), `GET attachments/{id}`,
+`GET compose?mode=reply|reply_all|forward&message=` or `?draft=`,
+`GET|POST drafts`, `DELETE drafts/{id}`, `POST send` (`send_at` schedules),
+`GET contacts?q=`, `GET poll`, `POST sync`. New mail also arrives as a
+Reverb `mail` event on `user.{id}`.
 
 Drive (`drive/…`): `GET /?folder_id=|project_id=|q=`, `GET projects`,
 `GET shared-with-me|recent|starred|trash|people`, `POST folders`,

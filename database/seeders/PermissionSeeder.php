@@ -47,6 +47,8 @@ class PermissionSeeder extends Seeder
         ],
         'Settings' => [
             'Manage settings' => 'Change portal-wide settings, such as the Paystack keys and payroll tax rates.',
+            'Use mail' => 'Use Qmail: read and send e-mail from the portal with your own address.',
+            'Manage mail' => 'Create and remove Qmail addresses, set up shared inboxes and the mail server connection.',
             'Manage workflows' => 'Build, switch on and test workflow automations, and see their run history.',
         ],
 

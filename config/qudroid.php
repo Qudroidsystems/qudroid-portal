@@ -147,12 +147,33 @@ return [
         'crm'          => ['name' => 'Clients & CRM',       'icon' => 'ri-briefcase-4-line',    'route' => 'crm.index',          'permission' => 'View clients',      'phase' => 3, 'color' => '#8b5cf6', 'description' => 'Clients, leads, proposals, contracts and support tickets.'],
         'workspace'    => ['name' => 'Workspace',           'icon' => 'ri-apps-2-line',         'route' => 'workspace.index',    'permission' => 'Use connect',       'phase' => 4, 'color' => '#14b8a6', 'description' => 'Your chats, calls, meetings and files in one place.'],
         'connect'      => ['name' => 'Qudroid Connect',     'icon' => 'ri-chat-smile-3-line',   'route' => 'connect.index',      'permission' => 'Use connect|Chat as a guest',       'phase' => 4, 'color' => '#22c55e', 'description' => 'Channels, direct messages, files and calls.'],
+        'mail'         => ['name' => 'Qmail',               'icon' => 'ri-mail-line',           'route' => 'mail.index',         'permission' => 'Use mail',          'phase' => 4, 'color' => '#ea4335', 'description' => 'Your e-mail: inbox, conversations, labels, search and sending from your own address.'],
         'drive'        => ['name' => 'Drive',               'icon' => 'ri-folder-cloud-line',   'route' => 'drive.index',        'permission' => 'Use connect',       'phase' => 4, 'color' => '#3b82f6', 'description' => 'Your files and folders, project files, sharing and links.'],
         'meetings'     => ['name' => 'Meetings & Calendar', 'icon' => 'ri-video-chat-line',     'route' => 'meetings.index',     'permission' => 'View meetings',     'phase' => 4, 'color' => '#ec4899', 'description' => 'Scheduled meetings, rooms and shared calendars.'],
         'finance'      => ['name' => 'Finance & Invoicing', 'icon' => 'ri-money-dollar-circle-line', 'route' => 'finance.index', 'permission' => 'View finance',      'phase' => 2, 'color' => '#10b981', 'description' => 'Invoices, payments, bills, expenses and reports.'],
         'inventory'    => ['name' => 'Inventory & Assets',  'icon' => 'ri-archive-line',        'route' => 'inventory.index',    'permission' => 'View inventory',    'phase' => 5, 'color' => '#f97316', 'description' => 'Stock, procurement, suppliers and the IT asset register.'],
         'hr'           => ['name' => 'HR & Payroll',        'icon' => 'ri-team-line',           'route' => 'hr.index',           'permission' => 'View employees',    'phase' => 5, 'color' => '#ef4444', 'description' => 'Employees, leave, timesheets, payroll and payslips.'],
         'workflows'    => ['name' => 'Workflows',           'icon' => 'ri-flow-chart',          'route' => 'workflows.index',    'permission' => 'Manage workflows',  'phase' => 6, 'color' => '#7c3aed', 'description' => 'Automations: when something happens, notify, e-mail, post, create tasks or call webhooks.'],
+    ],
+
+
+    /*
+    | Qmail. Server defaults for new mailboxes (Settings → Mail can override them), and
+    | the optional Stalwart admin API used to create addresses from the portal.
+    */
+    'mail' => [
+        'domain' => env('QMAIL_DOMAIN'),
+        'imap_host' => env('QMAIL_IMAP_HOST'),
+        'imap_port' => (int) env('QMAIL_IMAP_PORT', 993),
+        'imap_encryption' => env('QMAIL_IMAP_ENCRYPTION', 'ssl'),
+        'smtp_host' => env('QMAIL_SMTP_HOST'),
+        'smtp_port' => (int) env('QMAIL_SMTP_PORT', 465),
+        'smtp_encryption' => env('QMAIL_SMTP_ENCRYPTION', 'ssl'),
+        'validate_cert' => (bool) env('QMAIL_VALIDATE_CERT', true),
+        'save_sent' => (bool) env('QMAIL_SAVE_SENT', true),
+        'stalwart_url' => env('QMAIL_STALWART_URL'),
+        'stalwart_token' => env('QMAIL_STALWART_TOKEN'),
+        'max_attachment_mb' => (int) env('QMAIL_MAX_ATTACHMENT_MB', 25),
     ],
 
 ];

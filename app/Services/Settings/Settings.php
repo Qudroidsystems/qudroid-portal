@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class Settings
 {
-    public const SECRET = ['paystack.test_secret_key', 'paystack.live_secret_key', 'giphy.api_key'];
+    public const SECRET = ['paystack.test_secret_key', 'paystack.live_secret_key', 'giphy.api_key', 'mail.stalwart_token'];
 
     protected const CACHE = 'portal-settings';
 

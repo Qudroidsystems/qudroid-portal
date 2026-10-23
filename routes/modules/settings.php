@@ -18,6 +18,11 @@ Route::prefix('admin/settings')->name('portal-settings.')->group(function () {
         Route::post('/units', [SettingsController::class, 'storeUnit'])->name('units.store');
         Route::put('/units/{unit}', [SettingsController::class, 'updateUnit'])->name('units.update');
     });
+    Route::middleware('permission:Manage settings|Manage mail')->group(function () {
+        Route::get('/mail', [SettingsController::class, 'mail'])->name('mail');
+        Route::post('/mail', [SettingsController::class, 'saveMail'])->name('mail.save');
+        Route::post('/mail/test', [SettingsController::class, 'testMail'])->middleware('throttle:10,1')->name('mail.test');
+    });
     Route::middleware('permission:Manage settings|Manage payroll')->group(function () {
         Route::get('/payroll', [SettingsController::class, 'payroll'])->name('payroll');
         Route::post('/payroll', [SettingsController::class, 'savePayroll'])->name('payroll.save');

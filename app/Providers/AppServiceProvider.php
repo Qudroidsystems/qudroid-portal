@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +21,15 @@ class AppServiceProvider extends ServiceProvider
     {
         // Pagination in the Bootstrap 5 theme (matches the Velzon UI).
         Paginator::useBootstrapFive();
+
+        // Qmail limits, counted per person and per action (plain throttle:N,1 shares one count across routes).
+        RateLimiter::for('mail', function ($request) {
+            $name = (string) preg_replace('/^api\.v1\./', '', (string) $request->route()?->getName());
+            $per = ['mail.send' => 30, 'mail.connect' => 10, 'mail.sync' => 10, 'mail.drafts.save' => 120, 'mail.poll' => 120,
+                'mail.admin.store' => 20, 'mail.admin.password' => 10, 'mail.admin.check' => 20, 'mail.settings.update' => 20][$name] ?? 240;
+
+            return Limit::perMinute($per)->by(($request->user()?->id ?: $request->ip()) . '|' . $name);
+        });
 
         // The Super Administrator passes every permission check, including
         // permissions added by modules that are built later.

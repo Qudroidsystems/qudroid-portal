@@ -23,6 +23,7 @@ class PortalNotifier
         'task'        => 'ri-task-line',
         'project'     => 'ri-folder-chart-line',
         'message'     => 'ri-chat-3-line',
+        'mail'        => 'ri-mail-line',
         'call'        => 'ri-phone-line',
         'reminder'    => 'ri-alarm-line',
         'meeting'     => 'ri-video-chat-line',
@@ -41,6 +42,7 @@ class PortalNotifier
     /** Kinds of notification people can filter by and switch off. `system` and `announcement` can't be switched off. */
     public const GROUPS = [
         'messages' => ['Messages', 'ri-chat-3-line', ['message']],
+        'mail'     => ['E-mail', 'ri-mail-line', ['mail']],
         'calls'    => ['Calls', 'ri-phone-line', ['call']],
         'meetings' => ['Meetings', 'ri-video-chat-line', ['meeting']],
         'work'     => ['Tasks & projects', 'ri-task-line', ['task', 'project']],

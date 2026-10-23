@@ -239,4 +239,52 @@ class SettingsController extends Controller
 
         return back()->with('success', 'Payroll rates are back to the built-in Nigeria Tax Act 2025 defaults.');
     }
+
+    public function mail()
+    {
+        $s = \App\Services\Mail\MailService::server();
+
+        return view('settings.mail', [
+            'server' => $s,
+            'tokenHint' => !empty($s['stalwart_token']) ? '••••' . substr($s['stalwart_token'], -4) : null,
+            'tokenSaved' => $this->settings->has('mail.stalwart_token'),
+        ]);
+    }
+
+    public function saveMail(Request $request)
+    {
+        $data = $request->validate([
+            'domain' => ['nullable', 'string', 'max:191', 'regex:/^[a-z0-9.-]+\.[a-z]{2,}$/i'],
+            'imap_host' => ['nullable', 'string', 'max:191'], 'imap_port' => ['nullable', 'integer', 'between:1,65535'], 'imap_encryption' => ['nullable', 'in:ssl,tls,none'],
+            'smtp_host' => ['nullable', 'string', 'max:191'], 'smtp_port' => ['nullable', 'integer', 'between:1,65535'], 'smtp_encryption' => ['nullable', 'in:ssl,tls,none'],
+            'stalwart_url' => ['nullable', 'url:https,http', 'max:191'], 'stalwart_token' => ['nullable', 'string', 'max:500'], 'clear_token' => ['nullable', 'boolean'],
+        ], ['domain.regex' => 'Enter a domain like qudroid.com.']);
+        $values = [];
+        foreach (['domain', 'imap_host', 'imap_port', 'imap_encryption', 'smtp_host', 'smtp_port', 'smtp_encryption', 'stalwart_url'] as $k) {
+            $values['mail.' . $k] = isset($data[$k]) ? strtolower(trim((string) $data[$k])) : null;
+        }
+        if ($request->boolean('clear_token')) $values['mail.stalwart_token'] = null;
+        elseif (!empty($data['stalwart_token'])) $values['mail.stalwart_token'] = $data['stalwart_token'];
+        $this->settings->put($values, $request->user());
+
+        return back()->with('success', 'Mail settings saved.');
+    }
+
+    /** Ask Stalwart who we are, to check the URL and token. */
+    public function testMail()
+    {
+        if (!\App\Services\Mail\Stalwart::configured()) return back()->with('error', 'Add the Stalwart URL and API key first.');
+        $s = \App\Services\Mail\MailService::server();
+        try {
+            $r = \Illuminate\Support\Facades\Http::withToken($s['stalwart_token'])->acceptJson()->timeout(10)
+                ->withOptions(['verify' => (bool) config('qudroid.mail.validate_cert', true)])
+                ->get(rtrim($s['stalwart_url'], '/') . '/api/principal', ['limit' => 1]);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Could not reach Stalwart: ' . \Illuminate\Support\Str::limit($e->getMessage(), 160));
+        }
+
+        return $r->successful() && !isset($r->json()['error'])
+            ? back()->with('success', 'Connected to Stalwart. You can create addresses under Qmail → Mailboxes.')
+            : back()->with('error', 'Stalwart answered ' . $r->status() . ($r->status() === 401 ? ': the API key was not accepted.' : '.'));
+    }
 }

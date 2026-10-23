@@ -4,6 +4,9 @@
         <li class="nav-item"><a class="nav-link {{ request()->routeIs('portal-settings.integrations') ? 'active' : '' }}" href="{{ route('portal-settings.integrations') }}"><i class="ri-plug-line me-1"></i>Integrations</a></li>
         <li class="nav-item"><a class="nav-link {{ request()->routeIs('portal-settings.units') ? 'active' : '' }}" href="{{ route('portal-settings.units') }}"><i class="ri-building-2-line me-1"></i>Business units</a></li>
     @endcan
+    @if(auth()->user()->can('Manage settings') || auth()->user()->can('Manage mail'))
+        <li class="nav-item"><a class="nav-link {{ request()->routeIs('portal-settings.mail') ? 'active' : '' }}" href="{{ route('portal-settings.mail') }}"><i class="ri-mail-settings-line me-1"></i>Mail</a></li>
+    @endif
     @if(auth()->user()->can('Manage settings') || auth()->user()->can('Manage payroll'))
         <li class="nav-item"><a class="nav-link {{ request()->routeIs('portal-settings.payroll') ? 'active' : '' }}" href="{{ route('portal-settings.payroll') }}"><i class="ri-percent-line me-1"></i>Payroll tax</a></li>
     @endif
