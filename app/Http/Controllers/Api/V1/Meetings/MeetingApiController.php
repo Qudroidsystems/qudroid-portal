@@ -107,6 +107,9 @@ class MeetingApiController extends ApiController
         if ($full) {
             $out += [
                 'agenda' => $m->agenda, 'minutes' => $m->minutes, 'cancel_reason' => $m->cancel_reason,
+                // The raw fields, for edit forms.
+                'room_id' => $m->room_id, 'room' => $m->room ? ['id' => $m->room->id, 'name' => $m->room->name] : null, 'location' => $m->location,
+                'remind_minutes' => $m->remind_minutes, 'project_id' => $m->project_id, 'company_id' => $m->company_id,
                 'project' => $m->project ? ['code' => $m->project->code, 'name' => $m->project->name] : null,
                 'attendees' => $m->attendees->map(fn ($a) => ['id' => $a->user_id, 'name' => $a->user?->name, 'avatar' => $a->user?->avatar_url, 'response' => $a->response])->values(),
                 'guests' => $m->guests ?? [],
@@ -129,6 +132,8 @@ class MeetingApiController extends ApiController
             'call_id' => $live?->id,
             // Start or join with POST calls {meeting_id}; it creates the chat when needed.
             'can_call' => !$m->isCancelled() && $me->can('Use connect'),
+            // For the web: the live call if there is one, else the meeting page (which has the call button).
+            'web_url' => $live ? route('connect.calls.show', $live) : route('meetings.show', $m),
         ];
     }
 }

@@ -30,3 +30,12 @@ Route::prefix('s/{token}')->middleware('throttle:120,1')->controller(\App\Http\C
 // Private calendar feed (subscribed from Google, Outlook or Apple Calendar; the token is the key)
 Route::get('/calendar/{token}.ics', [\App\Http\Controllers\Meetings\MeetingController::class, 'feed'])
     ->where('token', '[A-Za-z0-9]{40,64}')->middleware('throttle:60,1')->name('meetings.feed');
+
+// QR check-in: the door QR's link, and event sign-up and tickets (conferences)
+Route::get('/c/{event}/{token}', [\App\Http\Controllers\Checkin\CheckinPublicController::class, 'door'])
+    ->whereNumber('event')->where('token', '[a-f0-9]{12}')->middleware('throttle:checkin-public')->name('checkin.door');
+Route::prefix('e/{slug}')->middleware('throttle:checkin-public')->controller(\App\Http\Controllers\Checkin\CheckinPublicController::class)->group(function () {
+    Route::get('/', 'register')->name('checkin.public.register');
+    Route::post('/', 'store')->name('checkin.public.store');
+    Route::get('/ticket/{code}', 'ticket')->where('code', '[A-Za-z0-9]{10}')->name('checkin.public.ticket');
+});

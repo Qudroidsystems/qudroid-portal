@@ -88,12 +88,15 @@ test('meetings can be created, changed and cancelled from the app, with join det
     $id = $this->postJson('/api/v1/meetings', ['title' => 'Kick-off', 'starts_at' => $start->toDateTimeString(), 'ends_at' => $start->copy()->addHour()->toDateTimeString(),
         'attendees' => [$this->ben->id]])->assertCreated()->assertJsonPath('data.title', 'Kick-off')->assertJsonPath('data.can_manage', true)->json('data.id');
     $this->putJson("/api/v1/meetings/{$id}", ['title' => 'Kick-off call', 'starts_at' => $start->toDateTimeString(), 'ends_at' => $start->copy()->addMinutes(30)->toDateTimeString(),
-        'attendees' => [$this->ben->id]])->assertOk()->assertJsonPath('data.title', 'Kick-off call');
+        'attendees' => [$this->ben->id], 'location' => 'Yaba office', 'remind_minutes' => 30])->assertOk()->assertJsonPath('data.title', 'Kick-off call')
+        ->assertJsonPath('data.location', 'Yaba office')->assertJsonPath('data.remind_minutes', 30)->assertJsonPath('data.room_id', null)
+        ->assertJsonPath('data.join.web_url', route('meetings.show', $id));
 
     // start the meeting call from the app; the meeting shows how to join
     $call = $this->postJson('/api/v1/calls', ['meeting_id' => $id])->assertCreated()->assertJsonPath('data.meeting_id', $id)->json('data.id');
     Sanctum::actingAs($this->ben);
-    $this->getJson("/api/v1/meetings/{$id}")->assertOk()->assertJsonPath('data.join.call_id', $call)->assertJsonPath('data.can_manage', false);
+    $this->getJson("/api/v1/meetings/{$id}")->assertOk()->assertJsonPath('data.join.call_id', $call)->assertJsonPath('data.can_manage', false)
+        ->assertJsonPath('data.join.web_url', route('connect.calls.show', $call));
     $this->putJson("/api/v1/meetings/{$id}", ['title' => 'Mine'])->assertForbidden();
     $this->deleteJson("/api/v1/meetings/{$id}")->assertForbidden();
 

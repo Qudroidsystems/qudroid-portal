@@ -38,6 +38,19 @@ Sign in with `QUDROID_ADMIN_EMAIL` / `QUDROID_ADMIN_PASSWORD` from `.env`
 (default `admin@qudroids.com` / `ChangeMe@123`). You will be asked to choose your
 own password straight away.
 
+**Sample data.** To try the portal with a small company's worth of records (staff
+with salaries and a paid payroll, clients and deals, projects and tasks, invoices
+and expenses, courses with enrolled students and registers, stock and laptops,
+meetings, chat, office clock-ins and a conference with sign-ups):
+
+```bash
+php artisan db:seed --class=DemoSeeder
+```
+
+Everyone it adds has an `@demo.qudroid.test` address and the password `Demo@2026!`
+(it prints a sign-in for each role). It runs once, and it refuses on a production
+site unless `DEMO_SEED_IN_PRODUCTION=true`. Use it on a test database, not live data.
+
 ## What is here
 
 - **Accounts** (`users`): one row per person. `user_type` is `staff`, `student`,
@@ -581,6 +594,35 @@ Needs the PHP `zip` and `fileinfo` extensions (for `webklex/php-imap`). Code:
 `routes/modules/mail.php`, `routes/api_v1/mail.php`, `app/{Models,Services}/Mail`,
 `app/Http/Controllers/Mail`, `resources/views/modules/mail`.
 
+## QR check-in (attendance)
+
+One check-in system for classes, staff days, meetings and conferences, at `/checkin`.
+
+- **Two ways to check in.** A door QR on a screen or projector changes every 20
+  seconds, so a photo of it can't be shared; people scan it with their phone and
+  are checked in as themselves (signing in first if needed). Or a host scans a
+  person's QR with the scanner page: staff and students have a personal badge
+  QR (My QR), and guests get a ticket QR by e-mail.
+- **Students.** "QR check-in" on a class register opens the door QR for that
+  session; check-ins go straight onto the academy register (late after the
+  late window) and closing marks the rest absent.
+- **Staff.** HR adds office locations (hours, grace minutes, workdays, optional
+  location check). Each location has a daily door screen; the first scan clocks
+  in (late after the grace period), a later scan clocks out. Check-in → Staff
+  gives the monthly sheet and a CSV.
+- **Meetings.** "QR check-in" on a meeting lets invited people check in.
+- **Events and conferences.** Create an event with an optional public sign-up
+  page (`/e/{slug}`), capacity and closing date. Sign-ups get a ticket by e-mail;
+  hosts scan tickets at the door and see the head count live. Guests can also be
+  added by hand, cancelled or sent their ticket again.
+- **Location.** Any event or office can require people to be within a radius of
+  the venue when they use the door QR (the phone's location is checked).
+- Hosts can also mark people by hand and undo; every event exports to CSV.
+
+Permissions: "Check in" (everyone), "Run check-in" (organisers),
+"Manage check-in places" (HR). Code: `routes/modules/checkin.php`,
+`app/Services/Checkin`, `app/Http/Controllers/Checkin`, `resources/views/modules/checkin`.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
@@ -637,6 +679,13 @@ unsnooze, `move:{label id}`; `threads[]` or `messages[]`), `GET attachments/{id}
 `GET|POST drafts`, `DELETE drafts/{id}`, `POST send` (`send_at` schedules),
 `GET contacts?q=`, `GET poll`, `POST sync`. New mail also arrives as a
 Reverb `mail` event on `user.{id}`.
+
+Check-in (`checkin/…`): `GET me` (my badge `payload` to draw as a QR, plus an
+`svg`; `today` lists what I can check in to and `running` what I can scan for),
+`GET history`, `POST door` (`url` = the scanned door QR link, optional `lat`,
+`lng`; `code` is `expired`, `location` or `refused` on failure),
+`GET events/{id}` (stats and recent check-ins) and `POST events/{id}/scan`
+(`code` = a scanned badge or ticket QR, or a typed ticket code).
 
 Drive (`drive/…`): `GET /?folder_id=|project_id=|q=`, `GET projects`,
 `GET shared-with-me|recent|starred|trash|people`, `POST folders`,

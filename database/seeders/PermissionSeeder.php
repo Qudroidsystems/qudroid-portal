@@ -67,6 +67,11 @@ class PermissionSeeder extends Seeder
             'View attendance'   => 'See attendance registers and reports.',
             'Manage attendance' => 'Take registers and correct attendance records.',
         ],
+        'Check-in' => [
+            'Check in'               => 'Check in with a QR code and show your own QR badge.',
+            'Run check-in'           => 'Create check-in events, show the door QR, scan badges and mark people in.',
+            'Manage check-in places' => 'Set up office locations, working hours and staff clock-in reports.',
+        ],
         'Projects & Tasks' => [
             'View projects'   => 'Open project workspaces, boards and documents you belong to.',
             'Manage projects' => 'Create projects, assign work, and manage budgets and milestones.',

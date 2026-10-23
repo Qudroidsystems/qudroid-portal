@@ -12,6 +12,9 @@
             @endif
             <a href="{{ route('meetings.ics', $meeting) }}" class="cb-hero-btn"><i class="ri-calendar-check-line"></i>Add to my calendar</a>
             @if($canManage && !$meeting->isCancelled())<a href="{{ route('meetings.edit', $meeting) }}" class="cb-hero-btn"><i class="ri-pencil-line"></i>Edit</a>@endif
+            @if(!$meeting->isCancelled() && \Illuminate\Support\Facades\Route::has('checkin.meeting') && ($meeting->organizer_id === auth()->id() || auth()->user()->can('Manage meetings')) && auth()->user()->canAny(['Check in', 'Run check-in']))
+                <form method="POST" action="{{ route('checkin.meeting', $meeting) }}">@csrf<button class="cb-hero-btn"><i class="ri-qr-scan-2-line"></i>QR check-in</button></form>
+            @endif
         </x-slot:actions>
     </x-cb.hero>
 

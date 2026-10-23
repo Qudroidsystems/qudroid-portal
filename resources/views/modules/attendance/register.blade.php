@@ -10,6 +10,11 @@
             <span class="cb-meta-pill">{{ $session->status_label }}</span>
             @if($session->takenBy)<span class="cb-meta-pill">by {{ $session->takenBy->name }}, {{ $session->register_taken_at->format('j M, g:ia') }}</span>@endif
         </x-slot:pills>
+        @if($session->status !== 'cancelled' && \Illuminate\Support\Facades\Route::has('checkin.session'))
+            <x-slot:actions>
+                <form method="POST" action="{{ route('checkin.session', $session) }}">@csrf<button class="cb-hero-btn"><i class="ri-qr-scan-2-line"></i>QR check-in</button></form>
+            </x-slot:actions>
+        @endif
     </x-cb.hero>
 
     @include('partials.flash')

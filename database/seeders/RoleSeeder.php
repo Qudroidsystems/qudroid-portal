@@ -20,45 +20,45 @@ class RoleSeeder extends Seeder
         'Managing Director' => ['#6a0572', [
             'View dashboard', 'View user', 'View role', 'View activity log', 'View online staff',
             'View academy', 'View certificates', 'View attendance', 'View projects', 'View clients',
-            'Use connect', 'Use mail', 'View meetings', 'View finance', 'Approve finance', 'View inventory', 'View employees',
+            'Use connect', 'Check in', 'Use mail', 'View meetings', 'View finance', 'Approve finance', 'View inventory', 'View employees', 'Run check-in',
         ]],
 
         'Finance Officer' => ['#10b981', [
-            'View dashboard', 'View finance', 'Manage finance', 'View clients', 'Use connect', 'Use mail', 'View meetings',
+            'View dashboard', 'View finance', 'Manage finance', 'View clients', 'Use connect', 'Check in', 'Use mail', 'View meetings',
         ]],
 
         'HR Manager' => ['#ef4444', [
             'View dashboard', 'View user', 'Create user', 'Update user', 'View online staff',
             'View employees', 'Manage employees', 'Manage payroll', 'View attendance', 'Manage attendance',
-            'Use connect', 'Use mail', 'View meetings',
+            'Use connect', 'Check in', 'Use mail', 'View meetings', 'Run check-in', 'Manage check-in places',
         ]],
 
         'Project Manager' => ['#0ea5e9', [
-            'View dashboard', 'View projects', 'Manage projects', 'View clients', 'Use connect', 'Use mail',
-            'View meetings', 'Manage meetings',
+            'View dashboard', 'View projects', 'Manage projects', 'View clients', 'Use connect', 'Check in', 'Use mail',
+            'View meetings', 'Manage meetings', 'Run check-in',
         ]],
 
         // Developers and other staff
         'Sales Officer' => ['#8b5cf6', [
-            'View dashboard', 'View clients', 'Manage clients', 'View projects', 'Use connect', 'Use mail', 'View meetings',
+            'View dashboard', 'View clients', 'Manage clients', 'View projects', 'Use connect', 'Check in', 'Use mail', 'View meetings',
         ]],
 
         'Staff' => ['#457b9d', [
-            'View projects', 'Use connect', 'Use mail', 'View meetings',
+            'View projects', 'Use connect', 'Check in', 'Use mail', 'View meetings',
         ]],
 
         'Academy Administrator' => ['#6366f1', [
             'View dashboard', 'View user', 'Create user', 'Update user',
             'View academy', 'Manage academy', 'Manage course content', 'Grant course access', 'View certificates', 'Manage certificates',
-            'View attendance', 'Manage attendance', 'Use connect', 'Use mail', 'View meetings',
+            'View attendance', 'Manage attendance', 'Use connect', 'Check in', 'Use mail', 'View meetings', 'Run check-in',
         ]],
 
         'Instructor' => ['#0a9396', [
-            'View academy', 'Manage course content', 'View attendance', 'Manage attendance', 'Use connect', 'Use mail', 'View meetings',
+            'View academy', 'Manage course content', 'View attendance', 'Manage attendance', 'Use connect', 'Check in', 'Use mail', 'View meetings', 'Run check-in',
         ]],
 
         'Student' => ['#e76f51', [
-            'View academy', 'View certificates', 'Use connect',
+            'View academy', 'View certificates', 'Use connect', 'Check in',
         ]],
 
         'Client' => ['#8b5cf6', [
@@ -66,7 +66,7 @@ class RoleSeeder extends Seeder
         ]],
 
         'Inventory Officer' => ['#f97316', [
-            'View dashboard', 'View inventory', 'Manage inventory', 'Use connect', 'Use mail', 'View meetings',
+            'View dashboard', 'View inventory', 'Manage inventory', 'Use connect', 'Check in', 'Use mail', 'View meetings',
         ]],
     ];
 

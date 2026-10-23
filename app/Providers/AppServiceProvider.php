@@ -23,6 +23,13 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
 
         // Qmail limits, counted per person and per action (plain throttle:N,1 shares one count across routes).
+        // Public check-in pages: counted per visitor and per page, so one route can't use up another's allowance.
+        RateLimiter::for('checkin-public', function ($request) {
+            $name = (string) $request->route()?->getName();
+            $per = $name === 'checkin.public.store' ? Limit::perMinutes(10, 10) : Limit::perMinute(60);
+
+            return $per->by(($request->user()?->id ?: $request->ip()) . '|' . $name);
+        });
         RateLimiter::for('mail', function ($request) {
             $name = (string) preg_replace('/^api\.v1\./', '', (string) $request->route()?->getName());
             $per = ['mail.send' => 30, 'mail.connect' => 10, 'mail.sync' => 10, 'mail.drafts.save' => 120, 'mail.poll' => 120,
