@@ -717,6 +717,34 @@ Drive (`drive/…`): `GET /?folder_id=|project_id=|q=`, `GET projects`,
 from the trash), `POST items/{type}/{id}/restore|star`,
 `POST|DELETE items/{type}/{id}/share` and `POST|DELETE items/{type}/{id}/link`.
 
+Notifications: `GET notifications?filter=&stacked=1`, `POST notifications/{id}/actions/{action}`
+(Approve, Reply, Going…; `input` for words), `POST notifications/{id}/read` (`ids[]`, `unread`),
+`DELETE notifications/{id}` (`ids[]`), `POST notifications/clear-read`, `GET|PUT notifications/settings`.
+
+Bills (`billing/…`): `GET invoices?status=`, `GET invoices/{id}` (and `/pdf`), `POST invoices/{id}/pay`
+(`amount` in kobo; returns the Paystack page), `POST payments/verify` (`reference`; asks Paystack, safe to
+repeat), `GET payments`, `GET payments/{id}/receipt`.
+
+HR and approvals: `GET hr/me`, `GET hr/leave`, `GET hr/leave/preview`, `POST hr/leave`,
+`POST hr/leave/{id}/cancel`, `GET hr/payslips` (and `/{id}`, `/{id}/pdf`), `GET hr/assets`,
+`GET expenses/mine`, `POST expenses` (finance staff), `GET approvals?type=`,
+`POST approvals/{leave|expense}/{id}/{approve|decline}` (`note`).
+
+Projects: `GET projects`, `GET projects/{id}`, `GET|POST projects/{id}/tasks`, `GET tasks/mine?scope=`,
+`GET|PUT tasks/{id}`, `POST tasks/{id}/move|comments|time`, `GET task-comments/{id}/file`.
+
+Academy (`academy/…`): `GET my`, `GET enrollments/{id}`, `GET lessons/{id}` (and `/file`),
+`POST lessons/{id}/complete`, `GET assessments/{id}`, `POST assessments/{id}/attempts` (start or resume),
+`GET|PUT attempts/{id}` (PUT autosaves), `POST attempts/{id}/submit`, `POST assessments/{id}/hand-in`,
+`GET certificates`, `GET courses`, `GET courses/{id}`.
+
+CRM (`crm/…`): `GET|POST companies`, `GET companies/{id}`, `GET|POST contacts`, `GET contacts/{id}`,
+`GET deals` (board with stage totals), `GET deals/{id}`, `POST deals/{id}/move` (`stage`, `position`,
+`lost_reason`), `GET|POST activities`, `POST activities/{id}/done`.
+
+Full request and response shapes for the app are in the project's `mobile-app/phase3-api.md` and
+`mobile-app/notifications-api.md`, and in the `tests/Feature/Api*Test.php` files.
+
 Instant updates: `GET realtime` gives `enabled` and, when on, the Pusher-protocol `key`, `host`,
 `port`, `tls`, `auth_url` and channel names; sign private channels at `POST broadcasting/auth`
 (see "Instant updates (Reverb)"). Keep polling when `enabled` is false or the socket drops.

@@ -66,6 +66,7 @@ class NotificationController extends ApiController
         return $this->ok(null, 'Cleared.', 200, ['unread' => $request->user()->unreadNotifications()->count()]);
     }
 
+    /** POST notifications/clear-read, or DELETE notifications?read=1 */
     public function clearRead(Request $request)
     {
         $n = $request->user()->readNotifications()->delete();
@@ -127,6 +128,9 @@ class NotificationController extends ApiController
     {
         $item = NotificationPresenter::item($n);
         unset($item['open_url']);
+        // Each button says how to call it, so the app needs no table of its own.
+        $item['actions'] = array_map(fn ($a) => $a + ['key' => $a['id'], 'style' => $a['style'] ?? 'default', 'method' => 'POST',
+            'path' => 'notifications/' . $n->id . '/actions/' . $a['id']], $item['actions']);
 
         return $item + ['data' => (array) $n->data];
     }

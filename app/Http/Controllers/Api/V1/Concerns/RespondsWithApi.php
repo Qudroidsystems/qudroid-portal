@@ -47,6 +47,12 @@ trait RespondsWithApi
         ]);
     }
 
+    /** Money for the app: integer minor units (kobo) plus a ready label, as ["total" => 125000000, "total_label" => "₦1,250,000.00"]. */
+    protected function money(string $key, $amount, ?string $currency = null): array
+    {
+        return [$key => \App\Support\Money::minor($amount ?? 0), $key . '_label' => \App\Support\Money::format($amount ?? 0, $currency)];
+    }
+
     protected function num($v, int $dp = 2): ?float
     {
         return $v === null || $v === '' ? null : round((float) $v, $dp);

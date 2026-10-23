@@ -39,3 +39,8 @@ Route::prefix('e/{slug}')->middleware('throttle:checkin-public')->controller(\Ap
     Route::post('/', 'store')->name('checkin.public.store');
     Route::get('/ticket/{code}', 'ticket')->where('code', '[A-Za-z0-9]{10}')->name('checkin.public.ticket');
 });
+
+// Where Paystack sends people who paid in the mobile app. The app watches for this address and checks the
+// payment itself (POST /api/v1/billing/payments/verify); this page is only seen if it doesn't.
+Route::get('/billing/paystack/app-return', fn () => response()->view('modules.finance.billing.app-return'))
+    ->middleware('throttle:60,1')->name('billing.paystack.app-return');

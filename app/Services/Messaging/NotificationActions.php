@@ -46,17 +46,42 @@ class NotificationActions
         if (!empty($data['done'])) $this->fail('Already done: ' . $data['done'] . '.');
         $input = trim((string) $input) ?: null;
 
-        $done = match ($target['kind']) {
-            'leave' => $this->leave((int) $target['id'], $user, $action, $input),
-            'expense' => $this->expense((int) $target['id'], $user, $action, $input),
-            'meeting' => $this->meeting((int) $target['id'], $user, $action),
-            'message' => $this->reply($target, $user, $input),
-            default => $this->fail('This notification has no such button.'),
-        };
+        $done = $target['kind'] === 'message'
+            ? $this->reply($target, $user, $input)
+            : $this->perform($target['kind'], (int) $target['id'], $user, $action, $input);
 
         $n->forceFill(['data' => $data + ['done' => $done], 'read_at' => $n->read_at ?? now()])->save();
 
         return $done;
+    }
+
+    /**
+     * Decide something directly (the app's approvals list uses this too). Approvals also close the
+     * same notification for every other approver, so nobody taps Approve on a decided request.
+     */
+    public function perform(string $kind, int $id, User $user, string $action, ?string $input = null): string
+    {
+        $input = trim((string) $input) ?: null;
+        $done = match ($kind) {
+            'leave' => $this->leave($id, $user, $action, $input),
+            'expense' => $this->expense($id, $user, $action, $input),
+            'meeting' => $this->meeting($id, $user, $action),
+            default => $this->fail('This notification has no such button.'),
+        };
+        if (in_array($kind, ['leave', 'expense'], true)) $this->closeOthers($kind, $id, $done, $user);
+
+        return $done;
+    }
+
+    protected function closeOthers(string $kind, int $id, string $done, User $by): void
+    {
+        $needle = '"target":' . json_encode(['kind' => $kind, 'id' => $id]);
+        DatabaseNotification::where('data', 'like', '%' . $needle . '%')->get()->each(function ($n) use ($done, $by) {
+            $data = (array) $n->data;
+            if (!empty($data['done'])) return;
+            $label = $n->notifiable_id === $by->id ? $done : $done . ' by ' . $by->name;
+            $n->forceFill(['data' => $data + ['done' => $label], 'read_at' => $n->read_at ?? now()])->save();
+        });
     }
 
     protected function leave(int $id, User $user, string $action, ?string $note): string
@@ -64,6 +89,7 @@ class NotificationActions
         $leave = LeaveRequest::findOrFail($id);
         // Someone else got there first: show what happened instead of an error.
         if ($leave->status !== 'pending') return 'Already ' . $leave->status;
+        if (!in_array($action, ['approve', 'decline'], true)) $this->fail('This notification has no such button.');
         app(LeaveService::class)->decide($leave, $user, $action === 'approve', $note);
 
         return $action === 'approve' ? 'Approved' : 'Declined';
@@ -74,6 +100,8 @@ class NotificationActions
         $expense = Expense::findOrFail($id);
         $svc = app(ExpenseService::class);
         if ($expense->status !== 'submitted') return 'Already ' . $expense->status;
+        if (!in_array($action, ['approve', 'reject', 'decline'], true)) $this->fail('This notification has no such button.');
+        if (!$user->can('Approve finance')) $this->fail('Only finance approvers can decide expenses.');
         if ($action === 'approve') {
             $svc->approve($expense, $user);
 
