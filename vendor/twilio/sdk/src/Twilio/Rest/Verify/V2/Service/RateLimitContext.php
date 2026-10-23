@@ -23,6 +23,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Rest\Verify\V2\Service\RateLimit\BucketList;
 
 
@@ -62,50 +64,129 @@ class RateLimitContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the RateLimitInstance
      *
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the RateLimitInstance
+     * Delete the RateLimitInstance with Metadata
      *
-     * @return RateLimitInstance Fetched RateLimitInstance
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): RateLimitInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new RateLimitInstance(
-            $this->version,
-            $payload,
-            $this->solution['serviceSid'],
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the RateLimitInstance
+     * Helper function for Fetch
      *
-     * @param array|Options $options Optional Arguments
-     * @return RateLimitInstance Updated RateLimitInstance
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): RateLimitInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the RateLimitInstance
+     *
+     
+     
+     * @return RateLimitInstance Fetched RateLimitInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): RateLimitInstance
+    {
+        $response = $this->_fetch();
+        return new RateLimitInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['serviceSid'],
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the RateLimitInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new RateLimitInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -114,13 +195,53 @@ class RateLimitContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the RateLimitInstance
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return RateLimitInstance Updated RateLimitInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): RateLimitInstance
+    {
+        $response = $this->_update($options);
         return new RateLimitInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['serviceSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the RateLimitInstance with Metadata
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new RateLimitInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

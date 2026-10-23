@@ -39,19 +39,15 @@ class Comparator
         $droppedSequences = [];
 
         foreach ($newSchema->getNamespaces() as $newNamespace) {
-            if ($oldSchema->hasNamespace($newNamespace)) {
-                continue;
+            if (! $oldSchema->hasNamespace($newNamespace)) {
+                $createdSchemas[] = $newNamespace;
             }
-
-            $createdSchemas[] = $newNamespace;
         }
 
         foreach ($oldSchema->getNamespaces() as $oldNamespace) {
-            if ($newSchema->hasNamespace($oldNamespace)) {
-                continue;
+            if (! $newSchema->hasNamespace($oldNamespace)) {
+                $droppedSchemas[] = $oldNamespace;
             }
-
-            $droppedSchemas[] = $oldNamespace;
         }
 
         foreach ($newSchema->getTables() as $newTable) {
@@ -75,11 +71,9 @@ class Comparator
             $oldTableName = $oldTable->getShortestName($oldSchema->getName());
 
             $oldTable = $oldSchema->getTable($oldTableName);
-            if ($newSchema->hasTable($oldTableName)) {
-                continue;
+            if (! $newSchema->hasTable($oldTableName)) {
+                $droppedTables[] = $oldTable;
             }
-
-            $droppedTables[] = $oldTable;
         }
 
         foreach ($newSchema->getSequences() as $newSequence) {
@@ -102,11 +96,9 @@ class Comparator
 
             $oldSequenceName = $oldSequence->getShortestName($oldSchema->getName());
 
-            if ($newSchema->hasSequence($oldSequenceName)) {
-                continue;
+            if (! $newSchema->hasSequence($oldSequenceName)) {
+                $droppedSequences[] = $oldSequence;
             }
-
-            $droppedSequences[] = $oldSequence;
         }
 
         return new SchemaDiff(
@@ -173,11 +165,9 @@ class Comparator
         foreach ($newColumns as $newColumn) {
             $newColumnName = strtolower($newColumn->getName());
 
-            if ($oldTable->hasColumn($newColumnName)) {
-                continue;
+            if (! $oldTable->hasColumn($newColumnName)) {
+                $addedColumns[$newColumnName] = $newColumn;
             }
-
-            $addedColumns[$newColumnName] = $newColumn;
         }
 
         // See if there are any removed columns in the new table
@@ -193,11 +183,9 @@ class Comparator
 
             $newColumn = $newTable->getColumn($oldColumnName);
 
-            if ($this->columnsEqual($oldColumn, $newColumn)) {
-                continue;
+            if (! $this->columnsEqual($oldColumn, $newColumn)) {
+                $modifiedColumns[$oldColumnName] = new ColumnDiff($oldColumn, $newColumn);
             }
-
-            $modifiedColumns[$oldColumnName] = new ColumnDiff($oldColumn, $newColumn);
         }
 
         $renamedColumnNames = $newTable->getRenamedColumns();
@@ -228,22 +216,27 @@ class Comparator
         $newIndexes = $newTable->getIndexes();
 
         // See if all the indexes from the old table exist in the new one
-        foreach ($newIndexes as $newIndexName => $newIndex) {
-            if (($newIndex->isPrimary() && $oldTable->getPrimaryKey() !== null) || $oldTable->hasIndex($newIndexName)) {
-                continue;
-            }
+        foreach ($newIndexes as $newIndex) {
+            $newIndexName = $newIndex->getName();
 
-            $addedIndexes[$newIndexName] = $newIndex;
+            if (
+                (! $newIndex->isPrimary() || $oldTable->getPrimaryKey() === null)
+                && ! $oldTable->hasIndex($newIndexName)
+            ) {
+                $addedIndexes[] = $newIndex;
+            }
         }
 
         // See if there are any removed indexes in the new table
-        foreach ($oldIndexes as $oldIndexName => $oldIndex) {
+        foreach ($oldIndexes as $oldIndex) {
+            $oldIndexName = $oldIndex->getName();
+
             // See if the index is removed in the new table.
             if (
                 ($oldIndex->isPrimary() && $newTable->getPrimaryKey() === null) ||
                 ! $oldIndex->isPrimary() && ! $newTable->hasIndex($oldIndexName)
             ) {
-                $droppedIndexes[$oldIndexName] = $oldIndex;
+                $droppedIndexes[] = $oldIndex;
 
                 continue;
             }
@@ -259,8 +252,8 @@ class Comparator
             if ($shouldReportModifiedIndexes) {
                 $modifiedIndexes[] = $newIndex;
             } else {
-                $droppedIndexes[$oldIndexName] = $oldIndex;
-                $addedIndexes[$oldIndexName]   = $newIndex;
+                $droppedIndexes[] = $oldIndex;
+                $addedIndexes[]   = $newIndex;
             }
         }
 
@@ -323,11 +316,9 @@ class Comparator
 
         foreach ($addedColumns as $addedColumnName => $addedColumn) {
             foreach ($removedColumns as $removedColumn) {
-                if (! $this->columnsEqual($addedColumn, $removedColumn)) {
-                    continue;
+                if ($this->columnsEqual($addedColumn, $removedColumn)) {
+                    $candidatesByName[$addedColumnName][] = [$removedColumn, $addedColumn];
                 }
-
-                $candidatesByName[$addedColumnName][] = [$removedColumn, $addedColumn];
             }
         }
 
@@ -359,23 +350,26 @@ class Comparator
      * Try to find indexes that only changed their name, rename operations maybe cheaper than add/drop
      * however ambiguities between different possibilities should not lead to renaming at all.
      *
-     * @param array<string,Index> $addedIndexes
-     * @param array<string,Index> $removedIndexes
+     * @param array<Index> $addedIndexes
+     * @param array<Index> $removedIndexes
      *
      * @return array<string,Index>
      */
     private function detectRenamedIndexes(array &$addedIndexes, array &$removedIndexes): array
     {
-        $candidatesByName = [];
+        $candidatesByName       = [];
+        $removedIndexMatchCount = [];
 
         // Gather possible rename candidates by comparing each added and removed index based on semantics.
-        foreach ($addedIndexes as $addedIndexName => $addedIndex) {
-            foreach ($removedIndexes as $removedIndex) {
+        foreach ($addedIndexes as $addedIndexKey => $addedIndex) {
+            foreach ($removedIndexes as $removedIndexKey => $removedIndex) {
                 if ($this->diffIndex($addedIndex, $removedIndex)) {
                     continue;
                 }
 
-                $candidatesByName[$addedIndex->getName()][] = [$removedIndex, $addedIndex, $addedIndexName];
+                $candidatesByName[$addedIndex->getName()][] = [$removedIndexKey, $addedIndexKey];
+
+                $removedIndexMatchCount[$removedIndexKey] = ($removedIndexMatchCount[$removedIndexKey] ?? 0) + 1;
             }
         }
 
@@ -390,19 +384,22 @@ class Comparator
                 continue;
             }
 
-            [$removedIndex, $addedIndex] = $candidates[0];
+            [$removedIndexKey, $addedIndexKey] = $candidates[0];
 
-            $removedIndexName = strtolower($removedIndex->getName());
-            $addedIndexName   = strtolower($addedIndex->getName());
-
-            if (isset($renamedIndexes[$removedIndexName])) {
+            // Likewise, a removed index that matches more than one added index is ambiguous.
+            if ($removedIndexMatchCount[$removedIndexKey] > 1) {
                 continue;
             }
 
+            $removedIndex     = $removedIndexes[$removedIndexKey];
+            $removedIndexName = strtolower($removedIndex->getName());
+
+            $addedIndex = $addedIndexes[$addedIndexKey];
+
             $renamedIndexes[$removedIndexName] = $addedIndex;
             unset(
-                $addedIndexes[$addedIndexName],
-                $removedIndexes[$removedIndexName],
+                $addedIndexes[$addedIndexKey],
+                $removedIndexes[$removedIndexKey],
             );
         }
 

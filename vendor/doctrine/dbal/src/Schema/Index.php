@@ -45,7 +45,7 @@ class Index extends AbstractNamedObject
     /** @deprecated Use {@see getType()} and compare with {@see IndexType::UNIQUE} instead. */
     protected bool $_isUnique = false;
 
-    /** @deprecated Use {@see PrimaryKeyConstraint()} instead. */
+    /** @deprecated Use {@see PrimaryKeyConstraint} instead. */
     protected bool $_isPrimary = false;
 
     /**
@@ -311,7 +311,7 @@ class Index extends AbstractNamedObject
         return $this->_isUnique;
     }
 
-    /** @deprecated Use {@see PrimaryKeyConstraint()} instead. */
+    /** @deprecated Use {@see PrimaryKeyConstraint} instead. */
     public function isPrimary(): bool
     {
         Deprecation::triggerIfCalledFromOutside(
@@ -354,13 +354,11 @@ class Index extends AbstractNamedObject
 
         for ($i = 0; $i < $numberOfColumns; $i++) {
             if (
-                isset($columnNames[$i])
-                && $this->trimQuotes(strtolower($columns[$i])) === $this->trimQuotes(strtolower($columnNames[$i]))
+                ! isset($columnNames[$i])
+                || $this->trimQuotes(strtolower($columns[$i])) !== $this->trimQuotes(strtolower($columnNames[$i]))
             ) {
-                continue;
+                $sameColumns = false;
             }
-
-            $sameColumns = false;
         }
 
         return $sameColumns;
@@ -592,19 +590,17 @@ class Index extends AbstractNamedObject
         }
 
         if (
-            $this->predicate === null
-            || (! $this->hasFlag('fulltext')
-                && ! $this->hasFlag('spatial')
-                && ! $this->hasFlag('clustered'))
+            $this->predicate !== null
+            && ($this->hasFlag('fulltext')
+                || $this->hasFlag('spatial')
+                || $this->hasFlag('clustered'))
         ) {
-            return;
+            Deprecation::trigger(
+                'doctrine/dbal',
+                'https://github.com/doctrine/dbal/pull/6886',
+                'A fulltext, spatial or clustered index cannot be partial.',
+            );
         }
-
-        Deprecation::trigger(
-            'doctrine/dbal',
-            'https://github.com/doctrine/dbal/pull/6886',
-            'A fulltext, spatial or clustered index cannot be partial.',
-        );
     }
 
     private function inferType(): ?IndexType
@@ -651,11 +647,9 @@ class Index extends AbstractNamedObject
     {
         $columns = [];
 
-        $parser = Parsers::getUnqualifiedNameParser();
-
         foreach ($columnNames as $columnName) {
             try {
-                $parsedName = $parser->parse($columnName);
+                $parsedName = Parsers::parseUnqualifiedName($columnName);
             } catch (Throwable $e) {
                 Deprecation::trigger(
                     'doctrine/dbal',

@@ -21,6 +21,8 @@ use Twilio\ListResource;
 use Twilio\Stream;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Serialize;
 
 
@@ -49,35 +51,79 @@ class StreamMessageList extends ListResource
             $streamSid,
         
         ];
-
         $this->uri = '/Services/' . \rawurlencode($serviceSid)
         .'/Streams/' . \rawurlencode($streamSid)
         .'/Messages';
     }
 
     /**
-     * Create the StreamMessageInstance
+     * Helper function for Create
      *
+     
+     
      * @param array $data A JSON string that represents an arbitrary, schema-less object that makes up the Stream Message body. Can be up to 4 KiB in length.
-     * @return StreamMessageInstance Created StreamMessageInstance
+     
+     * @return Response Created Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(array $data): StreamMessageInstance
+    private function _create(array $data): Response
     {
-
+        
         $data = Values::of([
             'Data' =>
                 Serialize::jsonObject($data),
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
+    }
 
+    /**
+     * Create the StreamMessageInstance
+     *
+     
+     
+     * @param array $data A JSON string that represents an arbitrary, schema-less object that makes up the Stream Message body. Can be up to 4 KiB in length.
+     
+     * @return StreamMessageInstance Created StreamMessageInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function create(array $data): StreamMessageInstance
+    {
+        $response = $this->_create( $data);
         return new StreamMessageInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['serviceSid'],
             $this->solution['streamSid']
+        );
+        
+    }
+
+    /**
+     * Create the StreamMessageInstance with Metadata
+     *
+     
+     
+     * @param array $data A JSON string that represents an arbitrary, schema-less object that makes up the Stream Message body. Can be up to 4 KiB in length.
+     
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(array $data): ResourceMetadata
+    {
+        $response = $this->_create( $data);
+        $resource = new StreamMessageInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['streamSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

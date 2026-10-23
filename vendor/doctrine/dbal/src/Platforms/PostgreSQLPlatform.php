@@ -7,6 +7,7 @@ namespace Doctrine\DBAL\Platforms;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\Keywords\KeywordList;
 use Doctrine\DBAL\Platforms\Keywords\PostgreSQLKeywords;
+use Doctrine\DBAL\Platforms\PostgreSQL\PostgreSQLMetadataProvider;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use Doctrine\DBAL\Schema\Identifier;
@@ -43,6 +44,9 @@ use function trim;
  */
 class PostgreSQLPlatform extends AbstractPlatform
 {
+    /** @see https://www.postgresql.org/docs/current/collation.html */
+    private const DEFAULT_COLLATION = 'default';
+
     private bool $useBooleanTrueFalseStrings = true;
 
     /** @var string[][] PostgreSQL booleans literals */
@@ -213,22 +217,20 @@ class PostgreSQLPlatform extends AbstractPlatform
         foreach ($diff->getAddedColumns() as $addedColumn) {
             $query = 'ADD ' . $this->getColumnDeclarationSQL(
                 $addedColumn->getQuotedName($this),
-                $addedColumn->toArray(),
+                $addedColumn->toArray(true),
             );
 
             $sql[] = 'ALTER TABLE ' . $tableNameSQL . ' ' . $query;
 
             $comment = $addedColumn->getComment();
 
-            if ($comment === '') {
-                continue;
+            if ($comment !== '') {
+                $commentsSQL[] = $this->getCommentOnColumnSQL(
+                    $tableNameSQL,
+                    $addedColumn->getQuotedName($this),
+                    $comment,
+                );
             }
-
-            $commentsSQL[] = $this->getCommentOnColumnSQL(
-                $tableNameSQL,
-                $addedColumn->getQuotedName($this),
-                $comment,
-            );
         }
 
         foreach ($diff->getDroppedColumns() as $droppedColumn) {
@@ -252,15 +254,25 @@ class PostgreSQLPlatform extends AbstractPlatform
 
             $newTypeSQLDeclaration = $this->getTypeSQLDeclaration($newColumn);
             $oldTypeSQLDeclaration = $this->getTypeSQLDeclaration($oldColumn);
-            if ($oldTypeSQLDeclaration !== $newTypeSQLDeclaration) {
+
+            $newCollation = $newColumn->getCollation() ?? self::DEFAULT_COLLATION;
+            $oldCollation = $oldColumn->getCollation() ?? self::DEFAULT_COLLATION;
+
+            $typeChanged      = $oldTypeSQLDeclaration !== $newTypeSQLDeclaration;
+            $collationChanged = $oldCollation !== $newCollation;
+            if ($typeChanged || $collationChanged) {
                 $query = 'ALTER ' . $newColumnName . ' TYPE ' . $newTypeSQLDeclaration;
+                if (! $typeChanged || $newCollation !== self::DEFAULT_COLLATION) {
+                    $query .= ' ' . $this->getColumnCollationDeclarationSQL($newCollation);
+                }
+
                 $sql[] = 'ALTER TABLE ' . $tableNameSQL . ' ' . $query;
             }
 
             if ($columnDiff->hasDefaultChanged()) {
                 $defaultClause = $newColumn->getDefault() === null
                     ? ' DROP DEFAULT'
-                    : ' SET' . $this->getDefaultValueDeclarationSQL($newColumn->toArray());
+                    : ' SET' . $this->getDefaultValueDeclarationSQL($newColumn->toArray(true));
 
                 $query = 'ALTER ' . $newColumnName . $defaultClause;
                 $sql[] = 'ALTER TABLE ' . $tableNameSQL . ' ' . $query;
@@ -281,15 +293,13 @@ class PostgreSQLPlatform extends AbstractPlatform
                 $sql[] = 'ALTER TABLE ' . $tableNameSQL . ' ALTER ' . $newColumnName . ' ' . $query;
             }
 
-            if (! $columnDiff->hasCommentChanged()) {
-                continue;
+            if ($columnDiff->hasCommentChanged()) {
+                $commentsSQL[] = $this->getCommentOnColumnSQL(
+                    $tableNameSQL,
+                    $newColumn->getQuotedName($this),
+                    $newColumn->getComment(),
+                );
             }
-
-            $commentsSQL[] = $this->getCommentOnColumnSQL(
-                $tableNameSQL,
-                $newColumn->getQuotedName($this),
-                $newColumn->getComment(),
-            );
         }
 
         return array_merge(
@@ -302,10 +312,10 @@ class PostgreSQLPlatform extends AbstractPlatform
 
     private function getTypeSQLDeclaration(Column $column): string
     {
-        $type = $column->getType();
+        $type = $this->getColumnType($column);
 
         // SERIAL/BIGSERIAL are not "real" types and we can't alter a column to that type
-        $columnDefinition                  = $column->toArray();
+        $columnDefinition                  = $column->toArray(true);
         $columnDefinition['autoincrement'] = false;
 
         return $type->getSQLDeclaration($columnDefinition, $this);
@@ -330,23 +340,23 @@ class PostgreSQLPlatform extends AbstractPlatform
             ' INCREMENT BY ' . $sequence->getAllocationSize() .
             ' MINVALUE ' . $sequence->getInitialValue() .
             ' START ' . $sequence->getInitialValue() .
-            $this->getSequenceCacheSQL($sequence);
+            $this->getSequenceCacheSQL($sequence->getCacheSize());
     }
 
     public function getAlterSequenceSQL(Sequence $sequence): string
     {
         return 'ALTER SEQUENCE ' . $sequence->getQuotedName($this) .
             ' INCREMENT BY ' . $sequence->getAllocationSize() .
-            $this->getSequenceCacheSQL($sequence);
+            $this->getSequenceCacheSQL($sequence->getCacheSize());
     }
 
     /**
      * Cache definition for sequences
      */
-    private function getSequenceCacheSQL(Sequence $sequence): string
+    private function getSequenceCacheSQL(?int $cacheSize): string
     {
-        if ($sequence->getCache() > 1) {
-            return ' CACHE ' . $sequence->getCache();
+        if ($cacheSize > 1) {
+            return ' CACHE ' . $cacheSize;
         }
 
         return '';
@@ -700,6 +710,8 @@ class PostgreSQLPlatform extends AbstractPlatform
 
     /**
      * Get the snippet used to retrieve the default value for a given column
+     *
+     * @internal The method should be only used from within the {@see PostgreSQLSchemaManager} class hierarchy.
      */
     public function getDefaultColumnValueSQLSnippet(): string
     {
@@ -820,6 +832,11 @@ class PostgreSQLPlatform extends AbstractPlatform
     public function getJsonbTypeDeclarationSQL(array $column): string
     {
         return 'JSONB';
+    }
+
+    public function createMetadataProvider(Connection $connection): PostgreSQLMetadataProvider
+    {
+        return new PostgreSQLMetadataProvider($connection, $this);
     }
 
     public function createSchemaManager(Connection $connection): PostgreSQLSchemaManager

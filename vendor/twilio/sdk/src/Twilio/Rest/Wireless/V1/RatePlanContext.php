@@ -22,6 +22,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class RatePlanContext extends InstanceContext
@@ -49,49 +51,120 @@ class RatePlanContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the RatePlanInstance
      *
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the RatePlanInstance
+     * Delete the RatePlanInstance with Metadata
      *
-     * @return RatePlanInstance Fetched RatePlanInstance
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): RatePlanInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new RatePlanInstance(
-            $this->version,
-            $payload,
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the RatePlanInstance
+     * Helper function for Fetch
      *
-     * @param array|Options $options Optional Arguments
-     * @return RatePlanInstance Updated RatePlanInstance
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): RatePlanInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the RatePlanInstance
+     *
+     
+     * @return RatePlanInstance Fetched RatePlanInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): RatePlanInstance
+    {
+        $response = $this->_fetch();
+        return new RatePlanInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the RatePlanInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new RatePlanInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -102,12 +175,49 @@ class RatePlanContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the RatePlanInstance
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return RatePlanInstance Updated RatePlanInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): RatePlanInstance
+    {
+        $response = $this->_update($options);
         return new RatePlanInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the RatePlanInstance with Metadata
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new RatePlanInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

@@ -11,7 +11,7 @@ use function sprintf;
 use function str_contains;
 
 /**
- * IBM DB2 DSN
+ * Db2 DSN
  */
 final class DataSourceName
 {
@@ -68,11 +68,9 @@ final class DataSourceName
                 'password' => 'PWD',
             ] as $dbalParam => $dsnParam
         ) {
-            if (! isset($params[$dbalParam])) {
-                continue;
+            if (isset($params[$dbalParam])) {
+                $dsnParams[$dsnParam] = $params[$dbalParam];
             }
-
-            $dsnParams[$dsnParam] = $params[$dbalParam];
         }
 
         return self::fromArray($dsnParams);

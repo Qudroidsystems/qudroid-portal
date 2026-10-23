@@ -21,6 +21,8 @@ use Twilio\ListResource;
 use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Serialize;
 
 
@@ -44,41 +46,77 @@ class RecordingRulesList extends ListResource
             $roomSid,
         
         ];
-
         $this->uri = '/Rooms/' . \rawurlencode($roomSid)
         .'/RecordingRules';
     }
 
     /**
+     * Helper function for Fetch
+     *
+     
+     * @return Response Fetched Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _fetch(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
+
+    /**
      * Fetch the RecordingRulesInstance
      *
+     
      * @return RecordingRulesInstance Fetched RecordingRulesInstance
      * @throws TwilioException When an HTTP error occurs.
      */
     public function fetch(): RecordingRulesInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
+        $response = $this->_fetch();
         return new RecordingRulesInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['roomSid']
+        );
+        
+    }
+
+    /**
+     * Fetch the RecordingRulesInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new RecordingRulesInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['roomSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the RecordingRulesInstance
+     * Helper function for Update
      *
+     
      * @param array|Options $options Optional Arguments
-     * @return RecordingRulesInstance Updated RecordingRulesInstance
+     * @return Response Updated Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): RecordingRulesInstance
+    private function _update(array $options = []): Response
     {
-
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -87,12 +125,49 @@ class RecordingRulesList extends ListResource
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the RecordingRulesInstance
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return RecordingRulesInstance Updated RecordingRulesInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): RecordingRulesInstance
+    {
+        $response = $this->_update($options);
         return new RecordingRulesInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['roomSid']
+        );
+        
+    }
+
+    /**
+     * Update the RecordingRulesInstance with Metadata
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new RecordingRulesInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['roomSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

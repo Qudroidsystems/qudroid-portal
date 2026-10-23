@@ -22,6 +22,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class RecordingContext extends InstanceContext
@@ -59,52 +61,133 @@ class RecordingContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the RecordingInstance
      *
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the RecordingInstance
+     * Delete the RecordingInstance with Metadata
      *
-     * @return RecordingInstance Fetched RecordingInstance
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): RecordingInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new RecordingInstance(
-            $this->version,
-            $payload,
-            $this->solution['accountSid'],
-            $this->solution['callSid'],
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the RecordingInstance
+     * Helper function for Fetch
      *
-     * @param string $status
-     * @param array|Options $options Optional Arguments
-     * @return RecordingInstance Updated RecordingInstance
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(string $status, array $options = []): RecordingInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the RecordingInstance
+     *
+     
+     
+     * @return RecordingInstance Fetched RecordingInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): RecordingInstance
+    {
+        $response = $this->_fetch();
+        return new RecordingInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['accountSid'],
+            $this->solution['callSid'],
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the RecordingInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new RecordingInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['callSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     * @param string $status
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(string $status, array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -115,14 +198,59 @@ class RecordingContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the RecordingInstance
+     *
+     
+     
+     * @param string $status
+     
+     * @param array|Options $options Optional Arguments
+     * @return RecordingInstance Updated RecordingInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(string $status, array $options = []): RecordingInstance
+    {
+        $response = $this->_update( $status, $options);
         return new RecordingInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['accountSid'],
             $this->solution['callSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the RecordingInstance with Metadata
+     *
+     
+     
+     * @param string $status
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(string $status, array $options = []): ResourceMetadata
+    {
+        $response = $this->_update( $status, $options);
+        $resource = new RecordingInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['callSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

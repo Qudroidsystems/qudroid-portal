@@ -20,6 +20,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class TaskQueueBulkRealTimeStatisticsList extends ListResource
@@ -42,28 +44,66 @@ class TaskQueueBulkRealTimeStatisticsList extends ListResource
             $workspaceSid,
         
         ];
-
         $this->uri = '/Workspaces/' . \rawurlencode($workspaceSid)
         .'/TaskQueues/RealTimeStatistics';
     }
 
     /**
+     * Helper function for Create
+     *
+     
+     * @param ?array $body
+     * @return Response Created Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _create(?array $body = null): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
+        $data = $body ? $body->toArray() : [];
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
+    }
+
+    /**
      * Create the TaskQueueBulkRealTimeStatisticsInstance
      *
+     
+     * @param ?array $body
      * @return TaskQueueBulkRealTimeStatisticsInstance Created TaskQueueBulkRealTimeStatisticsInstance
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(): TaskQueueBulkRealTimeStatisticsInstance
+    public function create(?array $body = null): TaskQueueBulkRealTimeStatisticsInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
-        $data = $body->toArray();
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
-
+        $response = $this->_create($body);
         return new TaskQueueBulkRealTimeStatisticsInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['workspaceSid']
+        );
+        
+    }
+
+    /**
+     * Create the TaskQueueBulkRealTimeStatisticsInstance with Metadata
+     *
+     
+     * @param ?array $body
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(?array $body = null): ResourceMetadata
+    {
+        $response = $this->_create($body);
+        $resource = new TaskQueueBulkRealTimeStatisticsInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['workspaceSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

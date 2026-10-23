@@ -22,6 +22,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Serialize;
 
 
@@ -55,50 +57,129 @@ class TaskChannelContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the TaskChannelInstance
      *
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the TaskChannelInstance
+     * Delete the TaskChannelInstance with Metadata
      *
-     * @return TaskChannelInstance Fetched TaskChannelInstance
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): TaskChannelInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new TaskChannelInstance(
-            $this->version,
-            $payload,
-            $this->solution['workspaceSid'],
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the TaskChannelInstance
+     * Helper function for Fetch
      *
-     * @param array|Options $options Optional Arguments
-     * @return TaskChannelInstance Updated TaskChannelInstance
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): TaskChannelInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the TaskChannelInstance
+     *
+     
+     
+     * @return TaskChannelInstance Fetched TaskChannelInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): TaskChannelInstance
+    {
+        $response = $this->_fetch();
+        return new TaskChannelInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['workspaceSid'],
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the TaskChannelInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new TaskChannelInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['workspaceSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -109,13 +190,53 @@ class TaskChannelContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the TaskChannelInstance
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return TaskChannelInstance Updated TaskChannelInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): TaskChannelInstance
+    {
+        $response = $this->_update($options);
         return new TaskChannelInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['workspaceSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the TaskChannelInstance with Metadata
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new TaskChannelInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['workspaceSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

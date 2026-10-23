@@ -22,17 +22,17 @@ use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Rest\PreviewIam\Versionless\Organization\AccountList;
 use Twilio\Rest\PreviewIam\Versionless\Organization\UserList;
 use Twilio\Rest\PreviewIam\Versionless\Organization\RoleAssignmentList;
-use Twilio\Rest\PreviewIam\Versionless\Organization\ResourceTypeList;
 
 
 /**
  * @property AccountList $accounts
  * @property UserList $users
  * @property RoleAssignmentList $roleAssignments
- * @property ResourceTypeList $resourceTypes
  * @method \Twilio\Rest\PreviewIam\Versionless\Organization\RoleAssignmentContext roleAssignments(string $sid)
  * @method \Twilio\Rest\PreviewIam\Versionless\Organization\AccountContext accounts(string $accountSid)
  * @method \Twilio\Rest\PreviewIam\Versionless\Organization\UserContext users(string $id)
@@ -42,7 +42,6 @@ class OrganizationContext extends InstanceContext
     protected $_accounts;
     protected $_users;
     protected $_roleAssignments;
-    protected $_resourceTypes;
 
     /**
      * Initialize the OrganizationContext
@@ -67,21 +66,57 @@ class OrganizationContext extends InstanceContext
     }
 
     /**
+     * Helper function for Fetch
+     *
+     
+     * @return Response Fetched Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _fetch(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/scim+json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
+
+    /**
      * Fetch the OrganizationInstance
      *
+     
      * @return OrganizationInstance Fetched OrganizationInstance
      * @throws TwilioException When an HTTP error occurs.
      */
     public function fetch(): OrganizationInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/scim+json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
+        $response = $this->_fetch();
         return new OrganizationInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['organizationSid']
+        );
+        
+    }
+
+    /**
+     * Fetch the OrganizationInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new OrganizationInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['organizationSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
@@ -129,21 +164,6 @@ class OrganizationContext extends InstanceContext
         }
 
         return $this->_roleAssignments;
-    }
-
-    /**
-     * Access the resourceTypes
-     */
-    protected function getResourceTypes(): ResourceTypeList
-    {
-        if (!$this->_resourceTypes) {
-            $this->_resourceTypes = new ResourceTypeList(
-                $this->version,
-                $this->solution['organizationSid']
-            );
-        }
-
-        return $this->_resourceTypes;
     }
 
     /**

@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\InvalidColumnType\ColumnValuesRequired;
 use Doctrine\DBAL\Platforms\Keywords\KeywordList;
 use Doctrine\DBAL\Platforms\Keywords\MySQLKeywords;
+use Doctrine\DBAL\Platforms\MySQL\MySQLMetadataProvider;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use Doctrine\DBAL\Schema\Index;
 use Doctrine\DBAL\Schema\MySQLSchemaManager;
@@ -15,6 +16,7 @@ use Doctrine\DBAL\Schema\Name\UnquotedIdentifierFolding;
 use Doctrine\DBAL\Schema\TableDiff;
 use Doctrine\DBAL\SQL\Builder\DefaultSelectSQLBuilder;
 use Doctrine\DBAL\SQL\Builder\SelectSQLBuilder;
+use Doctrine\DBAL\SQL\Parser;
 use Doctrine\DBAL\TransactionIsolationLevel;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\Deprecations\Deprecation;
@@ -214,7 +216,7 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
      */
     public function getBooleanTypeDeclarationSQL(array $column): string
     {
-        return 'TINYINT(1)';
+        return 'TINYINT';
     }
 
     /**
@@ -364,7 +366,7 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
         $queryParts = [];
 
         foreach ($diff->getAddedColumns() as $column) {
-            $columnProperties = array_merge($column->toArray(), [
+            $columnProperties = array_merge($column->toArray(true), [
                 'comment' => $column->getComment(),
             ]);
 
@@ -381,7 +383,7 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
         foreach ($diff->getChangedColumns() as $columnDiff) {
             $newColumn = $columnDiff->getNewColumn();
 
-            $newColumnProperties = array_merge($newColumn->toArray(), [
+            $newColumnProperties = array_merge($newColumn->toArray(true), [
                 'comment' => $newColumn->getComment(),
             ]);
 
@@ -393,7 +395,6 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
 
         $droppedIndexes = $this->indexIndexesByLowerCaseName($diff->getDroppedIndexes());
         $addedIndexes   = $this->indexIndexesByLowerCaseName($diff->getAddedIndexes());
-        $diffModified   = false;
 
         $noLongerPrimaryKeyColumns = [];
 
@@ -466,7 +467,7 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
             $sql = array_merge($sql, $this->getPreAlterTableAlterPrimaryKeySQL($diff, $droppedIndex));
 
             foreach ($diff->getAddedIndexes() as $addedIndex) {
-                if ($droppedIndex->getColumns() !== $addedIndex->getColumns()) {
+                if ($droppedIndex->getUnquotedColumns() !== $addedIndex->getUnquotedColumns()) {
                     continue;
                 }
 
@@ -535,7 +536,7 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
             $column->setAutoincrement(false);
 
             $sql[] = 'ALTER TABLE ' . $tableNameSQL . ' MODIFY ' .
-                $this->getColumnDeclarationSQL($column->getQuotedName($this), $column->toArray());
+                $this->getColumnDeclarationSQL($column->getQuotedName($this), $column->toArray(true));
 
             // original autoincrement information might be needed later on by other parts of the table alteration
             $column->setAutoincrement(true);
@@ -562,11 +563,9 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
         $primaryKeyColumns = [];
 
         foreach ($primaryKey->getColumns() as $columnName) {
-            if (! $table->hasColumn($columnName)) {
-                continue;
+            if ($table->hasColumn($columnName)) {
+                $primaryKeyColumns[] = $table->getColumn($columnName);
             }
-
-            $primaryKeyColumns[] = $table->getColumn($columnName);
         }
 
         if (count($primaryKeyColumns) === 0) {
@@ -594,7 +593,7 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
                 $column->setAutoincrement(false);
 
                 $sql[] = 'ALTER TABLE ' . $tableNameSQL . ' MODIFY ' .
-                    $this->getColumnDeclarationSQL($column->getQuotedName($this), $column->toArray());
+                    $this->getColumnDeclarationSQL($column->getQuotedName($this), $column->toArray(true));
 
                 // Restore the autoincrement attribute as it might be needed later on
                 // by other parts of the table alteration.
@@ -873,6 +872,11 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
         return true;
     }
 
+    public function createMetadataProvider(Connection $connection): MySQLMetadataProvider
+    {
+        return new MySQLMetadataProvider($connection, $this);
+    }
+
     public function createSchemaManager(Connection $connection): MySQLSchemaManager
     {
         return new MySQLSchemaManager($connection, $this);
@@ -919,5 +923,10 @@ SQL;
         $conditions[] = "t.TABLE_TYPE = 'BASE TABLE'";
 
         return $sql . ' WHERE ' . implode(' AND ', $conditions);
+    }
+
+    public function createSQLParser(): Parser
+    {
+        return new Parser(true);
     }
 }

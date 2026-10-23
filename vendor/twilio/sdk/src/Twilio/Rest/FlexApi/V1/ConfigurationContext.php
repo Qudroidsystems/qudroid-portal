@@ -22,6 +22,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class ConfigurationContext extends InstanceContext
@@ -44,15 +46,15 @@ class ConfigurationContext extends InstanceContext
     }
 
     /**
-     * Fetch the ConfigurationInstance
+     * Helper function for Fetch
      *
      * @param array|Options $options Optional Arguments
-     * @return ConfigurationInstance Fetched ConfigurationInstance
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(array $options = []): ConfigurationInstance
+    private function _fetch(array $options = []): Response
     {
-
+        
         $options = new Values($options);
 
         $params = Values::of([
@@ -61,31 +63,100 @@ class ConfigurationContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, $params, [], $headers);
+        return $this->version->handleRequest('GET', $this->uri, $params, [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the ConfigurationInstance
+     *
+     * @param array|Options $options Optional Arguments
+     * @return ConfigurationInstance Fetched ConfigurationInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(array $options = []): ConfigurationInstance
+    {
+        $response = $this->_fetch($options);
         return new ConfigurationInstance(
             $this->version,
-            $payload
+            $response->getContent()
+        );
+        
+    }
+
+    /**
+     * Fetch the ConfigurationInstance with Metadata
+     *
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_fetch($options);
+        $resource = new ConfigurationInstance(
+                        $this->version,
+                        $response->getContent()
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
+     * Helper function for Update
+     *
+     * @param ?array $body
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(?array $body = null): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
+        $data = $body ? $body->toArray() : [];
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
+
+    /**
      * Update the ConfigurationInstance
      *
+     * @param ?array $body
      * @return ConfigurationInstance Updated ConfigurationInstance
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(): ConfigurationInstance
+    public function update(?array $body = null): ConfigurationInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
-        $data = $body->toArray();
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
-
+        $response = $this->_update($body);
         return new ConfigurationInstance(
             $this->version,
-            $payload
+            $response->getContent()
+        );
+        
+    }
+
+    /**
+     * Update the ConfigurationInstance with Metadata
+     *
+     * @param ?array $body
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(?array $body = null): ResourceMetadata
+    {
+        $response = $this->_update($body);
+        $resource = new ConfigurationInstance(
+                        $this->version,
+                        $response->getContent()
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

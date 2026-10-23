@@ -18,9 +18,13 @@
 namespace Twilio\Rest\Accounts\V1;
 
 use Twilio\Exceptions\TwilioException;
+use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
+use Twilio\Serialize;
 
 
 class AuthTokenPromotionContext extends InstanceContext
@@ -43,20 +47,62 @@ class AuthTokenPromotionContext extends InstanceContext
     }
 
     /**
+     * Helper function for Update
+     *
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
+        $options = new Values($options);
+
+        $data = Values::of([
+            'SuppressEmailNotification' =>
+                Serialize::booleanToString($options['suppressEmailNotification']),
+        ]);
+
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
+
+    /**
      * Update the AuthTokenPromotionInstance
      *
+     * @param array|Options $options Optional Arguments
      * @return AuthTokenPromotionInstance Updated AuthTokenPromotionInstance
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(): AuthTokenPromotionInstance
+    public function update(array $options = []): AuthTokenPromotionInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], [], $headers);
-
+        $response = $this->_update($options);
         return new AuthTokenPromotionInstance(
             $this->version,
-            $payload
+            $response->getContent()
+        );
+        
+    }
+
+    /**
+     * Update the AuthTokenPromotionInstance with Metadata
+     *
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new AuthTokenPromotionInstance(
+                        $this->version,
+                        $response->getContent()
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

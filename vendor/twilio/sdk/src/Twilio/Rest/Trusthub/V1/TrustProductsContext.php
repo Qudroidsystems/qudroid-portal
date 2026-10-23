@@ -23,6 +23,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Rest\Trusthub\V1\TrustProducts\TrustProductsChannelEndpointAssignmentList;
 use Twilio\Rest\Trusthub\V1\TrustProducts\TrustProductsEvaluationsList;
 use Twilio\Rest\Trusthub\V1\TrustProducts\TrustProductsEntityAssignmentsList;
@@ -65,49 +67,120 @@ class TrustProductsContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the TrustProductsInstance
      *
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the TrustProductsInstance
+     * Delete the TrustProductsInstance with Metadata
      *
-     * @return TrustProductsInstance Fetched TrustProductsInstance
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): TrustProductsInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new TrustProductsInstance(
-            $this->version,
-            $payload,
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the TrustProductsInstance
+     * Helper function for Fetch
      *
-     * @param array|Options $options Optional Arguments
-     * @return TrustProductsInstance Updated TrustProductsInstance
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): TrustProductsInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the TrustProductsInstance
+     *
+     
+     * @return TrustProductsInstance Fetched TrustProductsInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): TrustProductsInstance
+    {
+        $response = $this->_fetch();
+        return new TrustProductsInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the TrustProductsInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new TrustProductsInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -122,12 +195,49 @@ class TrustProductsContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the TrustProductsInstance
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return TrustProductsInstance Updated TrustProductsInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): TrustProductsInstance
+    {
+        $response = $this->_update($options);
         return new TrustProductsInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the TrustProductsInstance with Metadata
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new TrustProductsInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

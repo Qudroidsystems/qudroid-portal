@@ -21,6 +21,11 @@ use Twilio\ListResource;
 use Twilio\Stream;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ArrayMetadata;
+use Twilio\Metadata\PageMetadata;
+use Twilio\Metadata\ResourceMetadata;
+use Twilio\Metadata\StreamMetadata;
 
 
 class AuthRegistrationsCredentialListMappingList extends ListResource
@@ -48,35 +53,76 @@ class AuthRegistrationsCredentialListMappingList extends ListResource
             $domainSid,
         
         ];
-
         $this->uri = '/Accounts/' . \rawurlencode($accountSid)
         .'/SIP/Domains/' . \rawurlencode($domainSid)
         .'/Auth/Registrations/CredentialListMappings.json';
     }
 
     /**
-     * Create the AuthRegistrationsCredentialListMappingInstance
+     * Helper function for Create
      *
+     
      * @param string $credentialListSid The SID of the CredentialList resource to map to the SIP domain.
-     * @return AuthRegistrationsCredentialListMappingInstance Created AuthRegistrationsCredentialListMappingInstance
+     
+     * @return Response Created Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(string $credentialListSid): AuthRegistrationsCredentialListMappingInstance
+    private function _create(string $credentialListSid): Response
     {
-
+        
         $data = Values::of([
             'CredentialListSid' =>
                 $credentialListSid,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
+    }
 
+    /**
+     * Create the AuthRegistrationsCredentialListMappingInstance
+     *
+     
+     * @param string $credentialListSid The SID of the CredentialList resource to map to the SIP domain.
+     
+     * @return AuthRegistrationsCredentialListMappingInstance Created AuthRegistrationsCredentialListMappingInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function create(string $credentialListSid): AuthRegistrationsCredentialListMappingInstance
+    {
+        $response = $this->_create( $credentialListSid);
         return new AuthRegistrationsCredentialListMappingInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['accountSid'],
             $this->solution['domainSid']
+        );
+        
+    }
+
+    /**
+     * Create the AuthRegistrationsCredentialListMappingInstance with Metadata
+     *
+     
+     * @param string $credentialListSid The SID of the CredentialList resource to map to the SIP domain.
+     
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(string $credentialListSid): ResourceMetadata
+    {
+        $response = $this->_create( $credentialListSid);
+        $resource = new AuthRegistrationsCredentialListMappingInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['domainSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
@@ -86,6 +132,7 @@ class AuthRegistrationsCredentialListMappingList extends ListResource
      * Unlike stream(), this operation is eager and will load `limit` records into
      * memory before returning.
      *
+     
      * @param int $limit Upper limit for the number of records to return. read()
      *                   guarantees to never return more than limit.  Default is no
      *                   limit
@@ -99,6 +146,33 @@ class AuthRegistrationsCredentialListMappingList extends ListResource
     public function read(?int $limit = null, $pageSize = null): array
     {
         return \iterator_to_array($this->stream($limit, $pageSize), false);
+    }
+
+    /**
+     * Reads AuthRegistrationsCredentialListMappingInstance records from the API as a list
+     * Unlike stream(), this operation is eager and will load `limit` records into
+     * memory before returning.
+     *
+     
+     * @param int $limit Upper limit for the number of records to return. read()
+     *                   guarantees to never return more than limit.  Default is no
+     *                   limit
+     * @param mixed $pageSize Number of records to fetch per request, when not set
+     *                        will use the default value of 50 records.  If no
+     *                        page_size is defined but a limit is defined, read()
+     *                        will attempt to read the limit with the most
+     *                        efficient page size, i.e. min(limit, 1000)
+     * @return ArrayMetadata Array of results along with metadata
+     */
+    public function readWithMetadata(?int $limit = null, $pageSize = null): ArrayMetadata
+    {
+        $streamWithMetadata = $this->streamWithMetadata($limit, $pageSize);
+        $readResponse = \iterator_to_array($streamWithMetadata, false);
+        return new ArrayMetadata(
+            $readResponse,
+            $streamWithMetadata->getStatusCode(),
+            $streamWithMetadata->getHeaders()
+        );
     }
 
     /**
@@ -129,6 +203,64 @@ class AuthRegistrationsCredentialListMappingList extends ListResource
     }
 
     /**
+     * Streams AuthRegistrationsCredentialListMappingInstance records from the API as a generator stream and returns result with Metadata
+     * This operation lazily loads records as efficiently as possible until the
+     * limit
+     * is reached.
+     * The results are returned as a generator, so this operation is memory
+     * efficient.
+     *
+     * @param int $limit Upper limit for the number of records to return. stream()
+     *                   guarantees to never return more than limit.  Default is no
+     *                   limit
+     * @param mixed $pageSize Number of records to fetch per request, when not set
+     *                        will use the default value of 50 records.  If no
+     *                        page_size is defined but a limit is defined, stream()
+     *                        will attempt to read the limit with the most
+     *                        efficient page size, i.e. min(limit, 1000)
+     * @return StreamMetadata stream of results with metadata
+     */
+    public function streamWithMetadata(?int $limit = null, $pageSize = null): StreamMetadata
+    {
+        $limits = $this->version->readLimits($limit, $pageSize);
+
+        $pageWithMetadata = $this->pageWithMetadata($limits['pageSize']);
+
+        $stream = $this->version->stream($pageWithMetadata->getPage(), $limits['limit'], $limits['pageLimit']);
+
+        return new StreamMetadata(
+            $stream,
+            $pageWithMetadata->getStatusCode(),
+            $pageWithMetadata->getHeaders()
+        );
+    }
+
+    /**
+     * Helper function for Page
+     *
+     * @param mixed $pageSize Number of records to return, defaults to 50
+     * @param string $pageToken PageToken provided by the API
+     * @param mixed $pageNumber Page Number, this value is simply for client state
+     * @return Response Paged Response
+     */
+    private function _page(
+        $pageSize = Values::NONE,
+        string $pageToken = Values::NONE,
+        $pageNumber = Values::NONE
+    ): Response
+    {
+
+        $params = Values::of([
+            'PageToken' => $pageToken,
+            'Page' => $pageNumber,
+            'PageSize' => $pageSize,
+        ]);
+
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json']);
+        return $this->version->page('GET', $this->uri, $params, [], $headers);
+    }
+
+    /**
      * Retrieve a single page of AuthRegistrationsCredentialListMappingInstance records from the API.
      * Request is executed immediately
      *
@@ -143,17 +275,35 @@ class AuthRegistrationsCredentialListMappingList extends ListResource
         $pageNumber = Values::NONE
     ): AuthRegistrationsCredentialListMappingPage
     {
-
-        $params = Values::of([
-            'PageToken' => $pageToken,
-            'Page' => $pageNumber,
-            'PageSize' => $pageSize,
-        ]);
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json']);
-        $response = $this->version->page('GET', $this->uri, $params, [], $headers);
+        $response = $this->_page( $pageSize, $pageToken, $pageNumber);
 
         return new AuthRegistrationsCredentialListMappingPage($this->version, $response, $this->solution);
+    }
+
+    /**
+     * Retrieve a single page of AuthRegistrationsCredentialListMappingInstance records with metadata
+     * Request is executed immediately
+     *
+     * @param mixed $pageSize Number of records to return, defaults to 50
+     * @param string $pageToken PageToken provided by the API
+     * @param mixed $pageNumber Page Number, this value is simply for client state
+     * @return PageMetadata of AuthRegistrationsCredentialListMappingInstance
+     */
+    public function pageWithMetadata(
+        $pageSize = Values::NONE,
+        string $pageToken = Values::NONE,
+        $pageNumber = Values::NONE
+    ): PageMetadata
+    {
+        $response = $this->_page( $pageSize, $pageToken, $pageNumber);
+
+        $resource =  new AuthRegistrationsCredentialListMappingPage($this->version, $response, $this->solution);
+
+        return new PageMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
     }
 
     /**

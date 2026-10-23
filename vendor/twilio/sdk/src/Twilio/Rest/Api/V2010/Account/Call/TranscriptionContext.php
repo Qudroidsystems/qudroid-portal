@@ -21,6 +21,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class TranscriptionContext extends InstanceContext
@@ -58,29 +60,75 @@ class TranscriptionContext extends InstanceContext
     }
 
     /**
-     * Update the TranscriptionInstance
+     * Helper function for Update
      *
+     
+     
      * @param string $status
-     * @return TranscriptionInstance Updated TranscriptionInstance
+     
+     * @return Response Updated Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(string $status): TranscriptionInstance
+    private function _update(string $status): Response
     {
-
+        
         $data = Values::of([
             'Status' =>
                 $status,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the TranscriptionInstance
+     *
+     
+     
+     * @param string $status
+     
+     * @return TranscriptionInstance Updated TranscriptionInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(string $status): TranscriptionInstance
+    {
+        $response = $this->_update( $status);
         return new TranscriptionInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['accountSid'],
             $this->solution['callSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the TranscriptionInstance with Metadata
+     *
+     
+     
+     * @param string $status
+     
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(string $status): ResourceMetadata
+    {
+        $response = $this->_update( $status);
+        $resource = new TranscriptionInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['callSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

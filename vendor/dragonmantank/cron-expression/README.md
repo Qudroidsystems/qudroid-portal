@@ -1,7 +1,7 @@
 PHP Cron Expression Parser
 ==========================
 
-[![Latest Stable Version](https://poser.pugx.org/dragonmantank/cron-expression/v/stable.png)](https://packagist.org/packages/dragonmantank/cron-expression) [![Total Downloads](https://poser.pugx.org/dragonmantank/cron-expression/downloads.png)](https://packagist.org/packages/dragonmantank/cron-expression) [![Tests](https://github.com/dragonmantank/cron-expression/actions/workflows/tests.yml/badge.svg)](https://github.com/dragonmantank/cron-expression/actions/workflows/tests.yml) [![StyleCI](https://github.styleci.io/repos/103715337/shield?branch=master)](https://github.styleci.io/repos/103715337)
+[![Latest Stable Version](https://poser.pugx.org/dragonmantank/cron-expression/v)](https://packagist.org/packages/dragonmantank/cron-expression) [![Total Downloads](https://poser.pugx.org/dragonmantank/cron-expression/downloads)](https://packagist.org/packages/dragonmantank/cron-expression) [![Tests](https://github.com/dragonmantank/cron-expression/actions/workflows/tests.yml/badge.svg)](https://github.com/dragonmantank/cron-expression/actions/workflows/tests.yml) [![StyleCI](https://github.styleci.io/repos/103715337/shield?branch=master)](https://github.styleci.io/repos/103715337)
 
 The PHP cron expression parser can parse a CRON expression, determine if it is
 due to run, calculate the next run date of the expression, and calculate the previous
@@ -126,6 +126,7 @@ Projects that Use cron-expression
 =================================
 * Part of the [Laravel Framework](https://github.com/laravel/framework/)
 * Available as a [Symfony Bundle - setono/cron-expression-bundle](https://github.com/Setono/CronExpressionBundle)
+* Used in [CakePHP QueueScheduler plugin](https://github.com/dereuromark/cakephp-queue-scheduler)
 * Framework agnostic, PHP-based job scheduler - [Crunz](https://github.com/crunzphp/crunz)
 * Framework agnostic job scheduler - with locks, parallelism, per-second scheduling and more - [orisai/scheduler](https://github.com/orisai/scheduler)
 * Explain expression in English (and other languages) with [orisai/cron-expression-explainer](https://github.com/orisai/cron-expression-explainer)

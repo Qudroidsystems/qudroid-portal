@@ -20,6 +20,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class InteractionTransferList extends ListResource
@@ -47,30 +49,72 @@ class InteractionTransferList extends ListResource
             $channelSid,
         
         ];
-
         $this->uri = '/Interactions/' . \rawurlencode($interactionSid)
         .'/Channels/' . \rawurlencode($channelSid)
         .'/Transfers';
     }
 
     /**
+     * Helper function for Create
+     *
+     
+     
+     * @param ?array $body
+     * @return Response Created Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _create(?array $body = null): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
+        $data = $body ? $body->toArray() : [];
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
+    }
+
+    /**
      * Create the InteractionTransferInstance
      *
+     
+     
+     * @param ?array $body
      * @return InteractionTransferInstance Created InteractionTransferInstance
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(): InteractionTransferInstance
+    public function create(?array $body = null): InteractionTransferInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
-        $data = $body->toArray();
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
-
+        $response = $this->_create($body);
         return new InteractionTransferInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['interactionSid'],
             $this->solution['channelSid']
+        );
+        
+    }
+
+    /**
+     * Create the InteractionTransferInstance with Metadata
+     *
+     
+     
+     * @param ?array $body
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(?array $body = null): ResourceMetadata
+    {
+        $response = $this->_create($body);
+        $resource = new InteractionTransferInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['interactionSid'],
+                        $this->solution['channelSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

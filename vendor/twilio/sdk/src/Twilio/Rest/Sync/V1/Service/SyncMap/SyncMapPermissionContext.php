@@ -21,6 +21,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Serialize;
 
 
@@ -59,53 +61,143 @@ class SyncMapPermissionContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the SyncMapPermissionInstance
      *
+     
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the SyncMapPermissionInstance
+     * Delete the SyncMapPermissionInstance with Metadata
      *
-     * @return SyncMapPermissionInstance Fetched SyncMapPermissionInstance
+     
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): SyncMapPermissionInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new SyncMapPermissionInstance(
-            $this->version,
-            $payload,
-            $this->solution['serviceSid'],
-            $this->solution['mapSid'],
-            $this->solution['identity']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the SyncMapPermissionInstance
+     * Helper function for Fetch
      *
-     * @param bool $read Whether the identity can read the Sync Map and its Items. Default value is `false`.
-     * @param bool $write Whether the identity can create, update, and delete Items in the Sync Map. Default value is `false`.
-     * @param bool $manage Whether the identity can delete the Sync Map. Default value is `false`.
-     * @return SyncMapPermissionInstance Updated SyncMapPermissionInstance
+     
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(bool $read, bool $write, bool $manage): SyncMapPermissionInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the SyncMapPermissionInstance
+     *
+     
+     
+     
+     * @return SyncMapPermissionInstance Fetched SyncMapPermissionInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): SyncMapPermissionInstance
+    {
+        $response = $this->_fetch();
+        return new SyncMapPermissionInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['serviceSid'],
+            $this->solution['mapSid'],
+            $this->solution['identity']
+        );
+        
+    }
+
+    /**
+     * Fetch the SyncMapPermissionInstance with Metadata
+     *
+     
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new SyncMapPermissionInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['mapSid'],
+                        $this->solution['identity']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     
+     * @param bool $read Whether the identity can read the Sync Map and its Items. Default value is `false`.
+     
+     * @param bool $write Whether the identity can create, update, and delete Items in the Sync Map. Default value is `false`.
+     
+     * @param bool $manage Whether the identity can delete the Sync Map. Default value is `false`.
+     
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(bool $read, bool $write, bool $manage): Response
+    {
+        
         $data = Values::of([
             'Read' =>
                 Serialize::booleanToString($read),
@@ -116,14 +208,67 @@ class SyncMapPermissionContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the SyncMapPermissionInstance
+     *
+     
+     
+     
+     * @param bool $read Whether the identity can read the Sync Map and its Items. Default value is `false`.
+     
+     * @param bool $write Whether the identity can create, update, and delete Items in the Sync Map. Default value is `false`.
+     
+     * @param bool $manage Whether the identity can delete the Sync Map. Default value is `false`.
+     
+     * @return SyncMapPermissionInstance Updated SyncMapPermissionInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(bool $read, bool $write, bool $manage): SyncMapPermissionInstance
+    {
+        $response = $this->_update( $read,  $write,  $manage);
         return new SyncMapPermissionInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['serviceSid'],
             $this->solution['mapSid'],
             $this->solution['identity']
+        );
+        
+    }
+
+    /**
+     * Update the SyncMapPermissionInstance with Metadata
+     *
+     
+     
+     
+     * @param bool $read Whether the identity can read the Sync Map and its Items. Default value is `false`.
+     
+     * @param bool $write Whether the identity can create, update, and delete Items in the Sync Map. Default value is `false`.
+     
+     * @param bool $manage Whether the identity can delete the Sync Map. Default value is `false`.
+     
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(bool $read, bool $write, bool $manage): ResourceMetadata
+    {
+        $response = $this->_update( $read,  $write,  $manage);
+        $resource = new SyncMapPermissionInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['mapSid'],
+                        $this->solution['identity']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

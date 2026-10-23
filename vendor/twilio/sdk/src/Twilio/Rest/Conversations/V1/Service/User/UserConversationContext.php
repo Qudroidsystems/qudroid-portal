@@ -22,6 +22,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Serialize;
 
 
@@ -60,51 +62,138 @@ class UserConversationContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the UserConversationInstance
      *
+     
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the UserConversationInstance
+     * Delete the UserConversationInstance with Metadata
      *
-     * @return UserConversationInstance Fetched UserConversationInstance
+     
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): UserConversationInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new UserConversationInstance(
-            $this->version,
-            $payload,
-            $this->solution['chatServiceSid'],
-            $this->solution['userSid'],
-            $this->solution['conversationSid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the UserConversationInstance
+     * Helper function for Fetch
      *
-     * @param array|Options $options Optional Arguments
-     * @return UserConversationInstance Updated UserConversationInstance
+     
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): UserConversationInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the UserConversationInstance
+     *
+     
+     
+     
+     * @return UserConversationInstance Fetched UserConversationInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): UserConversationInstance
+    {
+        $response = $this->_fetch();
+        return new UserConversationInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['chatServiceSid'],
+            $this->solution['userSid'],
+            $this->solution['conversationSid']
+        );
+        
+    }
+
+    /**
+     * Fetch the UserConversationInstance with Metadata
+     *
+     
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new UserConversationInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['chatServiceSid'],
+                        $this->solution['userSid'],
+                        $this->solution['conversationSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -117,14 +206,57 @@ class UserConversationContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the UserConversationInstance
+     *
+     
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return UserConversationInstance Updated UserConversationInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): UserConversationInstance
+    {
+        $response = $this->_update($options);
         return new UserConversationInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['chatServiceSid'],
             $this->solution['userSid'],
             $this->solution['conversationSid']
+        );
+        
+    }
+
+    /**
+     * Update the UserConversationInstance with Metadata
+     *
+     
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new UserConversationInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['chatServiceSid'],
+                        $this->solution['userSid'],
+                        $this->solution['conversationSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

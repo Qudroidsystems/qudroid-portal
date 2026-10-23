@@ -479,16 +479,16 @@
         },
         {
             "name": "composer/semver",
-            "version": "3.5.1",
+            "version": "3.5.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/composer/semver.git",
-                "reference": "528948210cc46f967a4b98e83b19e76f2b504993"
+                "reference": "9dfce66f1e97360ea5e6d3e38ab14277e4cc591e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/composer/semver/zipball/528948210cc46f967a4b98e83b19e76f2b504993",
-                "reference": "528948210cc46f967a4b98e83b19e76f2b504993",
+                "url": "https://api.github.com/repos/composer/semver/zipball/9dfce66f1e97360ea5e6d3e38ab14277e4cc591e",
+                "reference": "9dfce66f1e97360ea5e6d3e38ab14277e4cc591e",
                 "shasum": ""
             },
             "require": {
@@ -540,7 +540,7 @@
             "support": {
                 "irc": "ircs://irc.libera.chat:6697/composer",
                 "issues": "https://github.com/composer/semver/issues",
-                "source": "https://github.com/composer/semver/tree/3.5.1"
+                "source": "https://github.com/composer/semver/tree/3.5.2"
             },
             "funding": [
                 {
@@ -552,7 +552,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-10-05T13:12:12+00:00"
+            "time": "2026-10-22T15:37:26+00:00"
         },
         {
             "name": "dasprid/enum",
@@ -3276,31 +3276,31 @@
         },
         {
             "name": "maennchen/zipstream-php",
-            "version": "3.2.2",
+            "version": "3.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/maennchen/ZipStream-PHP.git",
-                "reference": "77bebeb4c6c340bb3c11c843b2cffd8bbfde4d5e"
+                "reference": "aeadcf5c412332eb426c0f9b4485f6accba2a99f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/maennchen/ZipStream-PHP/zipball/77bebeb4c6c340bb3c11c843b2cffd8bbfde4d5e",
-                "reference": "77bebeb4c6c340bb3c11c843b2cffd8bbfde4d5e",
+                "url": "https://api.github.com/repos/maennchen/ZipStream-PHP/zipball/aeadcf5c412332eb426c0f9b4485f6accba2a99f",
+                "reference": "aeadcf5c412332eb426c0f9b4485f6accba2a99f",
                 "shasum": ""
             },
             "require": {
                 "ext-mbstring": "*",
                 "ext-zlib": "*",
-                "php-64bit": "^8.3"
+                "php-64bit": "^8.2"
             },
             "require-dev": {
                 "brianium/paratest": "^7.7",
                 "ext-zip": "*",
-                "friendsofphp/php-cs-fixer": "^3.86",
+                "friendsofphp/php-cs-fixer": "^3.16",
                 "guzzlehttp/guzzle": "^7.5",
                 "mikey179/vfsstream": "^1.6",
                 "php-coveralls/php-coveralls": "^2.5",
-                "phpunit/phpunit": "^12.0",
+                "phpunit/phpunit": "^11.0",
                 "vimeo/psalm": "^6.0"
             },
             "suggest": {
@@ -3342,7 +3342,7 @@
             ],
             "support": {
                 "issues": "https://github.com/maennchen/ZipStream-PHP/issues",
-                "source": "https://github.com/maennchen/ZipStream-PHP/tree/3.2.2"
+                "source": "https://github.com/maennchen/ZipStream-PHP/tree/3.1.2"
             },
             "funding": [
                 {
@@ -3350,7 +3350,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-04-11T18:38:28+00:00"
+            "time": "2025-01-27T12:07:53+00:00"
         },
         {
             "name": "markbaker/complex",
@@ -5918,24 +5918,24 @@
         },
         {
             "name": "rockett/pipeline",
-            "version": "4.1.0",
+            "version": "3.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mikerockett/pipeline.git",
-                "reference": "0496b00fc04e8f8468ce6ab4a9f6cee04a1e4ee5"
+                "reference": "4312c26c5ca6ca575ede85135375088ba784873a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mikerockett/pipeline/zipball/0496b00fc04e8f8468ce6ab4a9f6cee04a1e4ee5",
-                "reference": "0496b00fc04e8f8468ce6ab4a9f6cee04a1e4ee5",
+                "url": "https://api.github.com/repos/mikerockett/pipeline/zipball/4312c26c5ca6ca575ede85135375088ba784873a",
+                "reference": "4312c26c5ca6ca575ede85135375088ba784873a",
                 "shasum": ""
             },
             "require": {
-                "php": "^8.3"
+                "php": ">=8.1"
             },
             "require-dev": {
-                "nunomaduro/collision": "^8.0",
-                "pestphp/pest": "^4.1"
+                "nunomaduro/collision": "^6.4",
+                "orchestra/testbench": "^7.21"
             },
             "type": "library",
             "autoload": {
@@ -5974,44 +5974,43 @@
             ],
             "support": {
                 "issues": "https://github.com/mikerockett/pipeline/issues",
-                "source": "https://github.com/mikerockett/pipeline/tree/4.1.0"
+                "source": "https://github.com/mikerockett/pipeline/tree/3.0.0"
             },
-            "time": "2025-11-29T11:27:08+00:00"
+            "time": "2023-02-07T06:15:24+00:00"
         },
         {
             "name": "rockett/weasyprint",
-            "version": "v11.2.0",
+            "version": "v10.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mikerockett/weasyprint.git",
-                "reference": "b688a755e9ce102bc8f6169f8c71e35a0a01a65e"
+                "reference": "fdb8f56c0ce56f0b3f49ad9dbacac8b8fc1becf5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mikerockett/weasyprint/zipball/b688a755e9ce102bc8f6169f8c71e35a0a01a65e",
-                "reference": "b688a755e9ce102bc8f6169f8c71e35a0a01a65e",
+                "url": "https://api.github.com/repos/mikerockett/weasyprint/zipball/fdb8f56c0ce56f0b3f49ad9dbacac8b8fc1becf5",
+                "reference": "fdb8f56c0ce56f0b3f49ad9dbacac8b8fc1becf5",
                 "shasum": ""
             },
             "require": {
                 "composer/semver": "^3.4",
-                "illuminate/support": "^12.0|^13.0",
-                "php": "^8.3",
-                "rockett/pipeline": "^4.1",
-                "symfony/process": "^7.4|^8.0"
+                "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+                "php": "^8.2",
+                "rockett/pipeline": "^3.0|^4.0",
+                "symfony/process": "^6.0|^7.0|^8.0"
             },
             "require-dev": {
-                "carthage-software/mago": "^1.25",
-                "friendsofphp/php-cs-fixer": "^3.91",
+                "johnbacon/stout": "^1.13",
                 "nunomaduro/collision": "^8.0",
-                "orchestra/testbench": "^10.0|^11.0",
-                "pestphp/pest": "^4.1",
+                "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
+                "pestphp/pest": "^3.0",
                 "smalot/pdfparser": "^2.7"
             },
             "type": "library",
             "extra": {
                 "laravel": {
                     "providers": [
-                        "WeasyPrint\\Integration\\Laravel\\WeasyPrintServiceProvider"
+                        "WeasyPrint\\Provider"
                     ]
                 }
             },
@@ -6030,23 +6029,12 @@
                     "email": "os@rockett.pw"
                 }
             ],
-            "description": "A feature-rich WeasyPrint wrapper for generating PDFs from HTML and CSS, with support for PDF/A, PDF/UA, attachments, and optional Laravel integration.",
-            "keywords": [
-                "WeasyPrint",
-                "css",
-                "document",
-                "html-to-pdf",
-                "laravel",
-                "pdf",
-                "pdf-a",
-                "pdf-ua",
-                "print"
-            ],
+            "description": "A feature-rich Laravel wrapper for the WeasyPrint Document Factory.",
             "support": {
                 "issues": "https://github.com/mikerockett/weasyprint/issues",
-                "source": "https://github.com/mikerockett/weasyprint/tree/v11.2.0"
+                "source": "https://github.com/mikerockett/weasyprint/tree/v10.7"
             },
-            "time": "2026-09-08T18:52:29+00:00"
+            "time": "2026-03-24T16:22:58+00:00"
         },
         {
             "name": "sabberworm/php-css-parser",
@@ -9769,16 +9757,16 @@
         },
         {
             "name": "laravel/pint",
-            "version": "v1.32.1",
+            "version": "v1.30.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/pint.git",
-                "reference": "006bd7825eb01daf92959d060b89cd9514fe4253"
+                "reference": "a96cb6eee2961905d2fce7207aefb80945bf6b28"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/pint/zipball/006bd7825eb01daf92959d060b89cd9514fe4253",
-                "reference": "006bd7825eb01daf92959d060b89cd9514fe4253",
+                "url": "https://api.github.com/repos/laravel/pint/zipball/a96cb6eee2961905d2fce7207aefb80945bf6b28",
+                "reference": "a96cb6eee2961905d2fce7207aefb80945bf6b28",
                 "shasum": ""
             },
             "require": {
@@ -9786,19 +9774,19 @@
                 "ext-mbstring": "*",
                 "ext-tokenizer": "*",
                 "ext-xml": "*",
-                "php": "^8.3.0"
+                "php": "^8.2.0"
             },
             "require-dev": {
                 "composer/semver": "^3.4.4",
-                "friendsofphp/php-cs-fixer": "^3.95.25",
-                "illuminate/view": "^13.31.0",
-                "larastan/larastan": "^3.11.0",
-                "laravel-zero/framework": "^13.0.0",
+                "friendsofphp/php-cs-fixer": "^3.95.18",
+                "illuminate/view": "^12.65.0",
+                "larastan/larastan": "^3.10.0",
+                "laravel-zero/framework": "^12.1.0",
                 "laravel/agent-detector": "^2.0.2",
-                "laravel/prompts": "^0.3.24",
-                "mockery/mockery": "^1.6.15",
+                "laravel/prompts": "^0.3.22",
+                "mockery/mockery": "^1.6.12",
                 "nunomaduro/termwind": "^2.4.0",
-                "pestphp/pest": "^4.7.8"
+                "pestphp/pest": "^3.8.7"
             },
             "bin": [
                 "builds/pint"
@@ -9835,7 +9823,7 @@
                 "issues": "https://github.com/laravel/pint/issues",
                 "source": "https://github.com/laravel/pint"
             },
-            "time": "2026-09-10T10:47:55+00:00"
+            "time": "2026-08-05T16:47:22+00:00"
         },
         {
             "name": "laravel/sail",
@@ -12622,5 +12610,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

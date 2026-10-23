@@ -8,7 +8,7 @@ use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Platforms\SQLServer;
 use Doctrine\DBAL\Platforms\SQLServerPlatform;
 use Doctrine\DBAL\Result;
-use Doctrine\DBAL\Types\Type;
+use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
 
 use function array_change_key_case;
 use function assert;
@@ -131,7 +131,7 @@ SQL,
             $options['length'] = $length;
         }
 
-        $column = new Column($tableColumn['name'], Type::getType($type), $options);
+        $column = new Column($tableColumn['name'], $type, $options);
 
         if ($tableColumn['default'] !== null) {
             $default = $this->parseDefaultExpression($tableColumn['default']);
@@ -148,7 +148,7 @@ SQL,
         return $column;
     }
 
-    private function parseDefaultExpression(string $value): ?string
+    private function parseDefaultExpression(string $value): string|DefaultExpression|null
     {
         while (preg_match('/^\((.*)\)$/s', $value, $matches) === 1) {
             $value = $matches[1];
@@ -163,7 +163,7 @@ SQL,
         }
 
         if ($value === 'getdate()') {
-            return $this->platform->getCurrentTimestampSQL();
+            return new CurrentTimestamp();
         }
 
         return $value;

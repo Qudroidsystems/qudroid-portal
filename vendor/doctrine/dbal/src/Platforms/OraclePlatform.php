@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\InvalidColumnType\ColumnLengthRequired;
 use Doctrine\DBAL\Platforms\Keywords\KeywordList;
 use Doctrine\DBAL\Platforms\Keywords\OracleKeywords;
+use Doctrine\DBAL\Platforms\Oracle\OracleMetadataProvider;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use Doctrine\DBAL\Schema\Identifier;
 use Doctrine\DBAL\Schema\Index;
@@ -155,31 +156,27 @@ class OraclePlatform extends AbstractPlatform
                ' START WITH ' . $sequence->getInitialValue() .
                ' MINVALUE ' . $sequence->getInitialValue() .
                ' INCREMENT BY ' . $sequence->getAllocationSize() .
-               $this->getSequenceCacheSQL($sequence);
+               $this->getSequenceCacheSQL($sequence->getCacheSize());
     }
 
     public function getAlterSequenceSQL(Sequence $sequence): string
     {
         return 'ALTER SEQUENCE ' . $sequence->getQuotedName($this) .
                ' INCREMENT BY ' . $sequence->getAllocationSize()
-               . $this->getSequenceCacheSQL($sequence);
+               . $this->getSequenceCacheSQL($sequence->getCacheSize());
     }
 
     /**
      * Cache definition for sequences
      */
-    private function getSequenceCacheSQL(Sequence $sequence): string
+    private function getSequenceCacheSQL(?int $cacheSize): string
     {
-        if ($sequence->getCache() === 0) {
+        if ($cacheSize === 0 || $cacheSize === 1) {
             return ' NOCACHE';
         }
 
-        if ($sequence->getCache() === 1) {
-            return ' NOCACHE';
-        }
-
-        if ($sequence->getCache() > 1) {
-            return ' CACHE ' . $sequence->getCache();
+        if ($cacheSize > 1) {
+            return ' CACHE ' . $cacheSize;
         }
 
         return '';
@@ -340,12 +337,10 @@ class OraclePlatform extends AbstractPlatform
             }
 
             if (
-                ! isset($column['autoincrement']) || $column['autoincrement'] === false
+                isset($column['autoincrement']) && $column['autoincrement'] !== false
             ) {
-                continue;
+                $sql = array_merge($sql, $this->getCreateAutoincrementSql($column['name'], $name));
             }
-
-            $sql = array_merge($sql, $this->getCreateAutoincrementSql($column['name'], $name));
         }
 
         foreach ($indexes as $index) {
@@ -582,18 +577,16 @@ SQL,
         $tableNameSQL = $diff->getOldTable()->getQuotedName($this);
 
         foreach ($diff->getAddedColumns() as $column) {
-            $addColumnSQL[] = $this->getColumnDeclarationSQL($column->getQuotedName($this), $column->toArray());
+            $addColumnSQL[] = $this->getColumnDeclarationSQL($column->getQuotedName($this), $column->toArray(true));
             $comment        = $column->getComment();
 
-            if ($comment === '') {
-                continue;
+            if ($comment !== '') {
+                $commentsSQL[] = $this->getCommentOnColumnSQL(
+                    $tableNameSQL,
+                    $column->getQuotedName($this),
+                    $comment,
+                );
             }
-
-            $commentsSQL[] = $this->getCommentOnColumnSQL(
-                $tableNameSQL,
-                $column->getQuotedName($this),
-                $comment,
-            );
         }
 
         if (count($addColumnSQL) > 0) {
@@ -621,7 +614,7 @@ SQL,
             // Oracle only supports binary type columns with variable length.
             // Avoids unnecessary table alteration statements.
             if (
-                $newColumn->getType() instanceof BinaryType &&
+                $this->getColumnType($newColumn) instanceof BinaryType &&
                 $columnDiff->hasFixedChanged() &&
                 $countChangedProperties === 1
             ) {
@@ -634,9 +627,9 @@ SQL,
              * Do not add query part if only comment has changed
              */
             if ($countChangedProperties > ($columnHasChangedComment ? 1 : 0)) {
-                $newColumnProperties = $newColumn->toArray();
+                $newColumnProperties = $newColumn->toArray(true);
 
-                $oldSQL = $this->getColumnDeclarationSQL('', $oldColumn->toArray());
+                $oldSQL = $this->getColumnDeclarationSQL('', $oldColumn->toArray(true));
                 $newSQL = $this->getColumnDeclarationSQL('', $newColumnProperties);
 
                 if ($newSQL !== $oldSQL) {
@@ -649,15 +642,13 @@ SQL,
                 }
             }
 
-            if (! $columnDiff->hasCommentChanged()) {
-                continue;
+            if ($columnDiff->hasCommentChanged()) {
+                $commentsSQL[] = $this->getCommentOnColumnSQL(
+                    $tableNameSQL,
+                    $newColumn->getQuotedName($this),
+                    $newColumn->getComment(),
+                );
             }
-
-            $commentsSQL[] = $this->getCommentOnColumnSQL(
-                $tableNameSQL,
-                $newColumn->getQuotedName($this),
-                $newColumn->getComment(),
-            );
         }
 
         if (count($modifyColumnSQL) > 0) {
@@ -699,7 +690,7 @@ SQL,
                 $notnull = $column['notnull'] ? ' NOT NULL' : ' NULL';
             }
 
-            $typeDecl    = $column['type']->getSQLDeclaration($column, $this);
+            $typeDecl    = $this->getColumnType($column)->getSQLDeclaration($column, $this);
             $declaration = $typeDecl . $default . $notnull;
         }
 
@@ -856,6 +847,11 @@ SQL,
     public function getBlobTypeDeclarationSQL(array $column): string
     {
         return 'BLOB';
+    }
+
+    public function createMetadataProvider(Connection $connection): OracleMetadataProvider
+    {
+        return new OracleMetadataProvider($connection, $this);
     }
 
     public function createSchemaManager(Connection $connection): OracleSchemaManager

@@ -45,7 +45,7 @@ trait BuildsQueries
         $page = 1;
 
         do {
-            $offset = (($page - 1) * $count) + intval($skip);
+            $offset = (($page - 1) * $count) + (int) $skip;
 
             $limit = is_null($remaining) ? $count : min($count, $remaining);
 
@@ -440,7 +440,7 @@ trait BuildsQueries
                     $originalColumn ??= $this->getOriginalColumnNameForCursorPagination($this, $previousColumn);
 
                     $builder->where(
-                        Str::contains($originalColumn, ['(', ')']) ? new Expression($originalColumn) : $originalColumn,
+                        $originalColumn !== $previousColumn && Str::contains($originalColumn, ['(', ')']) ? new Expression($originalColumn) : $originalColumn,
                         '=',
                         $cursor->parameter($previousColumn)
                     );
@@ -462,7 +462,7 @@ trait BuildsQueries
                     $originalColumn = $this->getOriginalColumnNameForCursorPagination($this, $column);
 
                     $secondBuilder->where(
-                        Str::contains($originalColumn, ['(', ')']) ? new Expression($originalColumn) : $originalColumn,
+                        $originalColumn !== $column && Str::contains($originalColumn, ['(', ')']) ? new Expression($originalColumn) : $originalColumn,
                         $direction === 'asc' ? '>' : '<',
                         $cursor->parameter($column)
                     );

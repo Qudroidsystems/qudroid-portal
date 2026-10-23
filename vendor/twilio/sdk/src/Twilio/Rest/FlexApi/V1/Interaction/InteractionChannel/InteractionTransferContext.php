@@ -21,6 +21,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class InteractionTransferContext extends InstanceContext
@@ -58,46 +60,137 @@ class InteractionTransferContext extends InstanceContext
     }
 
     /**
+     * Helper function for Fetch
+     *
+     
+     
+     
+     * @return Response Fetched Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _fetch(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
+
+    /**
      * Fetch the InteractionTransferInstance
      *
+     
+     
+     
      * @return InteractionTransferInstance Fetched InteractionTransferInstance
      * @throws TwilioException When an HTTP error occurs.
      */
     public function fetch(): InteractionTransferInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
+        $response = $this->_fetch();
         return new InteractionTransferInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['interactionSid'],
             $this->solution['channelSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the InteractionTransferInstance with Metadata
+     *
+     
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new InteractionTransferInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['interactionSid'],
+                        $this->solution['channelSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
+     * Helper function for Update
+     *
+     
+     
+     
+     * @param ?array $body
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(?array $body = null): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
+        $data = $body ? $body->toArray() : [];
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
+
+    /**
      * Update the InteractionTransferInstance
      *
+     
+     
+     
+     * @param ?array $body
      * @return InteractionTransferInstance Updated InteractionTransferInstance
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(): InteractionTransferInstance
+    public function update(?array $body = null): InteractionTransferInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/json', 'Accept' => 'application/json' ]);
-        $data = $body->toArray();
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
-
+        $response = $this->_update($body);
         return new InteractionTransferInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['interactionSid'],
             $this->solution['channelSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the InteractionTransferInstance with Metadata
+     *
+     
+     
+     
+     * @param ?array $body
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(?array $body = null): ResourceMetadata
+    {
+        $response = $this->_update($body);
+        $resource = new InteractionTransferInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['interactionSid'],
+                        $this->solution['channelSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

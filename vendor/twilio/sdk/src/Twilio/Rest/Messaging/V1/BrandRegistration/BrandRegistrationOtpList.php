@@ -20,6 +20,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class BrandRegistrationOtpList extends ListResource
@@ -42,27 +44,62 @@ class BrandRegistrationOtpList extends ListResource
             $brandRegistrationSid,
         
         ];
-
         $this->uri = '/a2p/BrandRegistrations/' . \rawurlencode($brandRegistrationSid)
         .'/SmsOtp';
     }
 
     /**
+     * Helper function for Create
+     *
+     
+     * @return Response Created Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _create(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('POST', $this->uri, [], [], $headers, "create");
+    }
+
+    /**
      * Create the BrandRegistrationOtpInstance
      *
+     
      * @return BrandRegistrationOtpInstance Created BrandRegistrationOtpInstance
      * @throws TwilioException When an HTTP error occurs.
      */
     public function create(): BrandRegistrationOtpInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->create('POST', $this->uri, [], [], $headers);
-
+        $response = $this->_create();
         return new BrandRegistrationOtpInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['brandRegistrationSid']
+        );
+        
+    }
+
+    /**
+     * Create the BrandRegistrationOtpInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_create();
+        $resource = new BrandRegistrationOtpInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['brandRegistrationSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

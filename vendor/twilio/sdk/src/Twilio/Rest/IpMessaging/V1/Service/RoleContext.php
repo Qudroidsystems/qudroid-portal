@@ -21,6 +21,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Serialize;
 
 
@@ -54,63 +56,185 @@ class RoleContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the RoleInstance
      *
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the RoleInstance
+     * Delete the RoleInstance with Metadata
      *
-     * @return RoleInstance Fetched RoleInstance
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): RoleInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new RoleInstance(
-            $this->version,
-            $payload,
-            $this->solution['serviceSid'],
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the RoleInstance
+     * Helper function for Fetch
      *
-     * @param string[] $permission 
-     * @return RoleInstance Updated RoleInstance
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $permission): RoleInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the RoleInstance
+     *
+     
+     
+     * @return RoleInstance Fetched RoleInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): RoleInstance
+    {
+        $response = $this->_fetch();
+        return new RoleInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['serviceSid'],
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the RoleInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new RoleInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     * @param string[] $permission 
+     
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $permission): Response
+    {
+        
         $data = Values::of([
             'Permission' =>
                 Serialize::map($permission,function ($e) { return $e; }),
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the RoleInstance
+     *
+     
+     
+     * @param string[] $permission 
+     
+     * @return RoleInstance Updated RoleInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $permission): RoleInstance
+    {
+        $response = $this->_update($permission);
         return new RoleInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['serviceSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the RoleInstance with Metadata
+     *
+     
+     
+     * @param string[] $permission 
+     
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $permission): ResourceMetadata
+    {
+        $response = $this->_update($permission);
+        $resource = new RoleInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

@@ -14,15 +14,19 @@ declare(strict_types=1);
 namespace League\Uri\UriTemplate;
 
 use ArrayAccess;
+use BackedEnum;
 use Closure;
 use Countable;
 use IteratorAggregate;
+use League\Uri\StringCoercionMode;
 use Stringable;
 use Traversable;
 
 use function array_filter;
-use function is_bool;
-use function is_scalar;
+use function array_key_exists;
+use function array_map;
+use function count;
+use function is_array;
 
 use const ARRAY_FILTER_USE_BOTH;
 
@@ -42,10 +46,14 @@ final class VariableBag implements ArrayAccess, Countable, IteratorAggregate
     private array $variables = [];
 
     /**
-     * @param iterable<array-key, InputValue> $variables
+     * @param iterable<array-key, InputValue>|ExtractionResult $variables
      */
-    public function __construct(iterable $variables = [])
+    public function __construct(iterable|ExtractionResult $variables = [])
     {
+        if ($variables instanceof ExtractionResult) {
+            $variables = array_filter($variables->variables(), static fn (array|string|null $value): bool => null !== $value);
+        }
+
         foreach ($variables as $name => $value) {
             $this->assign((string) $name, $value);
         }
@@ -76,7 +84,10 @@ final class VariableBag implements ArrayAccess, Countable, IteratorAggregate
         $this->assign($offset, $value); /* @phpstan-ignore-line */
     }
 
-    public function offsetGet(mixed $offset): mixed
+    /**
+     * @return null|string|array<string>
+     */
+    public function offsetGet(mixed $offset): null|string|array
     {
         return $this->fetch($offset);
     }
@@ -97,6 +108,12 @@ final class VariableBag implements ArrayAccess, Countable, IteratorAggregate
         return [] !== $this->variables;
     }
 
+    public function equals(mixed $value): bool
+    {
+        return $value instanceof self
+            && $this->variables === $value->variables;
+    }
+
     /**
      * Fetches the variable value if none found returns null.
      *
@@ -110,9 +127,9 @@ final class VariableBag implements ArrayAccess, Countable, IteratorAggregate
     /**
      * @param Stringable|InputValue $value
      */
-    public function assign(string $name, Stringable|string|bool|int|float|array|null $value): void
+    public function assign(string $name, BackedEnum|Stringable|string|bool|int|float|array|null $value): void
     {
-        $this->variables[$name] = $this->normalizeValue($value, $name, true);
+        $this->variables[$name] = self::normalizeValue($value, $name, isNestedListAllowed: true);
     }
 
     /**
@@ -120,16 +137,15 @@ final class VariableBag implements ArrayAccess, Countable, IteratorAggregate
      *
      * @throws TemplateCanNotBeExpanded if the value contains nested list
      */
-    private function normalizeValue(
-        Stringable|string|float|int|bool|array|null $value,
+    private static function normalizeValue(
+        BackedEnum|Stringable|string|bool|int|float|array|null $value,
         string $name,
         bool $isNestedListAllowed
     ): array|string {
         return match (true) {
-            is_bool($value) => true === $value ? '1' : '0',
-            (null === $value || is_scalar($value) || $value instanceof Stringable) => (string) $value,
+            !is_array($value) => (string) StringCoercionMode::Native->coerce($value),
             !$isNestedListAllowed => throw TemplateCanNotBeExpanded::dueToNestedListOfValue($name),
-            default => array_map(fn ($var): array|string => self::normalizeValue($var, $name, false), $value),
+            default => array_map(fn ($var) => self::normalizeValue($var, $name, isNestedListAllowed: false), $value),
         };
     }
 

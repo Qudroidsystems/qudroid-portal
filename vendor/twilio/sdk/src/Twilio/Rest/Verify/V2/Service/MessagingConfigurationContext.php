@@ -21,6 +21,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class MessagingConfigurationContext extends InstanceContext
@@ -53,63 +55,185 @@ class MessagingConfigurationContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the MessagingConfigurationInstance
      *
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the MessagingConfigurationInstance
+     * Delete the MessagingConfigurationInstance with Metadata
      *
-     * @return MessagingConfigurationInstance Fetched MessagingConfigurationInstance
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): MessagingConfigurationInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new MessagingConfigurationInstance(
-            $this->version,
-            $payload,
-            $this->solution['serviceSid'],
-            $this->solution['country']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the MessagingConfigurationInstance
+     * Helper function for Fetch
      *
-     * @param string $messagingServiceSid The SID of the [Messaging Service](https://www.twilio.com/docs/messaging/api/service-resource) to be used to send SMS to the country of this configuration.
-     * @return MessagingConfigurationInstance Updated MessagingConfigurationInstance
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(string $messagingServiceSid): MessagingConfigurationInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the MessagingConfigurationInstance
+     *
+     
+     
+     * @return MessagingConfigurationInstance Fetched MessagingConfigurationInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): MessagingConfigurationInstance
+    {
+        $response = $this->_fetch();
+        return new MessagingConfigurationInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['serviceSid'],
+            $this->solution['country']
+        );
+        
+    }
+
+    /**
+     * Fetch the MessagingConfigurationInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new MessagingConfigurationInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['country']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     * @param string $messagingServiceSid The SID of the [Messaging Service](https://www.twilio.com/docs/messaging/api/service-resource) to be used to send SMS to the country of this configuration.
+     
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(string $messagingServiceSid): Response
+    {
+        
         $data = Values::of([
             'MessagingServiceSid' =>
                 $messagingServiceSid,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the MessagingConfigurationInstance
+     *
+     
+     
+     * @param string $messagingServiceSid The SID of the [Messaging Service](https://www.twilio.com/docs/messaging/api/service-resource) to be used to send SMS to the country of this configuration.
+     
+     * @return MessagingConfigurationInstance Updated MessagingConfigurationInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(string $messagingServiceSid): MessagingConfigurationInstance
+    {
+        $response = $this->_update( $messagingServiceSid);
         return new MessagingConfigurationInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['serviceSid'],
             $this->solution['country']
+        );
+        
+    }
+
+    /**
+     * Update the MessagingConfigurationInstance with Metadata
+     *
+     
+     
+     * @param string $messagingServiceSid The SID of the [Messaging Service](https://www.twilio.com/docs/messaging/api/service-resource) to be used to send SMS to the country of this configuration.
+     
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(string $messagingServiceSid): ResourceMetadata
+    {
+        $response = $this->_update( $messagingServiceSid);
+        $resource = new MessagingConfigurationInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['serviceSid'],
+                        $this->solution['country']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

@@ -21,6 +21,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class IpAccessControlListContext extends InstanceContext
@@ -53,36 +55,113 @@ class IpAccessControlListContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the IpAccessControlListInstance
      *
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
+        $response = $this->_delete();
+        
+        return true;
+    }
 
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+    /**
+     * Delete the IpAccessControlListInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function deleteWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
     }
 
 
     /**
+     * Helper function for Fetch
+     *
+     
+     
+     * @return Response Fetched Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _fetch(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
+
+    /**
      * Fetch the IpAccessControlListInstance
      *
+     
+     
      * @return IpAccessControlListInstance Fetched IpAccessControlListInstance
      * @throws TwilioException When an HTTP error occurs.
      */
     public function fetch(): IpAccessControlListInstance
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
+        $response = $this->_fetch();
         return new IpAccessControlListInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['trunkSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the IpAccessControlListInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new IpAccessControlListInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['trunkSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Doctrine\DBAL\Platforms;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Platforms\Db2\Db2MetadataProvider;
 use Doctrine\DBAL\Platforms\Exception\NotSupported;
 use Doctrine\DBAL\Platforms\Keywords\DB2Keywords;
 use Doctrine\DBAL\Platforms\Keywords\KeywordList;
@@ -17,7 +18,7 @@ use Doctrine\DBAL\Schema\TableDiff;
 use Doctrine\DBAL\SQL\Builder\DefaultSelectSQLBuilder;
 use Doctrine\DBAL\SQL\Builder\SelectSQLBuilder;
 use Doctrine\DBAL\TransactionIsolationLevel;
-use Doctrine\DBAL\Types\DateTimeType;
+use Doctrine\DBAL\Types\PhpDateTimeMappingType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\Deprecations\Deprecation;
 
@@ -30,7 +31,7 @@ use function sprintf;
 use function str_contains;
 
 /**
- * Provides the behavior, features and SQL dialect of the IBM DB2 database platform of the oldest supported version.
+ * Provides the behavior, features and SQL dialect of the Db2 database platform of the oldest supported version.
  */
 class DB2Platform extends AbstractPlatform
 {
@@ -283,7 +284,7 @@ class DB2Platform extends AbstractPlatform
 
         $queryParts = [];
         foreach ($diff->getAddedColumns() as $column) {
-            $columnDef = $column->toArray();
+            $columnDef = $column->toArray(true);
             $queryPart = 'ADD COLUMN ' . $this->getColumnDeclarationSQL($column->getQuotedName($this), $columnDef);
 
             // Adding non-nullable columns to a table requires a default value to be specified.
@@ -299,15 +300,13 @@ class DB2Platform extends AbstractPlatform
 
             $comment = $column->getComment();
 
-            if ($comment === '') {
-                continue;
+            if ($comment !== '') {
+                $commentsSQL[] = $this->getCommentOnColumnSQL(
+                    $tableNameSQL,
+                    $column->getQuotedName($this),
+                    $comment,
+                );
             }
-
-            $commentsSQL[] = $this->getCommentOnColumnSQL(
-                $tableNameSQL,
-                $column->getQuotedName($this),
-                $comment,
-            );
         }
 
         $needsReorg = false;
@@ -401,7 +400,7 @@ class DB2Platform extends AbstractPlatform
     private function getAlterColumnClausesSQL(ColumnDiff $columnDiff, bool &$needsReorg): array
     {
         $newColumn   = $columnDiff->getNewColumn();
-        $columnArray = $newColumn->toArray();
+        $columnArray = $newColumn->toArray(true);
 
         $newName = $columnDiff->getNewColumn()->getQuotedName($this);
         $oldName = $columnDiff->getOldColumn()->getQuotedName($this);
@@ -428,7 +427,7 @@ class DB2Platform extends AbstractPlatform
             $columnDiff->hasFixedChanged()
         ) {
             $needsReorg = true;
-            $clauses[]  = $alterClause . ' SET DATA TYPE ' . $newColumn->getType()
+            $clauses[]  = $alterClause . ' SET DATA TYPE ' . $this->getColumnType($newColumn)
                     ->getSQLDeclaration($columnArray, $this);
         }
 
@@ -485,7 +484,7 @@ class DB2Platform extends AbstractPlatform
                 'The "version" column platform option is deprecated.',
             );
 
-            if ($column['type'] instanceof DateTimeType) {
+            if ($this->getColumnTypeOrNull($column) instanceof PhpDateTimeMappingType) {
                 $column['default'] = '1';
             }
         }
@@ -567,9 +566,9 @@ class DB2Platform extends AbstractPlatform
     /**
      * {@inheritDoc}
      *
-     * DB2 supports savepoints, but they work semantically different than on other vendor platforms.
+     * Db2 supports savepoints, but they work semantically different than on other vendor platforms.
      *
-     * TODO: We have to investigate how to get DB2 up and running with savepoints.
+     * TODO: We have to investigate how to get Db2 up and running with savepoints.
      */
     public function supportsSavepoints(): bool
     {
@@ -587,6 +586,11 @@ class DB2Platform extends AbstractPlatform
         );
 
         return new DB2Keywords();
+    }
+
+    public function createMetadataProvider(Connection $connection): Db2MetadataProvider
+    {
+        return new Db2MetadataProvider($connection, $this);
     }
 
     public function createSchemaManager(Connection $connection): DB2SchemaManager

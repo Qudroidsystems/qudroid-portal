@@ -20,6 +20,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class SafelistList extends ListResource
@@ -37,31 +39,67 @@ class SafelistList extends ListResource
         // Path Solution
         $this->solution = [
         ];
-
         $this->uri = '/SafeList/Numbers';
     }
 
     /**
-     * Create the SafelistInstance
+     * Helper function for Create
      *
      * @param string $phoneNumber The phone number to be added in SafeList. Phone numbers must be in [E.164 format](https://www.twilio.com/docs/glossary/what-e164).
-     * @return SafelistInstance Created SafelistInstance
+     
+     * @return Response Created Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(string $phoneNumber): SafelistInstance
+    private function _create(string $phoneNumber): Response
     {
-
+        
         $data = Values::of([
             'PhoneNumber' =>
                 $phoneNumber,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
+    }
 
+    /**
+     * Create the SafelistInstance
+     *
+     * @param string $phoneNumber The phone number to be added in SafeList. Phone numbers must be in [E.164 format](https://www.twilio.com/docs/glossary/what-e164).
+     
+     * @return SafelistInstance Created SafelistInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function create(string $phoneNumber): SafelistInstance
+    {
+        $response = $this->_create( $phoneNumber);
         return new SafelistInstance(
             $this->version,
-            $payload
+            $response->getContent()
+        );
+        
+    }
+
+    /**
+     * Create the SafelistInstance with Metadata
+     *
+     * @param string $phoneNumber The phone number to be added in SafeList. Phone numbers must be in [E.164 format](https://www.twilio.com/docs/glossary/what-e164).
+     
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(string $phoneNumber): ResourceMetadata
+    {
+        $response = $this->_create( $phoneNumber);
+        $resource = new SafelistInstance(
+                        $this->version,
+                        $response->getContent()
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

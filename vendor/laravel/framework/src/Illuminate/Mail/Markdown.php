@@ -43,6 +43,13 @@ class Markdown
     protected static $withSecuredEncoding = false;
 
     /**
+     * The registered CommonMark extensions.
+     *
+     * @var array<int, class-string<\League\CommonMark\Extension\ExtensionInterface>>
+     */
+    protected static $extensions = [];
+
+    /**
      * Create a new Markdown renderer instance.
      *
      * @param  \Illuminate\Contracts\View\Factory  $view
@@ -53,6 +60,8 @@ class Markdown
         $this->view = $view;
         $this->theme = $options['theme'] ?? 'default';
         $this->loadComponentsFrom($options['paths'] ?? []);
+
+        static::$extensions = $options['extensions'] ?? [];
     }
 
     /**
@@ -78,12 +87,14 @@ class Markdown
                 if (static::$withSecuredEncoding === true) {
                     EncodedHtmlString::encodeUsing(function ($value) {
                         $replacements = [
+                            '\\' => '\\\\',
                             '[' => '\[',
+                            ']' => '\]',
                             '<' => '&lt;',
                             '>' => '&gt;',
                         ];
 
-                        return str_replace(array_keys($replacements), array_values($replacements), $value);
+                        return strtr($value, $replacements);
                     });
                 }
 
@@ -107,8 +118,12 @@ class Markdown
                 : 'mail::themes.'.$this->theme;
         }
 
+        $contents = static::$withSecuredEncoding === true
+            ? strtr($contents, ['\\\\' => '\\', '\[' => '[', '\]' => ']'])
+            : str_replace('\[', '[', $contents);
+
         return new HtmlString(($inliner ?: new CssToInlineStyles)->convert(
-            str_replace('\[', '[', $contents), $this->view->make($theme, $data)->render()
+            $contents, $this->view->make($theme, $data)->render()
         ));
     }
 
@@ -148,11 +163,12 @@ class Markdown
         if (static::$withSecuredEncoding === true || $encoded === true) {
             EncodedHtmlString::encodeUsing(function ($value) {
                 $replacements = [
+                    '\\' => '\\\\',
                     '[' => '\[',
                     '<' => '\<',
                 ];
 
-                $html = str_replace(array_keys($replacements), array_values($replacements), $value);
+                $html = strtr($value, $replacements);
 
                 return static::converter([
                     'html_input' => 'escape',
@@ -187,6 +203,10 @@ class Markdown
 
         $environment->addExtension(new CommonMarkCoreExtension);
         $environment->addExtension(new TableExtension);
+
+        foreach (static::$extensions as $extensionClass) {
+            $environment->addExtension(new $extensionClass);
+        }
 
         return new MarkdownConverter($environment);
     }
@@ -289,5 +309,6 @@ class Markdown
     public static function flushState()
     {
         static::$withSecuredEncoding = false;
+        static::$extensions = [];
     }
 }

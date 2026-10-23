@@ -31,10 +31,13 @@ use Twilio\Rest\Studio\V2\Flow\Execution\ExecutionContextList;
  * @property string|null $accountSid
  * @property string|null $flowSid
  * @property string|null $contactChannelAddress
+ * @property string|null $contactSid
+ * @property int|null $flowVersion
  * @property array|null $context
  * @property string $status
  * @property \DateTime|null $dateCreated
  * @property \DateTime|null $dateUpdated
+ * @property string|null $initiatedBy
  * @property string|null $url
  * @property array|null $links
  */
@@ -61,10 +64,13 @@ class ExecutionInstance extends InstanceResource
             'accountSid' => Values::array_get($payload, 'account_sid'),
             'flowSid' => Values::array_get($payload, 'flow_sid'),
             'contactChannelAddress' => Values::array_get($payload, 'contact_channel_address'),
+            'contactSid' => Values::array_get($payload, 'contact_sid'),
+            'flowVersion' => Values::array_get($payload, 'flow_version'),
             'context' => Values::array_get($payload, 'context'),
             'status' => Values::array_get($payload, 'status'),
             'dateCreated' => Deserialize::dateTime(Values::array_get($payload, 'date_created')),
             'dateUpdated' => Deserialize::dateTime(Values::array_get($payload, 'date_updated')),
+            'initiatedBy' => Values::array_get($payload, 'initiated_by'),
             'url' => Values::array_get($payload, 'url'),
             'links' => Values::array_get($payload, 'links'),
         ];

@@ -20,6 +20,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class SinkValidateList extends ListResource
@@ -42,33 +44,73 @@ class SinkValidateList extends ListResource
             $sid,
         
         ];
-
         $this->uri = '/Sinks/' . \rawurlencode($sid)
         .'/Validate';
     }
 
     /**
-     * Create the SinkValidateInstance
+     * Helper function for Create
      *
+     
      * @param string $testId A 34 character string that uniquely identifies the test event for a Sink being validated.
-     * @return SinkValidateInstance Created SinkValidateInstance
+     
+     * @return Response Created Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(string $testId): SinkValidateInstance
+    private function _create(string $testId): Response
     {
-
+        
         $data = Values::of([
             'TestId' =>
                 $testId,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
+    }
 
+    /**
+     * Create the SinkValidateInstance
+     *
+     
+     * @param string $testId A 34 character string that uniquely identifies the test event for a Sink being validated.
+     
+     * @return SinkValidateInstance Created SinkValidateInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function create(string $testId): SinkValidateInstance
+    {
+        $response = $this->_create( $testId);
         return new SinkValidateInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Create the SinkValidateInstance with Metadata
+     *
+     
+     * @param string $testId A 34 character string that uniquely identifies the test event for a Sink being validated.
+     
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(string $testId): ResourceMetadata
+    {
+        $response = $this->_create( $testId);
+        $resource = new SinkValidateInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

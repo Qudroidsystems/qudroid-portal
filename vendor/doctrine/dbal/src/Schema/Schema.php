@@ -52,6 +52,7 @@ use function strtolower;
  * execute them. Only the queries for the currently connected database are
  * executed.
  *
+ * @final
  * @extends AbstractAsset<UnqualifiedName>
  */
 class Schema extends AbstractAsset
@@ -78,6 +79,9 @@ class Schema extends AbstractAsset
     private bool $usesUnqualifiedNames = false;
 
     /**
+     * @internal since doctrine/dbal 4.5. Use {@link Schema::editor()} to instantiate an editor
+     *           and {@link SchemaEditor::create()} to create a schema.
+     *
      * @param array<Table>    $tables
      * @param array<Sequence> $sequences
      * @param array<string>   $namespaces
@@ -88,6 +92,14 @@ class Schema extends AbstractAsset
         ?SchemaConfig $schemaConfig = null,
         array $namespaces = [],
     ) {
+        if (count($namespaces) > 0) {
+            Deprecation::triggerIfCalledFromOutside(
+                'doctrine/dbal',
+                'https://github.com/doctrine/dbal/pull/7186',
+                'Passing the $namespaces argument to the Schema constructor is deprecated.',
+            );
+        }
+
         $schemaConfig ??= new SchemaConfig();
 
         $this->_schemaConfig = $schemaConfig;
@@ -351,10 +363,21 @@ class Schema extends AbstractAsset
     /**
      * Creates a new namespace.
      *
+     * @deprecated The schema automatically derives namespaces from the names of its tables and sequences.
+     *             Creating empty namespaces is deprecated.
+     *
      * @return $this
      */
     public function createNamespace(string $name): self
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7186',
+            '%s is deprecated. The schema automatically derives namespaces from the names of its tables and'
+                . ' sequences. Creating empty namespaces is deprecated.',
+            __METHOD__,
+        );
+
         $unquotedName = strtolower($this->getUnquotedAssetName($name));
 
         if (isset($this->namespaces[$unquotedName])) {
@@ -368,9 +391,18 @@ class Schema extends AbstractAsset
 
     /**
      * Creates a new table.
+     *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see SchemaEditor::addTable()} instead.
      */
     public function createTable(string $name): Table
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7373',
+            '%s is deprecated. Use Schema::edit() and SchemaEditor::addTable() instead.',
+            __METHOD__,
+        );
+
         $table = new Table($name, [], [], [], [], [], $this->_schemaConfig->toTableConfiguration());
         $this->_addTable($table);
 
@@ -384,10 +416,19 @@ class Schema extends AbstractAsset
     /**
      * Renames a table.
      *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see SchemaEditor::renameTable()} instead.
+     *
      * @return $this
      */
     public function renameTable(string $oldName, string $newName): self
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7373',
+            '%s is deprecated. Use Schema::edit() and SchemaEditor::renameTable() instead.',
+            __METHOD__,
+        );
+
         $table = $this->getTable($oldName);
 
         $identifier = new Identifier($newName);
@@ -405,10 +446,19 @@ class Schema extends AbstractAsset
     /**
      * Drops a table from the schema.
      *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see SchemaEditor::dropTable()} instead.
+     *
      * @return $this
      */
     public function dropTable(string $name): self
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7373',
+            '%s is deprecated. Use Schema::edit() and SchemaEditor::dropTable() instead.',
+            __METHOD__,
+        );
+
         $key = $this->getKeyFromName($name);
         if (! isset($this->_tables[$key])) {
             throw TableDoesNotExist::new($name);
@@ -421,18 +471,38 @@ class Schema extends AbstractAsset
 
     /**
      * Creates a new sequence.
+     *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see SchemaEditor::addSequence()} instead.
      */
     public function createSequence(string $name, int $allocationSize = 1, int $initialValue = 1): Sequence
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7373',
+            '%s is deprecated. Use Schema::edit() and SchemaEditor::addSequence() instead.',
+            __METHOD__,
+        );
+
         $seq = new Sequence($name, $allocationSize, $initialValue);
         $this->_addSequence($seq);
 
         return $seq;
     }
 
-    /** @return $this */
+    /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see SchemaEditor::dropSequence()} instead.
+     *
+     * @return $this
+     */
     public function dropSequence(string $name): self
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7373',
+            '%s is deprecated. Use Schema::edit() and SchemaEditor::dropSequence() instead.',
+            __METHOD__,
+        );
+
         $key = $this->getKeyFromName($name);
         unset($this->_sequences[$key]);
 
@@ -463,6 +533,25 @@ class Schema extends AbstractAsset
         $builder = new DropSchemaObjectsSQLBuilder($platform);
 
         return $builder->buildSQL($this);
+    }
+
+    /**
+     * Instantiates a new schema editor.
+     */
+    public static function editor(): SchemaEditor
+    {
+        return new SchemaEditor();
+    }
+
+    /**
+     * Instantiates a new schema editor seeded with this schema's tables, sequences, and configuration.
+     */
+    public function edit(): SchemaEditor
+    {
+        return self::editor()
+            ->setDefaultNamespace($this->_schemaConfig->getName())
+            ->setTables(...$this->getTables())
+            ->setSequences(...$this->getSequences());
     }
 
     /**

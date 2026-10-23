@@ -22,6 +22,8 @@ use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Rest\Api\V2010\Account\Sip\IpAccessControlList\IpAddressList;
 
 
@@ -61,63 +63,176 @@ class IpAccessControlListContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the IpAccessControlListInstance
      *
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the IpAccessControlListInstance
+     * Delete the IpAccessControlListInstance with Metadata
      *
-     * @return IpAccessControlListInstance Fetched IpAccessControlListInstance
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): IpAccessControlListInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new IpAccessControlListInstance(
-            $this->version,
-            $payload,
-            $this->solution['accountSid'],
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the IpAccessControlListInstance
+     * Helper function for Fetch
      *
-     * @param string $friendlyName A human readable descriptive text, up to 255 characters long.
-     * @return IpAccessControlListInstance Updated IpAccessControlListInstance
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(string $friendlyName): IpAccessControlListInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the IpAccessControlListInstance
+     *
+     
+     * @return IpAccessControlListInstance Fetched IpAccessControlListInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): IpAccessControlListInstance
+    {
+        $response = $this->_fetch();
+        return new IpAccessControlListInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['accountSid'],
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the IpAccessControlListInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new IpAccessControlListInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     * @param string $friendlyName A human readable descriptive text, up to 255 characters long.
+     
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(string $friendlyName): Response
+    {
+        
         $data = Values::of([
             'FriendlyName' =>
                 $friendlyName,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the IpAccessControlListInstance
+     *
+     
+     * @param string $friendlyName A human readable descriptive text, up to 255 characters long.
+     
+     * @return IpAccessControlListInstance Updated IpAccessControlListInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(string $friendlyName): IpAccessControlListInstance
+    {
+        $response = $this->_update( $friendlyName);
         return new IpAccessControlListInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['accountSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the IpAccessControlListInstance with Metadata
+     *
+     
+     * @param string $friendlyName A human readable descriptive text, up to 255 characters long.
+     
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(string $friendlyName): ResourceMetadata
+    {
+        $response = $this->_update( $friendlyName);
+        $resource = new IpAccessControlListInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

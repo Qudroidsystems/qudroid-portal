@@ -83,13 +83,23 @@ class Connect extends TwiML {
     }
 
     /**
-     * Add Assistant child.
+     * Add AiSession child.
      *
      * @param array $attributes Optional attributes
-     * @return Assistant Child element.
+     * @return AiSession Child element.
      */
-    public function assistant($attributes = []): Assistant {
-        return $this->nest(new Assistant($attributes));
+    public function aiSession($attributes = []): AiSession {
+        return $this->nest(new AiSession($attributes));
+    }
+
+    /**
+     * Add ConversationRelaySession child.
+     *
+     * @param array $attributes Optional attributes
+     * @return ConversationRelaySession Child element.
+     */
+    public function conversationRelaySession($attributes = []): ConversationRelaySession {
+        return $this->nest(new ConversationRelaySession($attributes));
     }
 
     /**

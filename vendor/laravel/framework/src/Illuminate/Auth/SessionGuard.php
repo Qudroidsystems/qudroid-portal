@@ -111,6 +111,13 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
     protected $rehashOnLogin;
 
     /**
+     * The key used to hash recaller cookie values.
+     *
+     * @var string|null
+     */
+    protected $hashKey;
+
+    /**
      * Indicates if the logout method has been called.
      *
      * @var bool
@@ -134,6 +141,7 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
      * @param  \Illuminate\Support\Timebox|null  $timebox
      * @param  bool  $rehashOnLogin
      * @param  int  $timeboxDuration
+     * @param  string|null  $hashKey
      */
     public function __construct(
         $name,
@@ -143,6 +151,7 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
         ?Timebox $timebox = null,
         bool $rehashOnLogin = true,
         int $timeboxDuration = 200000,
+        ?string $hashKey = null,
     ) {
         $this->name = $name;
         $this->session = $session;
@@ -151,6 +160,7 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
         $this->timebox = $timebox ?: new Timebox;
         $this->rehashOnLogin = $rehashOnLogin;
         $this->timeboxDuration = $timeboxDuration;
+        $this->hashKey = $hashKey;
     }
 
     /**
@@ -217,7 +227,17 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
             $recaller->id(), $recaller->token()
         ));
 
-        return $user;
+        if (! $this->viaRemember) {
+            return;
+        }
+
+        $userPassword = $user->getAuthPassword();
+
+        $recallerHash = $recaller->hash();
+
+        return (hash_equals($this->hashPasswordForCookie($userPassword), $recallerHash)
+                || hash_equals($userPassword, $recallerHash))
+            ? $user : null;
     }
 
     /**
@@ -548,6 +568,12 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
     {
         $this->updateSession($user->getAuthIdentifier());
 
+        if ($passwordHash = $user->getAuthPassword()) {
+            $this->session->put(
+                'password_hash_'.$this->name, $this->hashPasswordForCookie($passwordHash)
+            );
+        }
+
         // If the user should be permanently "remembered" by the application we will
         // queue a permanent cookie that contains the encrypted copy of the user
         // identifier. We will then decrypt this later to retrieve the users.
@@ -566,7 +592,7 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
     }
 
     /**
-     * Update the session with the given ID.
+     * Update the session with the given ID and regenerate the session's token.
      *
      * @param  string  $id
      * @return void
@@ -575,7 +601,7 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
     {
         $this->session->put($this->getName(), $id);
 
-        $this->session->migrate(true);
+        $this->session->regenerate(true);
     }
 
     /**
@@ -600,7 +626,9 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
     protected function queueRecallerCookie(AuthenticatableContract $user)
     {
         $this->getCookieJar()->queue($this->createRecaller(
-            $user->getAuthIdentifier().'|'.$user->getRememberToken().'|'.$user->getAuthPassword()
+            $user->getAuthIdentifier().'|'.
+            $user->getRememberToken().'|'.
+            $this->hashPasswordForCookie($user->getAuthPassword())
         ));
     }
 
@@ -613,6 +641,21 @@ class SessionGuard implements StatefulGuard, SupportsBasicAuth
     protected function createRecaller($value)
     {
         return $this->getCookieJar()->make($this->getRecallerName(), $value, $this->getRememberDuration());
+    }
+
+    /**
+     * Create a HMAC of the password hash for storage in cookies.
+     *
+     * @param  string  $passwordHash
+     * @return string
+     */
+    public function hashPasswordForCookie($passwordHash)
+    {
+        return hash_hmac(
+            'sha256',
+            $passwordHash,
+            $this->hashKey ?? 'base-key-for-password-hash-mac'
+        );
     }
 
     /**

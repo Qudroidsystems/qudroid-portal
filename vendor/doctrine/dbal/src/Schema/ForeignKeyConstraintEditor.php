@@ -108,6 +108,25 @@ final class ForeignKeyConstraintEditor
         return $this;
     }
 
+    public function addReferencingColumnName(UnqualifiedName $columName): self
+    {
+        $this->referencingColumnNames[] = $columName;
+
+        return $this;
+    }
+
+    /** @param non-empty-string $name */
+    public function addUnquotedReferencingColumnName(string $name): self
+    {
+        return $this->addReferencingColumnName(UnqualifiedName::unquoted($name));
+    }
+
+    /** @param non-empty-string $name */
+    public function addQuotedReferencingColumnName(string $name): self
+    {
+        return $this->addReferencingColumnName(UnqualifiedName::quoted($name));
+    }
+
     public function setReferencedTableName(OptionallyQualifiedName $referencedTableName): self
     {
         $this->referencedTableName = $referencedTableName;
@@ -182,6 +201,25 @@ final class ForeignKeyConstraintEditor
         );
 
         return $this;
+    }
+
+    public function addReferencedColumnName(UnqualifiedName $columName): self
+    {
+        $this->referencedColumnNames[] = $columName;
+
+        return $this;
+    }
+
+    /** @param non-empty-string $name */
+    public function addUnquotedReferencedColumnName(string $name): self
+    {
+        return $this->addReferencedColumnName(UnqualifiedName::unquoted($name));
+    }
+
+    /** @param non-empty-string $name */
+    public function addQuotedReferencedColumnName(string $name): self
+    {
+        return $this->addReferencedColumnName(UnqualifiedName::quoted($name));
     }
 
     public function setMatchType(MatchType $matchType): self

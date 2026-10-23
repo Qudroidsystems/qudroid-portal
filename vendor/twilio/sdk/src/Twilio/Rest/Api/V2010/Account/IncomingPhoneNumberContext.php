@@ -23,6 +23,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Serialize;
 use Twilio\Rest\Api\V2010\Account\IncomingPhoneNumber\AssignedAddOnList;
 
@@ -63,50 +65,122 @@ class IncomingPhoneNumberContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the IncomingPhoneNumberInstance
      *
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the IncomingPhoneNumberInstance
+     * Delete the IncomingPhoneNumberInstance with Metadata
      *
-     * @return IncomingPhoneNumberInstance Fetched IncomingPhoneNumberInstance
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): IncomingPhoneNumberInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new IncomingPhoneNumberInstance(
-            $this->version,
-            $payload,
-            $this->solution['accountSid'],
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the IncomingPhoneNumberInstance
+     * Helper function for Fetch
      *
-     * @param array|Options $options Optional Arguments
-     * @return IncomingPhoneNumberInstance Updated IncomingPhoneNumberInstance
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): IncomingPhoneNumberInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the IncomingPhoneNumberInstance
+     *
+     
+     * @return IncomingPhoneNumberInstance Fetched IncomingPhoneNumberInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): IncomingPhoneNumberInstance
+    {
+        $response = $this->_fetch();
+        return new IncomingPhoneNumberInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['accountSid'],
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the IncomingPhoneNumberInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new IncomingPhoneNumberInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -159,13 +233,51 @@ class IncomingPhoneNumberContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the IncomingPhoneNumberInstance
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return IncomingPhoneNumberInstance Updated IncomingPhoneNumberInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): IncomingPhoneNumberInstance
+    {
+        $response = $this->_update($options);
         return new IncomingPhoneNumberInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['accountSid'],
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the IncomingPhoneNumberInstance with Metadata
+     *
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new IncomingPhoneNumberInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['accountSid'],
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

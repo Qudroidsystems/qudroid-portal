@@ -8,6 +8,7 @@ use Doctrine\DBAL\Schema\Collections\Exception\ObjectAlreadyExists;
 use Doctrine\DBAL\Schema\Collections\Exception\ObjectDoesNotExist;
 use Doctrine\DBAL\Schema\Name\UnqualifiedName;
 use Doctrine\DBAL\Schema\OptionallyNamedObject;
+use Traversable;
 
 use function array_splice;
 use function count;
@@ -110,6 +111,12 @@ final class OptionallyUnqualifiedNamedObjectSet implements ObjectSet
         return $this->elements;
     }
 
+    /** {@inheritDoc} */
+    public function getIterator(): Traversable
+    {
+        yield from $this->elements;
+    }
+
     /**
      * Replaces the element corresponding to the old key with the provided element.
      *
@@ -149,11 +156,9 @@ final class OptionallyUnqualifiedNamedObjectSet implements ObjectSet
         unset($this->elementPositionsByKey[$key]);
 
         foreach ($this->elementPositionsByKey as $elementKey => $elementPosition) {
-            if ($elementPosition <= $position) {
-                continue;
+            if ($elementPosition > $position) {
+                $this->elementPositionsByKey[$elementKey]--;
             }
-
-            $this->elementPositionsByKey[$elementKey]--;
         }
     }
 

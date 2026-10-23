@@ -22,6 +22,8 @@ use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class SubscribedEventContext extends InstanceContext
@@ -54,50 +56,129 @@ class SubscribedEventContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the SubscribedEventInstance
      *
+     
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the SubscribedEventInstance
+     * Delete the SubscribedEventInstance with Metadata
      *
-     * @return SubscribedEventInstance Fetched SubscribedEventInstance
+     
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): SubscribedEventInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new SubscribedEventInstance(
-            $this->version,
-            $payload,
-            $this->solution['subscriptionSid'],
-            $this->solution['type']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the SubscribedEventInstance
+     * Helper function for Fetch
      *
-     * @param array|Options $options Optional Arguments
-     * @return SubscribedEventInstance Updated SubscribedEventInstance
+     
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(array $options = []): SubscribedEventInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the SubscribedEventInstance
+     *
+     
+     
+     * @return SubscribedEventInstance Fetched SubscribedEventInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): SubscribedEventInstance
+    {
+        $response = $this->_fetch();
+        return new SubscribedEventInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['subscriptionSid'],
+            $this->solution['type']
+        );
+        
+    }
+
+    /**
+     * Fetch the SubscribedEventInstance with Metadata
+     *
+     
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new SubscribedEventInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['subscriptionSid'],
+                        $this->solution['type']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(array $options = []): Response
+    {
+        
         $options = new Values($options);
 
         $data = Values::of([
@@ -106,13 +187,53 @@ class SubscribedEventContext extends InstanceContext
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the SubscribedEventInstance
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return SubscribedEventInstance Updated SubscribedEventInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(array $options = []): SubscribedEventInstance
+    {
+        $response = $this->_update($options);
         return new SubscribedEventInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['subscriptionSid'],
             $this->solution['type']
+        );
+        
+    }
+
+    /**
+     * Update the SubscribedEventInstance with Metadata
+     *
+     
+     
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_update($options);
+        $resource = new SubscribedEventInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['subscriptionSid'],
+                        $this->solution['type']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

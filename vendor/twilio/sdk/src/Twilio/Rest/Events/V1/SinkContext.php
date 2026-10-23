@@ -22,6 +22,8 @@ use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
 use Twilio\InstanceContext;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 use Twilio\Rest\Events\V1\Sink\SinkTestList;
 use Twilio\Rest\Events\V1\Sink\SinkValidateList;
 
@@ -58,61 +60,172 @@ class SinkContext extends InstanceContext
     }
 
     /**
+     * Helper function for Delete
+     *
+     
+     * @return Response Deleted Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _delete(): Response
+    {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
+        return $this->version->handleRequest('DELETE', $this->uri, [], [], $headers, "delete");
+    }
+
+    /**
      * Delete the SinkInstance
      *
+     
      * @return bool True if delete succeeds, false otherwise
      * @throws TwilioException When an HTTP error occurs.
      */
     public function delete(): bool
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded' ]);
-        return $this->version->delete('DELETE', $this->uri, [], [], $headers);
+        $response = $this->_delete();
+        
+        return true;
     }
 
-
     /**
-     * Fetch the SinkInstance
+     * Delete the SinkInstance with Metadata
      *
-     * @return SinkInstance Fetched SinkInstance
+     
+     * @return ResourceMetadata The Deleted Resource with Metadata
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function fetch(): SinkInstance
+    public function deleteWithMetadata(): ResourceMetadata
     {
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->fetch('GET', $this->uri, [], [], $headers);
-
-        return new SinkInstance(
-            $this->version,
-            $payload,
-            $this->solution['sid']
+        $response = $this->_delete();
+        
+        
+        return new ResourceMetadata(
+            null,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
 
     /**
-     * Update the SinkInstance
+     * Helper function for Fetch
      *
-     * @param string $description A human readable description for the Sink **This value should not contain PII.**
-     * @return SinkInstance Updated SinkInstance
+     
+     * @return Response Fetched Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function update(string $description): SinkInstance
+    private function _fetch(): Response
     {
+        
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('GET', $this->uri, [], [], $headers, "fetch");
+    }
 
+    /**
+     * Fetch the SinkInstance
+     *
+     
+     * @return SinkInstance Fetched SinkInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetch(): SinkInstance
+    {
+        $response = $this->_fetch();
+        return new SinkInstance(
+            $this->version,
+            $response->getContent(),
+            $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Fetch the SinkInstance with Metadata
+     *
+     
+     * @return ResourceMetadata The Fetched Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function fetchWithMetadata(): ResourceMetadata
+    {
+        $response = $this->_fetch();
+        $resource = new SinkInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
+        );
+    }
+
+
+    /**
+     * Helper function for Update
+     *
+     
+     * @param string $description A human readable description for the Sink **This value should not contain PII.**
+     
+     * @return Response Updated Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _update(string $description): Response
+    {
+        
         $data = Values::of([
             'Description' =>
                 $description,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->update('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "update");
+    }
 
+    /**
+     * Update the SinkInstance
+     *
+     
+     * @param string $description A human readable description for the Sink **This value should not contain PII.**
+     
+     * @return SinkInstance Updated SinkInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function update(string $description): SinkInstance
+    {
+        $response = $this->_update( $description);
         return new SinkInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['sid']
+        );
+        
+    }
+
+    /**
+     * Update the SinkInstance with Metadata
+     *
+     
+     * @param string $description A human readable description for the Sink **This value should not contain PII.**
+     
+     * @return ResourceMetadata The Updated Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function updateWithMetadata(string $description): ResourceMetadata
+    {
+        $response = $this->_update( $description);
+        $resource = new SinkInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['sid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

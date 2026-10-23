@@ -38,6 +38,7 @@ use function strtolower;
 /**
  * Object Representation of a table.
  *
+ * @final
  * @extends AbstractNamedObject<OptionallyQualifiedName>
  */
 class Table extends AbstractNamedObject
@@ -46,7 +47,7 @@ class Table extends AbstractNamedObject
     protected array $_columns = [];
 
     /** @var array<string, string> keys are new names, values are old names */
-    protected array $renamedColumns = [];
+    protected array $renamedColumns;
 
     /** @var Index[] */
     protected array $_indexes = [];
@@ -84,11 +85,15 @@ class Table extends AbstractNamedObject
     private bool $failedToParsePrimaryKeyConstraint = false;
 
     /**
+     * @internal since doctrine/dbal 4.5. Use {@link Table::editor()} to instantiate an editor and
+     *           {@link TableEditor::create()} to create a table.
+     *
      * @param array<Column>               $columns
      * @param array<Index>                $indexes
      * @param array<UniqueConstraint>     $uniqueConstraints
      * @param array<ForeignKeyConstraint> $fkConstraints
      * @param array<string, mixed>        $options
+     * @param array<string, string>       $renamedColumns
      */
     public function __construct(
         string $name,
@@ -99,6 +104,7 @@ class Table extends AbstractNamedObject
         array $options = [],
         ?TableConfiguration $configuration = null,
         ?PrimaryKeyConstraint $primaryKeyConstraint = null,
+        array $renamedColumns = [],
     ) {
         if ($name === '') {
             throw InvalidTableName::new($name);
@@ -131,6 +137,8 @@ class Table extends AbstractNamedObject
         }
 
         $this->_options = array_merge($this->_options, $options);
+
+        $this->renamedColumns = $renamedColumns;
     }
 
     protected function getNameParser(): OptionallyQualifiedNameParser
@@ -194,8 +202,16 @@ class Table extends AbstractNamedObject
         return $this;
     }
 
+    /** @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::addPrimaryKeyConstraint()} instead. */
     public function addPrimaryKeyConstraint(PrimaryKeyConstraint $primaryKeyConstraint): self
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::addPrimaryKeyConstraint() instead.',
+            __METHOD__,
+        );
+
         $this->setPrimaryKey(
             array_map(
                 static fn (UnqualifiedName $columnName): string => $columnName->toString(),
@@ -217,6 +233,8 @@ class Table extends AbstractNamedObject
     }
 
     /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::addUniqueConstraint()} instead.
+     *
      * @param non-empty-list<string> $columnNames
      * @param array<int, string>     $flags
      * @param array<string, mixed>   $options
@@ -227,6 +245,13 @@ class Table extends AbstractNamedObject
         array $flags = [],
         array $options = [],
     ): self {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::addUniqueConstraint() instead.',
+            __METHOD__,
+        );
+
         $indexName ??= $this->_generateIdentifierName(
             array_merge([$this->getName()], $columnNames),
             'uniq',
@@ -237,6 +262,8 @@ class Table extends AbstractNamedObject
     }
 
     /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::addIndex()} instead.
+     *
      * @param non-empty-list<string> $columnNames
      * @param array<int, string>     $flags
      * @param array<string, mixed>   $options
@@ -247,6 +274,13 @@ class Table extends AbstractNamedObject
         array $flags = [],
         array $options = [],
     ): self {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::addIndex() instead.',
+            __METHOD__,
+        );
+
         $indexName ??= $this->_generateIdentifierName(
             array_merge([$this->getName()], $columnNames),
             'idx',
@@ -258,9 +292,19 @@ class Table extends AbstractNamedObject
 
     /**
      * Drops the primary key from this table.
+     *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::dropPrimaryKeyConstraint()}
+     *             instead.
      */
     public function dropPrimaryKey(): void
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::dropPrimaryKeyConstraint() instead.',
+            __METHOD__,
+        );
+
         $this->primaryKeyConstraint              = null;
         $this->failedToParsePrimaryKeyConstraint = false;
 
@@ -274,9 +318,18 @@ class Table extends AbstractNamedObject
 
     /**
      * Drops an index from this table.
+     *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::dropIndex()} instead.
      */
     public function dropIndex(string $name): void
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::dropIndex() instead.',
+            __METHOD__,
+        );
+
         $name = $this->normalizeIdentifier($name);
 
         if (! $this->hasIndex($name)) {
@@ -287,11 +340,20 @@ class Table extends AbstractNamedObject
     }
 
     /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::addIndex()} instead.
+     *
      * @param non-empty-list<string> $columnNames
      * @param array<string, mixed>   $options
      */
     public function addUniqueIndex(array $columnNames, ?string $indexName = null, array $options = []): self
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::addIndex() instead.',
+            __METHOD__,
+        );
+
         $indexName ??= $this->_generateIdentifierName(
             array_merge([$this->getName()], $columnNames),
             'uniq',
@@ -304,12 +366,21 @@ class Table extends AbstractNamedObject
     /**
      * Renames an index.
      *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::renameIndex()} instead.
+     *
      * @param string      $oldName The name of the index to rename from.
      * @param string|null $newName The name of the index to rename to. If null is given, the index name
      *                             will be auto-generated.
      */
     public function renameIndex(string $oldName, ?string $newName = null): self
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::renameIndex() instead.',
+            __METHOD__,
+        );
+
         if (! $this->hasIndex($oldName)) {
             throw IndexDoesNotExist::new($oldName, $this->_name);
         }
@@ -379,13 +450,22 @@ class Table extends AbstractNamedObject
     }
 
     /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::addColumn()} instead.
+     *
      * @param array<string, mixed> $options
      *
      * @throws TypesException
      */
     public function addColumn(string $name, string $typeName, array $options = []): Column
     {
-        $column = new Column($name, Type::getType($typeName), $options);
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::addColumn() instead.',
+            __METHOD__,
+        );
+
+        $column = new Column($name, $typeName, $options);
 
         $this->_addColumn($column);
 
@@ -399,6 +479,8 @@ class Table extends AbstractNamedObject
     }
 
     /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::renameColumn()} instead.
+     *
      * @param non-empty-string $oldName
      * @param non-empty-string $newName
      *
@@ -406,13 +488,20 @@ class Table extends AbstractNamedObject
      */
     final public function renameColumn(string $oldName, string $newName): Column
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::renameColumn() instead.',
+            __METHOD__,
+        );
+
         $oldName = $this->normalizeIdentifier($oldName);
         $newName = $this->normalizeIdentifier($newName);
 
         if ($oldName === $newName) {
             throw new LogicException(sprintf(
                 'Attempt to rename column "%s.%s" to the same name.',
-                $this->getName(),
+                $this->name->toString(),
                 $oldName,
             ));
         }
@@ -441,9 +530,20 @@ class Table extends AbstractNamedObject
         return $column;
     }
 
-    /** @param array<string, mixed> $options */
+    /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::modifyColumn()} instead.
+     *
+     * @param array<string, mixed> $options
+     */
     public function modifyColumn(string $name, array $options): self
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::modifyColumn() instead.',
+            __METHOD__,
+        );
+
         $column = $this->getColumn($name);
         $column->setOptions($options);
 
@@ -452,9 +552,18 @@ class Table extends AbstractNamedObject
 
     /**
      * Drops a Column from the Table.
+     *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::dropColumn()} instead.
      */
     public function dropColumn(string $name): self
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::dropColumn() instead.',
+            __METHOD__,
+        );
+
         $name = $this->normalizeIdentifier($name);
 
         $foreignKeyConstraintNames = $this->getForeignKeyConstraintNamesByLocalColumnName($name);
@@ -491,6 +600,8 @@ class Table extends AbstractNamedObject
      *
      * Name is inferred from the local columns.
      *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::addForeignKeyConstraint()} instead.
+     *
      * @param non-empty-list<string> $localColumnNames
      * @param non-empty-list<string> $foreignColumnNames
      * @param array<string, mixed>   $options
@@ -502,6 +613,13 @@ class Table extends AbstractNamedObject
         array $options = [],
         ?string $name = null,
     ): self {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::addForeignKeyConstraint() instead.',
+            __METHOD__,
+        );
+
         $name ??= $this->_generateIdentifierName(
             array_merge([$this->getName()], $localColumnNames),
             'fk',
@@ -525,8 +643,20 @@ class Table extends AbstractNamedObject
         return $this->_addForeignKeyConstraint($constraint);
     }
 
+    /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::setOptions()} instead.
+     *
+     * @return $this
+     */
     public function addOption(string $name, mixed $value): self
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::setOptions() instead.',
+            __METHOD__,
+        );
+
         $this->_options[$name] = $value;
 
         return $this;
@@ -574,9 +704,19 @@ class Table extends AbstractNamedObject
 
     /**
      * Drops the foreign key constraint with the given name.
+     *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::dropForeignKeyConstraint()}
+     *             instead.
      */
     public function dropForeignKey(string $name): void
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::dropForeignKeyConstraint() instead.',
+            __METHOD__,
+        );
+
         $name = $this->normalizeIdentifier($name);
 
         if (! $this->hasForeignKey($name)) {
@@ -628,9 +768,18 @@ class Table extends AbstractNamedObject
 
     /**
      * Drops the unique constraint with the given name.
+     *
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::dropUniqueConstraint()} instead.
      */
     public function dropUniqueConstraint(string $name): void
     {
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::dropUniqueConstraint() instead.',
+            __METHOD__,
+        );
+
         $name = $this->normalizeIdentifier($name);
 
         if (! $this->hasUniqueConstraint($name)) {
@@ -643,10 +792,11 @@ class Table extends AbstractNamedObject
     /**
      * Returns the list of table columns.
      *
-     * @return list<Column>
+     * @return non-empty-list<Column>
      */
     public function getColumns(): array
     {
+        /** @phpstan-ignore return.type */
         return array_values($this->_columns);
     }
 
@@ -831,11 +981,9 @@ class Table extends AbstractNamedObject
                 continue;
             }
 
-            if (! $this->_indexes[$implicitIndexName]->isFulfilledBy($index)) {
-                continue;
+            if ($this->_indexes[$implicitIndexName]->isFulfilledBy($index)) {
+                $replacedImplicitIndexNames[$implicitIndexName] = true;
             }
-
-            $replacedImplicitIndexNames[$implicitIndexName] = true;
         }
 
         if ($this->_primaryKeyName !== null && $index->isPrimary()) {
@@ -936,6 +1084,14 @@ class Table extends AbstractNamedObject
             );
 
         $name = $this->normalizeIdentifier($name);
+        if (isset($this->_fkConstraints[$name])) {
+            Deprecation::trigger(
+                'doctrine/dbal',
+                'https://github.com/doctrine/dbal/pull/7125',
+                'Overwriting an existing foreign key constraint ("%s") is deprecated.',
+                $name,
+            );
+        }
 
         $this->_fkConstraints[$name] = $constraint;
 
@@ -976,8 +1132,20 @@ class Table extends AbstractNamedObject
         return $this->trimQuotes(strtolower($identifier));
     }
 
+    /**
+     * @deprecated since doctrine/dbal 4.5. Use {@see edit()} and {@see TableEditor::setComment()} instead.
+     *
+     * @return $this
+     */
     public function setComment(string $comment): self
     {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/dbal/pull/7389',
+            '%s is deprecated. Use Table::edit() and TableEditor::setComment() instead.',
+            __METHOD__,
+        );
+
         // For keeping backward compatibility with MySQL in previous releases, table comments are stored as options.
         $this->addOption('comment', $comment);
 
@@ -1089,18 +1257,16 @@ class Table extends AbstractNamedObject
                 }
             }
 
-            if (! $modified) {
-                continue;
+            if ($modified) {
+                $this->_indexes[$key] = new Index(
+                    $index->getName(),
+                    $columns,
+                    $index->isUnique(),
+                    $index->isPrimary(),
+                    $index->getFlags(),
+                    $index->getOptions(),
+                );
             }
-
-            $this->_indexes[$key] = new Index(
-                $index->getName(),
-                $columns,
-                $index->isUnique(),
-                $index->isPrimary(),
-                $index->getFlags(),
-                $index->getOptions(),
-            );
         }
     }
 
@@ -1122,17 +1288,15 @@ class Table extends AbstractNamedObject
                 }
             }
 
-            if (! $modified) {
-                continue;
+            if ($modified) {
+                $this->_fkConstraints[$key] = new ForeignKeyConstraint(
+                    $localColumns, // @phpstan-ignore argument.type
+                    $constraint->getForeignTableName(),
+                    $constraint->getForeignColumns(), // @phpstan-ignore argument.type
+                    $constraint->getName(),
+                    $constraint->getOptions(),
+                );
             }
-
-            $this->_fkConstraints[$key] = new ForeignKeyConstraint(
-                $localColumns, // @phpstan-ignore argument.type
-                $constraint->getForeignTableName(),
-                $constraint->getForeignColumns(), // @phpstan-ignore argument.type
-                $constraint->getName(),
-                $constraint->getOptions(),
-            );
         }
     }
 
@@ -1154,16 +1318,14 @@ class Table extends AbstractNamedObject
                 }
             }
 
-            if (! $modified) {
-                continue;
+            if ($modified) {
+                $this->uniqueConstraints[$key] = new UniqueConstraint(
+                    $constraint->getName(),
+                    $columns, // @phpstan-ignore argument.type
+                    $constraint->getFlags(),
+                    $constraint->getOptions(),
+                );
             }
-
-            $this->uniqueConstraints[$key] = new UniqueConstraint(
-                $constraint->getName(),
-                $columns, // @phpstan-ignore argument.type
-                $constraint->getFlags(),
-                $constraint->getOptions(),
-            );
         }
     }
 
@@ -1173,11 +1335,9 @@ class Table extends AbstractNamedObject
         $names = [];
 
         foreach ($this->_fkConstraints as $name => $constraint) {
-            if (! in_array($columnName, $constraint->getLocalColumns(), true)) {
-                continue;
+            if (in_array($columnName, $constraint->getLocalColumns(), true)) {
+                $names[] = $name;
             }
-
-            $names[] = $name;
         }
 
         return $names;
@@ -1189,11 +1349,9 @@ class Table extends AbstractNamedObject
         $names = [];
 
         foreach ($this->uniqueConstraints as $name => $constraint) {
-            if (! in_array($columnName, $constraint->getColumns(), true)) {
-                continue;
+            if (in_array($columnName, $constraint->getColumns(), true)) {
+                $names[] = $name;
             }
-
-            $names[] = $name;
         }
 
         return $names;

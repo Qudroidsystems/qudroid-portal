@@ -21,6 +21,8 @@ use Twilio\ListResource;
 use Twilio\Options;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class ComplianceInquiriesList extends ListResource
@@ -38,38 +40,70 @@ class ComplianceInquiriesList extends ListResource
         // Path Solution
         $this->solution = [
         ];
-
         $this->uri = '/ComplianceInquiries/Customers/Initialize';
+    }
+
+    /**
+     * Helper function for Create
+     *
+     * @param array|Options $options Optional Arguments
+     * @return Response Created Response
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    private function _create(array $options = []): Response
+    {
+        
+        $options = new Values($options);
+
+        $data = Values::of([
+            'NotificationEmail' =>
+                $options['notificationEmail'],
+            'ThemeSetId' =>
+                $options['themeSetId'],
+            'PrimaryProfileSid' =>
+                $options['primaryProfileSid'],
+        ]);
+
+        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
     }
 
     /**
      * Create the ComplianceInquiriesInstance
      *
-     * @param string $primaryProfileSid The unique SID identifier of the Primary Customer Profile that should be used as a parent. Only necessary when creating a secondary Customer Profile.
      * @param array|Options $options Optional Arguments
      * @return ComplianceInquiriesInstance Created ComplianceInquiriesInstance
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(string $primaryProfileSid, array $options = []): ComplianceInquiriesInstance
+    public function create(array $options = []): ComplianceInquiriesInstance
     {
-
-        $options = new Values($options);
-
-        $data = Values::of([
-            'PrimaryProfileSid' =>
-                $primaryProfileSid,
-            'NotificationEmail' =>
-                $options['notificationEmail'],
-            'ThemeSetId' =>
-                $options['themeSetId'],
-        ]);
-
-        $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
-
+        $response = $this->_create($options);
         return new ComplianceInquiriesInstance(
             $this->version,
-            $payload
+            $response->getContent()
+        );
+        
+    }
+
+    /**
+     * Create the ComplianceInquiriesInstance with Metadata
+     *
+     * @param array|Options $options Optional Arguments
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(array $options = []): ResourceMetadata
+    {
+        $response = $this->_create($options);
+        $resource = new ComplianceInquiriesInstance(
+                        $this->version,
+                        $response->getContent()
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 

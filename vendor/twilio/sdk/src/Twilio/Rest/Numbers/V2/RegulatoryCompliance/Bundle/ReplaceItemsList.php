@@ -20,6 +20,8 @@ use Twilio\Exceptions\TwilioException;
 use Twilio\ListResource;
 use Twilio\Values;
 use Twilio\Version;
+use Twilio\Http\Response;
+use Twilio\Metadata\ResourceMetadata;
 
 
 class ReplaceItemsList extends ListResource
@@ -42,33 +44,73 @@ class ReplaceItemsList extends ListResource
             $bundleSid,
         
         ];
-
         $this->uri = '/RegulatoryCompliance/Bundles/' . \rawurlencode($bundleSid)
         .'/ReplaceItems';
     }
 
     /**
-     * Create the ReplaceItemsInstance
+     * Helper function for Create
      *
+     
      * @param string $fromBundleSid The source bundle sid to copy the item assignments from.
-     * @return ReplaceItemsInstance Created ReplaceItemsInstance
+     
+     * @return Response Created Response
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(string $fromBundleSid): ReplaceItemsInstance
+    private function _create(string $fromBundleSid): Response
     {
-
+        
         $data = Values::of([
             'FromBundleSid' =>
                 $fromBundleSid,
         ]);
 
         $headers = Values::of(['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json' ]);
-        $payload = $this->version->create('POST', $this->uri, [], $data, $headers);
+        return $this->version->handleRequest('POST', $this->uri, [], $data, $headers, "create");
+    }
 
+    /**
+     * Create the ReplaceItemsInstance
+     *
+     
+     * @param string $fromBundleSid The source bundle sid to copy the item assignments from.
+     
+     * @return ReplaceItemsInstance Created ReplaceItemsInstance
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function create(string $fromBundleSid): ReplaceItemsInstance
+    {
+        $response = $this->_create( $fromBundleSid);
         return new ReplaceItemsInstance(
             $this->version,
-            $payload,
+            $response->getContent(),
             $this->solution['bundleSid']
+        );
+        
+    }
+
+    /**
+     * Create the ReplaceItemsInstance with Metadata
+     *
+     
+     * @param string $fromBundleSid The source bundle sid to copy the item assignments from.
+     
+     * @return ResourceMetadata The Created Resource with Metadata
+     * @throws TwilioException When an HTTP error occurs.
+     */
+    public function createWithMetadata(string $fromBundleSid): ResourceMetadata
+    {
+        $response = $this->_create( $fromBundleSid);
+        $resource = new ReplaceItemsInstance(
+                        $this->version,
+                        $response->getContent(),
+                        $this->solution['bundleSid']
+                    );
+        
+        return new ResourceMetadata(
+            $resource,
+            $response->getStatusCode(),
+            $response->getHeaders()
         );
     }
 
