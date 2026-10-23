@@ -362,9 +362,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/cb-ui.css') }}?v={{ @filemtime(public_path('css/cb-ui.css')) }}" rel="stylesheet">
+    {{-- Apple-style skin on top of CB UI (body.qd-apple). The tint is the brand colour from config/qudroid.php. --}}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="{{ asset('css/qd-apple.css') }}?v={{ @filemtime(public_path('css/qd-apple.css')) }}" rel="stylesheet">
+    @php
+        $qdTint = preg_match('/^#[0-9a-f]{6}$/i', (string) config('qudroid.primary_color')) ? config('qudroid.primary_color') : '#405189';
+        $qdRgb = implode(', ', array_map('hexdec', str_split(substr($qdTint, 1), 2)));
+    @endphp
+    <style>:root { --qd-tint: {{ $qdTint }}; --qd-tint-rgb: {{ $qdRgb }}; }</style>
 </head>
 
-<body class="cb-ui">
+<body class="cb-ui qd-apple">
 <div id="layout-wrapper">
 
     <!-- ========== SIDEBAR ========== -->

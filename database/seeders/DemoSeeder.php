@@ -217,7 +217,7 @@ class DemoSeeder extends Seeder
             [$e] = $emp->create([
                 'user_id' => $this->u[$k]->id, 'department_id' => $depts[$dept]->id, 'job_title' => $this->u[$k]->job_title,
                 'employment_type' => 'full_time', 'start_date' => $this->today->copy()->subMonths(8 + $i * 2)->startOfMonth()->toDateString(),
-                'manager_id' => $mgr ? Employee::where('user_id', $this->u[$mgr]->id)->value('id') : null,
+                'manager_id' => $mgr ? $this->u[$mgr]->id : null,
                 'basic_salary' => $basic, 'housing_allowance' => $housing, 'transport_allowance' => $transport, 'other_allowance' => 0,
                 'annual_rent' => $housing * 12, 'pension_enrolled' => true, 'nhf_enrolled' => $i % 3 === 0,
                 'bank_name' => $banks[$i % count($banks)], 'account_number' => (string) random_int(1000000000, 9999999999),
@@ -236,7 +236,7 @@ class DemoSeeder extends Seeder
             $req = $this->at($from->copy()->subDays(10), fn () => $leave->request($this->employee('staff2'), [
                 'leave_type_id' => $annual->id, 'starts_on' => $from->toDateString(), 'ends_on' => $from->copy()->addWeekdays(4)->toDateString(), 'reason' => 'Family visit to Enugu',
             ], $this->u['staff2']));
-            $this->at($from->copy()->subDays(9), fn () => $leave->decide($req, $this->u['hr'], true, 'Enjoy the break.'));
+            $this->at($from->copy()->subDays(9), fn () => $leave->decide($req, $this->u['pm'], true, 'Enjoy the break.'));
 
             $soon = $this->today->copy()->addWeekdays(10);
             $leave->request($this->employee('staff1'), [

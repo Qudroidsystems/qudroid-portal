@@ -90,6 +90,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/me/status', [\App\Http\Controllers\StatusController::class, 'update'])->middleware('throttle:60,1')->name('status.update');
     Route::post('/notifications/clear-read', [NotificationController::class, 'clearRead'])->name('notifications.clear-read');
     Route::get('/notifications/{id}/open', [NotificationController::class, 'open'])->name('notifications.open');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'read'])->name('notifications.read');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::post('/notifications/{id}/actions/{action}', [NotificationController::class, 'act'])->where('action', '[a-z_]{2,20}')->middleware('throttle:60,1')->name('notifications.act');
 
     // ── Activity log & who's online ─────────────────────────────────────
     Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity.index');

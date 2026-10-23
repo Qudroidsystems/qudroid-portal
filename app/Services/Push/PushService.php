@@ -43,13 +43,26 @@ class PushService
             if (!$userIds) return 0;
         }
 
-        $devices = DB::table('mobile_devices')->whereIn('user_id', $userIds)->whereNotNull('push_token')->get(['id', 'push_token']);
         $ok = 0;
         $title = mb_substr($title, 0, 150);
         $body  = mb_substr($body, 0, 500);
 
+        // Each phone gets its own unread total (the app badge) and, for bell items, the id of its
+        // own copy of the notification, so buttons on the push can call the notification API.
+        $badge = ($data['badge'] ?? null) === 'auto';
+        $ids = (array) ($data['notification_ids'] ?? []);
+        unset($data['notification_ids']);
+        $devices = DB::table('mobile_devices')->whereIn('user_id', $userIds)->whereNotNull('push_token')->get(['id', 'user_id', 'push_token']);
+        $unread = $badge && $devices->isNotEmpty() && Schema::hasTable('notifications')
+            ? DB::table('notifications')->where('notifiable_type', \App\Models\User::class)->whereIn('notifiable_id', $devices->pluck('user_id')->unique()->all())
+                ->whereNull('read_at')->groupBy('notifiable_id')->selectRaw('notifiable_id, count(*) as n')->pluck('n', 'notifiable_id')->all()
+            : [];
+
         foreach ($devices as $d) {
-            $r = $fcm->send($d->push_token, $title, $body, $data);
+            $mine = $data;
+            if ($badge) $mine['badge'] = (int) ($unread[$d->user_id] ?? 0);
+            if (isset($ids[$d->user_id])) $mine['notification_id'] = $ids[$d->user_id];
+            $r = $fcm->send($d->push_token, $title, $body, $mine);
             if ($r === 'ok') {
                 $ok++;
             } elseif ($r === 'invalid_token') {
@@ -61,13 +74,12 @@ class PushService
 
     public static function enabled(): bool
     {
-        static $ok = null;
-        if ($ok !== null) return $ok;
-        try {
-            $ok = Schema::hasTable('mobile_devices') && config('services.fcm.enabled', true) !== false && app(FcmClient::class)->configured();
-        } catch (\Throwable $e) {
-            $ok = false;
-        }
-        return $ok;
+        return once(function () {
+            try {
+                return Schema::hasTable('mobile_devices') && config('services.fcm.enabled', true) !== false && app(FcmClient::class)->configured();
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
     }
 }

@@ -30,3 +30,6 @@ Schedule::command('workflows:tick')->everyMinute()->withoutOverlapping(5);
 
 // Qmail: fetch new mail, wake snoozed conversations, send scheduled messages.
 Schedule::command('mail:sync')->everyMinute()->withoutOverlapping(10);
+
+// The daily summary e-mail of unread notifications, for people who turned it on.
+Schedule::command('notifications:digest')->dailyAt('07:00')->withoutOverlapping(30);

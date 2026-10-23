@@ -629,7 +629,8 @@ class ConnectService
                 ? Participant::where('conversation_id', $c->id)->whereNull('left_at')->pluck('user_id')->all()
                 : array_values(array_filter($mentions, 'is_int'));
             $ids = array_values(array_diff($ids, $told));
-            PortalNotifier::toUsers($ids, $me->name . ' mentioned you' . $where, $m->preview(140), route('connect.show', [$c, 'around' => $root?->id ?? $m->id, 'thread' => $root?->id]), 'message', 'connect-mention:' . $m->id);
+            PortalNotifier::toUsers($ids, $me->name . ' mentioned you' . $where, $m->preview(140), route('connect.show', [$c, 'around' => $root?->id ?? $m->id, 'thread' => $root?->id]), 'message', 'connect-mention:' . $m->id,
+                $this->replyable($c, $root));
             $told = array_merge($told, $ids);
         }
 
@@ -638,7 +639,8 @@ class ConnectService
             $ids = Message::where('thread_id', $root->id)->pluck('user_id')->push($root->user_id)->filter()->unique()->diff($told)->values()->all();
             $muted = Participant::where('conversation_id', $c->id)->whereIn('user_id', $ids)->where('muted', true)->pluck('user_id')->all();
             PortalNotifier::toUsers(array_values(array_diff($ids, $muted)), $me->name . ' replied in a thread' . $where, $m->preview(140),
-                route('connect.show', [$c, 'around' => $root->id, 'thread' => $root->id]), 'message', 'connect-thread:' . $root->id . ':' . $root->reply_count);
+                route('connect.show', [$c, 'around' => $root->id, 'thread' => $root->id]), 'message', 'connect-thread:' . $root->id . ':' . $root->reply_count,
+                $this->replyable($c, $root));
 
             return;
         }
@@ -649,8 +651,16 @@ class ConnectService
         $others = Participant::where('conversation_id', $c->id)->whereNull('left_at')->where('muted', false)->whereNotIn('user_id', $told)->get();
         foreach ($others as $p) {
             // One notification until they read the conversation again.
-            PortalNotifier::toUsers([$p->user_id], $title, $m->preview(140), route('connect.show', $c), 'message', 'connect:' . $c->id . ':' . $p->last_read_message_id);
+            PortalNotifier::toUsers([$p->user_id], $title, $m->preview(140), route('connect.show', $c), 'message', 'connect:' . $c->id . ':' . $p->last_read_message_id,
+                $this->replyable($c, null));
         }
+    }
+
+    /** A Reply button on chat notifications; they stack per conversation. */
+    protected function replyable(Conversation $c, ?Message $root): array
+    {
+        return ['thread' => 'connect:' . $c->id, 'target' => ['kind' => 'message', 'id' => $c->id] + ($root ? ['thread' => $root->id] : []),
+            'actions' => \App\Services\Messaging\NotificationActions::for('message')];
     }
 
     protected function system(Conversation $c, string $text): Message

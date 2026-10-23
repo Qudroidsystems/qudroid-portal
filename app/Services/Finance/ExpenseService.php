@@ -6,6 +6,7 @@ use App\Models\Finance\Account;
 use App\Models\Finance\Budget;
 use App\Models\Finance\Expense;
 use App\Models\User;
+use App\Services\Messaging\NotificationActions;
 use App\Services\Messaging\PortalNotifier;
 use App\Support\Money;
 use Illuminate\Http\UploadedFile;
@@ -48,7 +49,8 @@ class ExpenseService
         $approvers = array_diff(PortalNotifier::userIdsWithPermission('Approve finance'), [$by->id]);
         PortalNotifier::toUsers($approvers, 'Expense to approve: ' . $expense->number,
             $expense->payee . ', ' . Money::format($expense->amount, $expense->currency) . ' (' . $account->name . ')',
-            route('finance.expenses.show', $expense), 'payment');
+            route('finance.expenses.show', $expense), 'approval', 'expense:' . $expense->id . ':submitted',
+            ['target' => ['kind' => 'expense', 'id' => $expense->id], 'actions' => NotificationActions::for('expense')]);
 
         return $expense;
     }

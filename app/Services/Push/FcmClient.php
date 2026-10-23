@@ -63,18 +63,28 @@ class FcmClient
                     : ['headers' => ['apns-priority' => '5', 'apns-push-type' => 'background'], 'payload' => ['aps' => ['content-available' => 1]]],
             ];
         } else {
+            // Android: one channel per kind so people can tune them in system settings; a tag so a
+            // thread replaces its earlier banner. iOS: thread-id stacks, badge is the unread total.
+            $level = $data['level'] ?? 'normal';
+            $category = $data['category'] ?? '';
+            $thread = (string) ($data['thread_id'] ?? '');
+            $aps = ['sound' => 'default', 'interruption-level' => ['urgent' => 'time-sensitive', 'passive' => 'passive'][$level] ?? 'active'];
+            if ($level === 'passive') unset($aps['sound']);
+            if ($thread !== '') $aps['thread-id'] = $thread;
+            if (isset($data['badge']) && is_numeric($data['badge'])) $aps['badge'] = (int) $data['badge'];
+            if ($category !== '') $aps['category'] = $category;
+            $android = array_filter([
+                'channel_id' => self::channelFor($category ?: ($data['type'] ?? '')),
+                'sound' => $level === 'passive' ? null : 'default',
+                'tag' => $thread !== '' ? mb_substr($thread, 0, 64) : null,
+                'notification_count' => isset($data['badge']) && is_numeric($data['badge']) ? (int) $data['badge'] : null,
+            ], fn ($v) => $v !== null);
             $message = [
                 'token' => $token,
                 'notification' => ['title' => $title, 'body' => $body],
                 'data' => $strings,
-                'android' => [
-                    'priority' => 'high',
-                    'notification' => [
-                        'channel_id' => in_array($data['type'] ?? '', ['message', 'meeting'], true) ? 'messages' : 'general',
-                        'sound' => 'default',
-                    ],
-                ],
-                'apns' => ['payload' => ['aps' => ['sound' => 'default']]],
+                'android' => ['priority' => $level === 'passive' ? 'normal' : 'high', 'notification' => $android],
+                'apns' => ['headers' => ['apns-priority' => $level === 'passive' ? '5' : '10'], 'payload' => ['aps' => $aps]],
             ];
         }
 
@@ -102,6 +112,19 @@ class FcmClient
     }
 
     /** OAuth2 access token from the service account (cached ~55 minutes). */
+    /** Android notification channels the app creates: messages, calls, meetings, approvals, tasks, general. */
+    public static function channelFor(string $category): string
+    {
+        return match ($category) {
+            'message', 'mention' => 'messages',
+            'call' => 'calls',
+            'meeting' => 'meetings',
+            'approval', 'leave' => 'approvals',
+            'task' => 'tasks',
+            default => 'general',
+        };
+    }
+
     protected function accessToken(): string
     {
         return Cache::remember($this->tokenCacheKey(), now()->addMinutes(55), function () {

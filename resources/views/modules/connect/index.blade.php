@@ -149,7 +149,7 @@
                                 <button type="button" class="btn btn-ghost-secondary" data-bs-toggle="dropdown" title="Attach" aria-label="Attach"><i class="ri-attachment-2 fs-5"></i></button>
                                 <div class="dropdown-menu">
                                     <label class="dropdown-item mb-0" role="button"><i class="ri-upload-2-line me-2"></i>Upload a file<input type="file" name="attachment" id="cxFile" hidden></label>
-                                    @if(\Illuminate\Support\Facades\Route::has('drive.send') && !($isGuest ?? false))<button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#cxDrive"><i class="ri-folder-cloud-line me-2"></i>From Drive</button>@endif
+                                    @if(\Illuminate\Support\Facades\Route::has('drive.send') && !($isGuest ?? false))<button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#cxDrive"><i class="ri-folder-3-line me-2"></i>From Drive</button>@endif
                                 </div>
                             </div>
                             <button type="button" class="btn btn-ghost-secondary cx-tool" id="cxEmojiBtn" title="Emoji" aria-label="Emoji"><i class="ri-emotion-happy-line fs-5"></i></button>

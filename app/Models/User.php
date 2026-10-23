@@ -64,6 +64,8 @@ class User extends Authenticatable
             'status_until'         => 'datetime',
             'password'             => 'hashed',
             'muted_notifications'  => 'array',
+            'notify_digest'        => 'boolean',
+            'notify_digest_at'     => 'datetime',
         ];
     }
 

@@ -9,7 +9,7 @@
         @foreach([
             ['Chat', 'ri-chat-3-line', route('connect.index'), '#405189'],
             ['Calls', 'ri-vidicon-line', route('connect.calls.index'), '#0ab39c'],
-            ['Drive', 'ri-folder-cloud-line', route('drive.index'), '#f7b84b'],
+            ['Drive', 'ri-folder-3-line', route('drive.index'), '#f7b84b'],
             ['Calendar', 'ri-calendar-event-line', Route::has('meetings.calendar') && ($me->can('View meetings') || $me->can('Manage meetings')) ? route('meetings.calendar') : null, '#299cdb'],
         ] as [$label, $icon, $url, $color])
             @if($url)
@@ -53,7 +53,7 @@
                 @endforelse
             </x-cb.card>
 
-            <x-cb.card title="Recent files" icon="ri-folder-cloud-line" :flush="true">
+            <x-cb.card title="Recent files" icon="ri-folder-3-line" :flush="true">
                 <x-slot:tools><a href="{{ route('drive.index') }}" class="btn btn-sm btn-soft-primary">Open Drive</a></x-slot:tools>
                 @forelse($files as $f)
                     <a href="{{ $drive->url($f) }}" class="ws-row">

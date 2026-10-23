@@ -7,6 +7,7 @@ use App\Models\Hr\Holiday;
 use App\Models\Hr\LeaveRequest;
 use App\Models\Hr\LeaveType;
 use App\Models\User;
+use App\Services\Messaging\NotificationActions;
 use App\Services\Messaging\PortalNotifier;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -79,7 +80,8 @@ class LeaveService
         $deciders = array_diff($this->deciderIds($employee), [$employee->user_id]);
         PortalNotifier::toUsers($deciders, 'Leave request: ' . $employee->user->name,
             "{$type->name}, {$days} working days from " . $from->format('j M') . ' to ' . $to->format('j M Y') . '.',
-            route('hr.leave.show', $leave), 'leave');
+            route('hr.leave.show', $leave), 'leave', 'leave:' . $leave->id . ':request',
+            ['target' => ['kind' => 'leave', 'id' => $leave->id], 'actions' => NotificationActions::for('leave')]);
 
         return $leave;
     }

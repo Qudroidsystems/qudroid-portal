@@ -60,7 +60,7 @@ class MeetingService
         });
 
         $this->tell($meeting, $meeting->attendees()->where('user_id', '!=', $by->id)->pluck('user_id')->all(),
-            'Meeting invite: ' . $meeting->title, $by->name . ' invited you. ' . $meeting->whenLabel() . $this->where($meeting) . '.');
+            'Meeting invite: ' . $meeting->title, $by->name . ' invited you. ' . $meeting->whenLabel() . $this->where($meeting) . '.', true);
 
         return $meeting;
     }
@@ -90,11 +90,11 @@ class MeetingService
         });
 
         $others = fn (array $ids) => array_values(array_diff($ids, [$by->id]));
-        $this->tell($meeting, $others($added), 'Meeting invite: ' . $meeting->title, $by->name . ' invited you. ' . $meeting->whenLabel() . $this->where($meeting) . '.');
+        $this->tell($meeting, $others($added), 'Meeting invite: ' . $meeting->title, $by->name . ' invited you. ' . $meeting->whenLabel() . $this->where($meeting) . '.', true);
         $this->tell($meeting, $others($removed), 'Removed from meeting: ' . $meeting->title, 'You are no longer needed at this meeting.');
         if ($moved) {
             $stay = $meeting->attendees()->whereNotIn('user_id', $added)->pluck('user_id')->all();
-            $this->tell($meeting, $others($stay), 'Meeting changed: ' . $meeting->title, 'Now ' . $meeting->whenLabel() . $this->where($meeting) . '. Please answer again.');
+            $this->tell($meeting, $others($stay), 'Meeting changed: ' . $meeting->title, 'Now ' . $meeting->whenLabel() . $this->where($meeting) . '. Please answer again.', true);
         }
         if ($chat = Conversation::where('meeting_id', $meeting->id)->first()) $this->syncChat($meeting, $chat);
 
@@ -387,10 +387,12 @@ class MeetingService
         return $w ? ', ' . $w : '';
     }
 
-    protected function tell(Meeting $m, array $userIds, string $title, string $body): void
+    /** $ask: the notification carries Going / Maybe / Not going buttons. */
+    protected function tell(Meeting $m, array $userIds, string $title, string $body, bool $ask = false): void
     {
         if (!$userIds) return;
-        PortalNotifier::toUsers($userIds, $title, $body, route('meetings.show', $m), 'meeting');
+        PortalNotifier::toUsers($userIds, $title, $body, route('meetings.show', $m), 'meeting', null,
+            ['thread' => 'meeting:' . $m->id] + ($ask ? ['target' => ['kind' => 'meeting', 'id' => $m->id], 'actions' => \App\Services\Messaging\NotificationActions::for('meeting')] : []));
     }
 
     protected function check(bool $failed, string $field, string $message): void

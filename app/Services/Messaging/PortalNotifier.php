@@ -27,7 +27,7 @@ class PortalNotifier
         'call'        => 'ri-phone-line',
         'reminder'    => 'ri-alarm-line',
         'meeting'     => 'ri-video-chat-line',
-        'drive'       => 'ri-folder-cloud-line',
+        'drive'       => 'ri-folder-3-line',
         'course'      => 'ri-book-open-line',
         'payment'     => 'ri-money-dollar-circle-line',
         'invoice'     => 'ri-bill-line',
@@ -46,13 +46,53 @@ class PortalNotifier
         'calls'    => ['Calls', 'ri-phone-line', ['call']],
         'meetings' => ['Meetings', 'ri-video-chat-line', ['meeting']],
         'work'     => ['Tasks & projects', 'ri-task-line', ['task', 'project']],
-        'files'    => ['Files', 'ri-folder-cloud-line', ['drive']],
+        'files'    => ['Files', 'ri-folder-3-line', ['drive']],
         'money'    => ['Money', 'ri-money-dollar-circle-line', ['payment', 'invoice', 'payroll']],
         'people'   => ['Leave & approvals', 'ri-shield-check-line', ['leave', 'approval']],
         'academy'  => ['Academy', 'ri-book-open-line', ['course', 'certificate']],
         'clients'  => ['Clients & support', 'ri-briefcase-4-line', ['client', 'crm', 'support']],
         'stock'    => ['Stock', 'ri-archive-line', ['inventory']],
     ];
+
+    /**
+     * How loudly each kind arrives. urgent: a banner and a sound on the web, a
+     * time-sensitive push. normal: a banner and a push. passive: only the
+     * notification centre (no banner, no sound, a quiet push).
+     */
+    public const URGENT = ['call', 'approval', 'leave', 'meeting'];
+    public const PASSIVE = ['system', 'drive', 'inventory', 'certificate'];
+
+    /** The mobile app's categories (Android channels, iOS categories). */
+    public const CATEGORIES = [
+        'message' => 'message', 'call' => 'call', 'meeting' => 'meeting', 'task' => 'task', 'project' => 'task',
+        'approval' => 'approval', 'leave' => 'approval', 'payment' => 'finance', 'invoice' => 'finance', 'payroll' => 'finance',
+        'course' => 'academy', 'certificate' => 'academy', 'mail' => 'mail',
+    ];
+
+    public static function levelOf(string $type): string
+    {
+        return in_array($type, self::URGENT, true) ? 'urgent' : (in_array($type, self::PASSIVE, true) ? 'passive' : 'normal');
+    }
+
+    public static function categoryOf(string $type, ?string $key = null): string
+    {
+        if ($type === 'message' && $key && str_starts_with($key, 'connect-mention:')) return 'mention';
+
+        return self::CATEGORIES[$type] ?? 'system';
+    }
+
+    /** Is the person in their quiet hours right now? */
+    public static function inQuietHours(User $user, ?\Illuminate\Support\Carbon $at = null): bool
+    {
+        $from = $user->notify_quiet_from ?? null;
+        $to = $user->notify_quiet_to ?? null;
+        if (!$from || !$to) return false;
+        $now = ($at ?? now())->format('H:i');
+        $from = substr((string) $from, 0, 5);
+        $to = substr((string) $to, 0, 5);
+
+        return $from <= $to ? ($now >= $from && $now < $to) : ($now >= $from || $now < $to);   // e.g. 22:00 to 07:00
+    }
 
     public static function groupOf(string $type): ?string
     {
@@ -68,7 +108,15 @@ class PortalNotifier
     }
 
     /** @param int[] $userIds */
-    public static function toUsers(array $userIds, string $title, string $body, ?string $url = null, string $type = 'system', ?string $key = null): int
+    /**
+     * $extra (all optional):
+     *   actions  buttons shown on the notification: [['id' => 'approve', 'label' => 'Approve', 'style' => 'primary'|'destructive'|null, 'input' => 'Reason'|null]]
+     *            run through NotificationActions with `target`
+     *   target   what the actions act on: ['kind' => 'leave', 'id' => 12]
+     *   thread   notifications with the same thread stack together (defaults to the key's prefix)
+     *   level    urgent | normal | passive (defaults by type)
+     */
+    public static function toUsers(array $userIds, string $title, string $body, ?string $url = null, string $type = 'system', ?string $key = null, array $extra = []): int
     {
         if (!self::available()) return 0;
         $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
@@ -99,12 +147,20 @@ class PortalNotifier
                 'type'  => $type,
                 'icon'  => self::ICONS[$type] ?? self::ICONS['system'],
                 'key'   => $key,
+                'group' => self::groupOf($type) ?? 'system',
+                'category' => self::categoryOf($type, $key),
+                'level' => $extra['level'] ?? self::levelOf($type),
+                'thread' => $extra['thread'] ?? self::threadOf($type, $key, $url),
+                'actions' => array_values($extra['actions'] ?? []) ?: null,
+                'target' => $extra['target'] ?? null,
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             $now = now();
+            $ids = [];
+            foreach ($userIds as $uid) $ids[$uid] = (string) Str::uuid();
             foreach (array_chunk($userIds, 500) as $chunk) {
                 DB::table('notifications')->insert(array_map(fn ($uid) => [
-                    'id' => (string) Str::uuid(), 'type' => PortalNotification::class,
+                    'id' => $ids[$uid], 'type' => PortalNotification::class,
                     'notifiable_type' => User::class, 'notifiable_id' => $uid,
                     'data' => $data, 'read_at' => null, 'created_at' => $now, 'updated_at' => $now,
                 ], $chunk));
@@ -115,14 +171,43 @@ class PortalNotifier
             \App\Services\Realtime\Realtime::toUsers($userIds, 'notification', ['type' => $type]);
 
             // Calls send their own ringing push (CallService), so the bell entry is enough here.
+            // Quiet hours hold back everything but urgent items; the notification still waits in the centre.
+            $level = $extra['level'] ?? self::levelOf($type);
             $pushTo = $type === 'call' ? [] : \App\Services\Presence\Presence::withoutDnd($userIds);
-            if ($pushTo) \App\Services\Push\PushService::toUsers($pushTo, $title, $body, ['type' => $type, 'url' => (string) $url, 'key' => (string) $key]);
+            if ($pushTo && $level !== 'urgent') {
+                $quiet = User::whereIn('id', $pushTo)->whereNotNull('notify_quiet_from')->get()->filter(fn ($u) => self::inQuietHours($u))->pluck('id')->all();
+                $pushTo = array_values(array_diff($pushTo, $quiet));
+            }
+            if ($pushTo) {
+                $d = json_decode($data, true);
+                \App\Services\Push\PushService::toUsers($pushTo, $title, $body, [
+                    'type' => $type, 'url' => (string) $url, 'key' => (string) $key, 'category' => $d['category'], 'group' => $d['group'],
+                    'thread_id' => (string) $d['thread'], 'level' => $level,
+                    'actions' => $d['actions'] ? json_encode(array_map(fn ($a) => ['id' => $a['id'], 'label' => $a['label'], 'input' => $a['input'] ?? null], $d['actions'])) : '',
+                    'notification_key' => (string) $key,
+                    'badge' => 'auto',
+                    'notification_ids' => array_intersect_key($ids, array_flip($pushTo)),
+                ]);
+            }
 
             return count($userIds);
         } catch (\Throwable $e) {
             Log::warning('Portal notification failed', ['error' => $e->getMessage()]);
             return 0;
         }
+    }
+
+    /** Notifications from the same conversation, task or approval stack together. */
+    public static function threadOf(string $type, ?string $key, ?string $url): string
+    {
+        if ($key) {
+            // "connect:12:345" → "connect:12"; "task:12:assigned" → "task:12"
+            $parts = explode(':', $key);
+
+            return implode(':', array_slice($parts, 0, min(2, count($parts))));
+        }
+
+        return $type . ':' . substr(md5((string) $url), 0, 8);
     }
 
     /** Every active account of one type (staff, student, client, partner). */

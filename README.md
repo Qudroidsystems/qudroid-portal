@@ -623,6 +623,28 @@ Permissions: "Check in" (everyone), "Run check-in" (organisers),
 "Manage check-in places" (HR). Code: `routes/modules/checkin.php`,
 `app/Services/Checkin`, `app/Http/Controllers/Checkin`, `resources/views/modules/checkin`.
 
+## Apple-style look
+
+Every page wears a calmer, Apple-like skin: `public/css/qd-apple.css`, loaded after `cb-ui.css` and switched on by `body.qd-apple` in `layouts/master.blade.php`. It only restyles; no page markup changed.
+
+- Inter type, large titles, borderless cards, a frosted top bar, a translucent sidebar, pill buttons, iOS switches and segmented tabs, glass dropdowns and modals, full dark mode.
+- The tint comes from `QUDROID_PRIMARY_COLOR` (config `qudroid.primary_color`, default `#405189`). Colours are tokens (`--qd-*`) at the top of the file; the mobile app uses the same values.
+- To compare with the old look, remove `qd-apple` from the `<body>` class.
+
+## Notification centre
+
+The bell opens a slide-over notification centre (`layouts/partials/notification-bell.blade.php`); `/notifications` is the full page with settings.
+
+- **Buttons on notifications.** Approve or reject expenses, approve or decline leave, answer meeting invites, reply to messages, without leaving the page. They run through the normal services (`NotificationActions`), so the same permission checks apply. A used notification shows what was done.
+- **Stacks and filters.** Items from one conversation, task or approval stack together (`thread`). Filters: All, Unread, Mentions, Approvals, or a kind.
+- **Banners and sounds** for new items, except "passive" ones (files, stock, system).
+- **Quiet hours** per person: no banners, sounds or phone pushes, except calls, approvals, leave and meetings.
+- **Daily summary** e-mail at 07:00 (`notifications:digest`, scheduled in `routes/console.php`) for people who switch it on and have unread items. The scheduler must be running (`php artisan schedule:work`, or cron on a server).
+- **Phone pushes** carry the unread badge, a category, a thread for stacking, the buttons, and the notification id. Android channels: messages, calls, meetings, approvals, tasks, general.
+- Senders pass buttons with `PortalNotifier::toUsers(..., $extra)`: `['target' => ['kind' => 'expense', 'id' => 8], 'actions' => NotificationActions::for('expense')]`.
+
+The app API for all of this (list, stacks, buttons, settings) is under `/api/v1/notifications`.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
