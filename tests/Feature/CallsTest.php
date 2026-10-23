@@ -85,7 +85,7 @@ test('declining a direct call ends it; people who go quiet drop out and an empty
     // in a group, one person declining doesn't end it
     $this->actingAs($this->cy)->postJson(route('connect.calls.decline', $call));
     expect($call->refresh()->ended_at)->toBeNull();
-    $this->actingAs($this->cy)->get(route('connect.show', $group))->assertOk()->assertSee('call in progress');
+    $this->actingAs($this->cy)->get(route('connect.show', $group))->assertOk()->assertSee('"huddle":false', false);   // the live-call bar (drawn by the page)
 
     // Ben's tab closed without leaving: after 30 seconds he drops out
     CallPerson::where('user_id', $this->ben->id)->update(['seen_at' => now()->subMinute()]);
@@ -105,4 +105,27 @@ test('a call nobody answers is reported as missed', function () {
     expect($call->refresh()->ended_at)->not->toBeNull();
 
     $this->actingAs($this->ben)->get(route('connect.calls.index'))->assertOk()->assertSee('Missed');
+});
+
+test('a huddle is a voice room in a group that rings nobody and shows who is in it', function () {
+    $group = $this->connect->group($this->ada, 'Design', [$this->ben->id, $this->cy->id]);
+    $this->ben->notifications()->delete();
+    $res = $this->actingAs($this->ada)->postJson(route('connect.huddle', $group))->assertOk()->assertJsonPath('huddle', true)->json();
+    $call = \App\Models\Connect\Call::find($res['id']);
+    expect($call->kind)->toBe('audio')->and($this->ben->notifications()->count())->toBe(0);
+    $this->actingAs($this->ben)->getJson(route('connect.calls.ringing'))->assertJsonCount(0, 'calls');
+
+    // a second press joins the same one; the chat's poll shows who is in it
+    $this->actingAs($this->cy)->postJson(route('connect.huddle', $group))->assertJsonPath('id', $call->id);
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call))->assertOk();
+    $this->actingAs($this->ben)->getJson(route('connect.poll', $group))->assertJsonPath('call.huddle', true)->assertJsonPath('call.people.0.name', 'Ada Obi');
+    $this->actingAs($this->ben)->get(route('connect.calls.show', [$call, 'embed' => 1]))->assertOk()->assertSee('class="embed"', false);
+    $this->actingAs($this->ben)->get(route('connect.index'))->assertSee('Huddle on now');
+
+    // everyone leaves: it ends with a note in the chat
+    $this->actingAs($this->ada)->postJson(route('connect.calls.leave', $call));
+    $this->travel(2)->minutes();
+    $this->actingAs($this->ben)->getJson(route('connect.poll', $group))->assertJsonPath('call', null);
+    expect(\App\Models\Connect\Message::where('conversation_id', $group->id)->where('is_system', true)->latest('id')->value('body'))->toStartWith('Huddle ended');
+    $this->actingAs($this->out ?? $this->cy)->postJson(route('connect.huddle', $this->connect->direct($this->ben, $this->cy)))->assertOk();
 });

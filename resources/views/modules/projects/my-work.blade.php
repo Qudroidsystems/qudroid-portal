@@ -3,9 +3,9 @@
 @section('content')
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
-    <x-cb.hero title="My work" icon="ri-user-follow-line" subtitle="Tasks assigned to you on open projects, soonest first." :back="route('projects.index')" back-label="Projects">
+    <x-cb.hero title="My work" icon="ri-user-follow-line" subtitle="Tasks assigned to you on open projects, soonest first. Change a status right here." :back="route('projects.index')" back-label="Projects">
         <x-slot:actions>
-            <a href="{{ route('projects.my-work', request()->boolean('done') ? [] : ['done' => 1]) }}" class="cb-hero-btn"><i class="ri-checkbox-circle-line"></i>{{ request()->boolean('done') ? 'Hide done' : 'Show done' }}</a>
+            <a href="{{ route('projects.my-work', request()->boolean('done') ? [] : ['done' => 1]) }}" class="cb-hero-btn" data-live><i class="ri-checkbox-circle-line"></i>{{ request()->boolean('done') ? 'Hide done' : 'Show done' }}</a>
         </x-slot:actions>
     </x-cb.hero>
 
@@ -23,7 +23,8 @@
                         @foreach($tasks as $t)
                             <tr>
                                 <td data-label="Task"><a href="{{ route('projects.tasks.show', [$t->project, $t->number]) }}" class="fw-semibold">{{ $t->title }}</a><div class="small text-muted">{{ $t->project->code }}-{{ $t->number }} · {{ $t->project->name }}</div></td>
-                                <td data-label="Status">@include('modules.projects._pill', ['value' => $t->status])</td>
+                                <td data-label="Status"><form method="POST" action="{{ route('projects.tasks.update', [$t->project, $t->number]) }}" data-live data-live-auto>@csrf @method('PUT')
+                                    <select name="status" class="form-select form-select-sm" style="min-width: 8rem" aria-label="Status">@foreach(\App\Models\Projects\Task::STATUSES as $k => $v)<option value="{{ $k }}" @selected($t->status === $k)>{{ $v }}</option>@endforeach</select></form></td>
                                 <td data-label="Priority">@include('modules.projects._pill', ['kind' => 'priority', 'value' => $t->priority])</td>
                                 <td data-label="Due" class="text-nowrap {{ $t->isOverdue() ? 'text-danger fw-semibold' : '' }}">{{ $t->due_on?->format('j M Y') ?? '—' }}</td>
                             </tr>

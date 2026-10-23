@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api\V1\Meetings;
 
 use App\Http\Controllers\Api\V1\ApiController;
+use App\Http\Controllers\Meetings\MeetingController;
+use App\Models\Connect\Conversation;
 use App\Models\Meetings\Meeting;
+use App\Models\Meetings\Room;
 use App\Services\Meetings\MeetingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -48,6 +51,42 @@ class MeetingApiController extends ApiController
         return $this->ok($this->meeting($meeting, $request->user(), true));
     }
 
+    /** Schedule a meeting: the web form's fields, with `attendees[]` user ids (`GET meetings/people`). */
+    public function store(Request $request)
+    {
+        $data = $request->validate(MeetingController::rules());
+        $meeting = $this->meetings->schedule($data, $data['attendees'] ?? [], $request->user());
+
+        return $this->ok($this->meeting($meeting->fresh(['room', 'organizer', 'attendees.user', 'project']), $request->user(), true), 'Meeting scheduled and invitations sent.', 201);
+    }
+
+    public function update(Request $request, Meeting $meeting)
+    {
+        if (!$this->meetings->canManage($meeting, $request->user())) return $this->fail('Only the organiser can change this meeting.', 403, 'forbidden');
+        $data = $request->validate(MeetingController::rules());
+        $this->meetings->update($meeting, $data, $data['attendees'] ?? [], $request->user());
+
+        return $this->ok($this->meeting($meeting->fresh(['room', 'organizer', 'attendees.user', 'project']), $request->user(), true), 'Meeting saved.');
+    }
+
+    /** Cancels the meeting (it stays in the list, marked cancelled); `reason` is optional. */
+    public function destroy(Request $request, Meeting $meeting)
+    {
+        if (!$this->meetings->canManage($meeting, $request->user())) return $this->fail('Only the organiser can cancel this meeting.', 403, 'forbidden');
+        $this->meetings->cancel($meeting, $request->user(), $request->input('reason'));
+
+        return $this->ok(null, 'Meeting cancelled. Everyone invited has been told.');
+    }
+
+    /** People who can be invited, and the rooms. */
+    public function people(Request $request)
+    {
+        return $this->ok([
+            'people' => $this->meetings->people()->whereKeyNot($request->user()->id)->get(['id', 'name', 'job_title'])->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'job_title' => $u->job_title, 'avatar' => $u->avatar_url])->values(),
+            'rooms' => Room::where('is_active', true)->orderBy('name')->get(['id', 'name', 'capacity']),
+        ]);
+    }
+
     public function respond(Request $request, Meeting $meeting)
     {
         $d = $request->validate(['response' => ['required', Rule::in(['accepted', 'tentative', 'declined'])], 'note' => ['nullable', 'string', 'max:255']]);
@@ -71,9 +110,25 @@ class MeetingApiController extends ApiController
                 'project' => $m->project ? ['code' => $m->project->code, 'name' => $m->project->name] : null,
                 'attendees' => $m->attendees->map(fn ($a) => ['id' => $a->user_id, 'name' => $a->user?->name, 'avatar' => $a->user?->avatar_url, 'response' => $a->response])->values(),
                 'guests' => $m->guests ?? [],
+                'can_manage' => $this->meetings->canManage($m, $me),
+                'join' => $this->joinInfo($m, $me),
             ];
         }
 
         return $out;
+    }
+
+    /** How to join in the portal: the meeting chat and its live call, if any. */
+    protected function joinInfo(Meeting $m, $me): array
+    {
+        $chat = Conversation::where('meeting_id', $m->id)->first();
+        $live = $chat ? app(\App\Services\Connect\CallService::class)->live($chat) : null;
+
+        return [
+            'conversation_id' => $chat?->id,
+            'call_id' => $live?->id,
+            // Start or join with POST calls {meeting_id}; it creates the chat when needed.
+            'can_call' => !$m->isCancelled() && $me->can('Use connect'),
+        ];
     }
 }

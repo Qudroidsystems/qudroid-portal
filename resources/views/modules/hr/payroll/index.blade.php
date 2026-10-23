@@ -6,6 +6,9 @@
     <x-cb.hero title="Payroll" icon="ri-money-dollar-circle-line" subtitle="One run a month: prepare, have someone else approve, then pay. Paying posts it to the ledger and releases the payslips." :back="route('hr.index')" back-label="HR" />
 
     @include('partials.flash')
+    @unless(app(\App\Services\Settings\Settings::class)->payrollReview())
+        <div class="cb-banner warning"><i class="ri-error-warning-line"></i><div>The PAYE rates haven't been confirmed by an accountant yet. <a href="{{ route('portal-settings.payroll') }}">Check the payroll tax rates</a> before paying a live payroll.</div></div>
+    @endunless
 
     @php $m = fn ($v) => \App\Support\Money::format($v); @endphp
     <div class="row g-3">

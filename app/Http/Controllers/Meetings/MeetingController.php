@@ -88,6 +88,11 @@ class MeetingController extends Controller
             'busy' => $meeting->isCancelled() || $meeting->isOver() ? [] : $this->meetings->busy($meeting->attendees->pluck('user_id')->all(), $meeting->starts_at, $meeting->ends_at, $meeting->id),
             'liveCall' => ($chat = \App\Models\Connect\Conversation::where('meeting_id', $meeting->id)->first()) && class_exists(\App\Services\Connect\CallService::class)
                 ? app(\App\Services\Connect\CallService::class)->live($chat) : null,
+            // Calls held in the meeting chat that left a recording, a transcript or notes (for people in the chat).
+            'recaps' => $chat && \Illuminate\Support\Facades\Route::has('connect.calls.recap') && app(\App\Services\Connect\ConnectService::class)->participant($chat, $request->user())
+                ? \App\Models\Connect\Call::where('conversation_id', $chat->id)->withCount(['recordings' => fn ($q) => $q->where('status', 'ready'), 'transcript'])
+                    ->latest('id')->limit(10)->get()->filter(fn ($c) => $c->recordings_count || $c->transcript_count || $c->note_id)->values()
+                : collect(),
         ]);
     }
 
@@ -177,7 +182,7 @@ class MeetingController extends Controller
         ];
     }
 
-    protected function rules(): array
+    public static function rules(): array
     {
         return [
             'title' => ['required', 'string', 'max:150'],

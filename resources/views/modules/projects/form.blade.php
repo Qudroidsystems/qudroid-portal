@@ -50,6 +50,7 @@
                             @foreach($staff as $s)<option value="{{ $s->id }}" @selected((int) old('manager_id', $project->manager_id) === $s->id)>{{ $s->name }}</option>@endforeach
                         </select>
                     </div>
+                    @include('partials.unit-select', ['value' => $project->business_unit_id, 'class' => 'col-md-6'])
                     <div class="col-md-3"><label class="form-label">Priority</label>
                         <select name="priority" class="form-select">
                             @foreach(\App\Models\Projects\Project::PRIORITIES as $k => $v)<option value="{{ $k }}" @selected(old('priority', $project->priority) === $k)>{{ $v }}</option>@endforeach

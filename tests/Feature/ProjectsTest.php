@@ -196,3 +196,27 @@ test('project pages load', function () {
     $this->actingAs($this->pm)->put(route('projects.update', $p), ['name' => 'Website v2', 'priority' => 'normal'])->assertRedirect();
     expect($p->fresh()->name)->toBe('Website v2')->and($p->fresh()->manager_id)->toBe($this->pm->id);
 });
+
+test('the board filters by priority and due date, and the list edits one field at a time', function () {
+    $p = makeProject($this);
+    $svc = app(ProjectService::class);
+    $late = $svc->createTask($p, ['title' => 'Late one', 'priority' => 'urgent', 'due_on' => today()->subDay()->toDateString()], $this->pm);
+    $svc->createTask($p, ['title' => 'Calm one', 'priority' => 'low', 'checklist_text' => "A\nB"], $this->pm);
+
+    $this->actingAs($this->pm)->get(route('projects.board', [$p, 'priority' => 'urgent']))
+        ->assertOk()->assertSee('Late one')->assertDontSee('Calm one')->assertSee('vendor/sortablejs/Sortable.min.js', false)->assertSee('id="tk-drawer"', false);
+    $this->get(route('projects.board', [$p, 'due' => 'overdue']))->assertSee('Late one')->assertDontSee('Calm one');
+    $this->get(route('projects.board', [$p, 'due' => 'none']))->assertSee('Calm one')->assertDontSee('Late one');
+
+    // An inline change sends only that field; the rest of the task is untouched.
+    $calm = Task::where('title', 'Calm one')->first();
+    $this->from(route('projects.board', [$p, 'view' => 'list']))
+        ->put(route('projects.tasks.update', [$p, $calm->number]), ['status' => 'review'])
+        ->assertRedirect(route('projects.board', [$p, 'view' => 'list']));
+    $calm->refresh();
+    expect($calm->status)->toBe('review')->and($calm->title)->toBe('Calm one')->and($calm->priority)->toBe('low')->and(count($calm->checklist))->toBe(2);
+
+    // The task page carries the region the side panel loads.
+    $this->get(route('projects.tasks.show', [$p, $late->number]))->assertOk()->assertSee('id="task-panel"', false)->assertSee('data-live-region', false);
+    expect(file_exists(public_path('vendor/sortablejs/Sortable.min.js')))->toBeTrue();
+});

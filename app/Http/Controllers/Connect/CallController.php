@@ -31,6 +31,15 @@ class CallController extends Controller
             : redirect()->route('connect.calls.show', $call);
     }
 
+    public function huddle(Request $request, Conversation $conversation)
+    {
+        $call = $this->calls->huddle($conversation, $request->user());
+
+        return $request->expectsJson()
+            ? response()->json(['id' => $call->id, 'huddle' => $call->is_huddle, 'url' => route('connect.calls.show', $call)])
+            : redirect()->route('connect.calls.show', $call);
+    }
+
     public function show(Request $request, Call $call)
     {
         $me = $request->user();
@@ -40,6 +49,7 @@ class CallController extends Controller
         return view('modules.connect.call', [
             'call' => $call->refresh()->load('conversation'), 'me' => $me, 'title' => $call->conversation->titleFor($me),
             'iceServers' => $this->calls->iceServers(),
+            'embed' => $request->boolean('embed'),
         ]);
     }
 
@@ -55,7 +65,11 @@ class CallController extends Controller
         abort_unless($this->calls->canJoin($call, $request->user()), 403);
         $state = ['mic' => $request->boolean('mic'), 'cam' => $request->boolean('cam'), 'screen' => $request->boolean('screen')];
 
-        return response()->json($this->calls->checkIn($call, $request->user(), max(0, $request->integer('after')), $state));
+        $data = $this->calls->checkIn($call, $request->user(), max(0, $request->integer('after')), $state);
+        $recordings = app(\App\Services\Connect\CallRecordingService::class);
+        if (!$data['ended']) $recordings->closeOrphans($call);   // a recorder who dropped out
+
+        return response()->json($data + $recordings->state($call->refresh(), $request->user(), max(0, $request->integer('cap'))));
     }
 
     public function signal(Request $request, Call $call)

@@ -50,10 +50,11 @@ test('a direct chat is created once, delivers messages and counts unread', funct
     $this->actingAs($this->ada)->postJson(route('connect.send', $c), ['body' => 'Third'])->assertOk();
     expect($this->ben->fresh()->unreadNotifications()->count())->toBe(1);
 
-    // Outsiders cannot read or post; clients cannot use Connect at all.
+    // Outsiders cannot read or post; clients only get chats shared with them (none here).
     $this->actingAs($this->cy)->get(route('connect.show', $c))->assertNotFound();
     $this->actingAs($this->cy)->postJson(route('connect.send', $c), ['body' => 'Hi'])->assertStatus(422);
-    $this->actingAs($this->client)->get(route('connect.index'))->assertForbidden();
+    $this->actingAs($this->client)->get(route('connect.index'))->assertOk()->assertDontSee('Ben');
+    $this->actingAs($this->client)->get(route('connect.show', $c))->assertNotFound();
     $this->actingAs($this->ada)->get(route('connect.direct', $this->ada))->assertSessionHasErrors('user');
 });
 
@@ -157,5 +158,6 @@ test('the mobile API lists conversations and sends messages', function () {
     $this->getJson('/api/v1/connect/people?q=Cy')->assertOk()->assertJsonPath('data.0.name', 'Cy Uche');
 
     Sanctum::actingAs($this->client);
-    $this->getJson('/api/v1/connect/conversations')->assertForbidden();
+    $this->getJson('/api/v1/connect/conversations')->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson('/api/v1/connect/people')->assertOk()->assertJsonCount(0, 'data');
 });

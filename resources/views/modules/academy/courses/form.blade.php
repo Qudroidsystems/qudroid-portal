@@ -24,6 +24,7 @@
                             </select>
                             @if($programmes->isEmpty())<div class="form-text"><a href="{{ route('academy.programmes.index') }}">Add programmes</a> to group courses.</div>@endif
                         </div>
+                        @include('partials.unit-select', ['value' => $course->business_unit_id, 'default' => \App\Models\BusinessUnit::academyId(), 'class' => 'col-md-6'])
                         <div class="col-md-3"><label class="form-label">Level</label>
                             <select name="level" class="form-select">@foreach(\App\Models\Academy\Course::LEVELS as $k => $v)<option value="{{ $k }}" @selected(old('level', $course->level) === $k)>{{ $v }}</option>@endforeach</select>
                         </div>

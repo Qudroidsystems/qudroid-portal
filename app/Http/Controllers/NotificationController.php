@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Messaging\PortalNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -14,12 +15,38 @@ class NotificationController extends Controller
         $user = $request->user();
         $q = $user->notifications();
         if ($request->get('filter') === 'unread') $q = $user->unreadNotifications();
+        $kind = $request->get('kind');
+        if ($kind && isset(PortalNotifier::GROUPS[$kind])) {
+            $types = PortalNotifier::GROUPS[$kind][2];
+            $q->where(fn ($w) => collect($types)->each(fn ($t) => $w->orWhere('data', 'like', '%"type":"' . $t . '"%')));
+        }
 
         return view('notifications.index', [
             'pagetitle'     => 'Notifications',
             'notifications' => $q->paginate(25)->withQueryString(),
             'unread'        => $user->unreadNotifications()->count(),
+            'groups'        => PortalNotifier::GROUPS,
+            'kind'          => $kind,
+            'muted'         => (array) $user->muted_notifications,
         ]);
+    }
+
+    /** Switch kinds of notification on or off for yourself. */
+    public function mute(Request $request)
+    {
+        $keys = array_keys(PortalNotifier::GROUPS);
+        $on = array_intersect((array) $request->input('on', []), $keys);
+        $request->user()->forceFill(['muted_notifications' => array_values(array_diff($keys, $on))])->save();
+
+        return back()->with('success', 'Notification settings saved.');
+    }
+
+    /** Remove notifications you've already read. */
+    public function clearRead(Request $request)
+    {
+        $n = $request->user()->readNotifications()->delete();
+
+        return back()->with('success', $n ? "Removed {$n} read notifications." : 'Nothing to remove.');
     }
 
     /** Latest items for the bell dropdown. */
@@ -30,6 +57,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'unread' => $user->unreadNotifications()->count(),
+            'latest' => ($l = $user->unreadNotifications()->first()) ? ['id' => $l->id, 'type' => $l->data['type'] ?? 'system'] : null,
             'items'  => $user->notifications()->limit(8)->get()->map(fn ($n) => [
                 'id'    => $n->id,
                 'title' => $n->data['title'] ?? 'Notification',

@@ -19,9 +19,9 @@
     </div>
 
     <x-cb.card title="Projects" icon="ri-layout-column-line" :count="$projects->total()" :flush="true">
-        <form class="cb-toolbar" method="GET">
-            <div class="cb-search"><i class="ri-search-line"></i><input name="q" value="{{ request('q') }}" placeholder="Name, code or client"></div>
-            <select name="status" class="cb-select" onchange="this.form.submit()">
+        <form class="cb-toolbar" method="GET" data-live data-live-auto>
+            <div class="cb-search"><i class="ri-search-line"></i><input type="search" name="q" value="{{ request('q') }}" placeholder="Name, code or client" autocomplete="off"></div>
+            <select name="status" class="cb-select">
                 <option value="open" @selected($status === 'open')>Open projects</option>
                 <option value="all" @selected($status === 'all')>All projects</option>
                 @foreach(\App\Models\Projects\Project::STATUSES as $k => $v)<option value="{{ $k }}" @selected($status === $k)>{{ $v }}</option>@endforeach

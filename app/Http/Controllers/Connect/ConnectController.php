@@ -8,6 +8,7 @@ use App\Models\Connect\Message;
 use App\Models\Projects\Project;
 use App\Models\User;
 use App\Services\Connect\ConnectService;
+use App\Services\Connect\GifSearch;
 use App\Services\Projects\ProjectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -50,8 +51,9 @@ class ConnectController extends Controller
             'around'       => $around,
             'openThread'   => $request->integer('thread') ?: null,
             'members'      => $conversation->members->map(fn ($p) => ['id' => $p->user_id, 'name' => $p->user?->name])->filter(fn ($m) => $m['name'] && $m['id'] !== $me->id)->sortBy('name')->values(),
-            'liveCall'     => app(\App\Services\Connect\CallService::class)->live($conversation)?->load('starter'),
-            'driveFiles'   => \Illuminate\Support\Facades\Route::has('drive.send') ? app(\App\Services\Drive\DriveService::class)->recent($me, 15) : collect(),
+            'liveCall'     => null,
+            'callBar'      => app(\App\Services\Connect\CallService::class)->summary($conversation),
+            'driveFiles'   => \Illuminate\Support\Facades\Route::has('drive.send') && $me->can('Use connect') ? app(\App\Services\Drive\DriveService::class)->recent($me, 15) : collect(),
         ]);
     }
 
@@ -78,6 +80,8 @@ class ConnectController extends Controller
             $out['html'] = $new->map($render)->implode('');
             $out['last_id'] = max($after, (int) $new->max('id'));
             $out['changed'] = $changed->mapWithKeys(fn ($m) => [$m->id => $render($m)]);
+            // new messages from other people, for the message tone
+            $out['incoming'] = $new->filter(fn ($m) => !$m->is_system && $m->user_id !== $me->id)->count();
             if ($new->isNotEmpty() && $this->connect->participant($conversation, $me)) {
                 $this->connect->markRead($conversation, $me, $out['last_id']);
             }
@@ -93,16 +97,21 @@ class ConnectController extends Controller
                         'id' => $root->id,
                         'html' => $replies->map(fn ($m) => $this->render($m, $me, $conversation, $isAdmin, $tSaved))->implode(''),
                         'last_id' => max($tAfter, (int) $replies->max('id')),
+                        'incoming' => $tAfter ? $replies->filter(fn ($m) => $m->user_id !== $me->id)->count() : 0,
                         'changed' => $tChanged->mapWithKeys(fn ($m) => [$m->id => $this->render($m, $me, $conversation, $isAdmin, $tSaved)]),
                     ];
                 }
             }
 
             $out['typing'] = $this->connect->typingNames($conversation, $me);
+            $out['call'] = app(\App\Services\Connect\CallService::class)->summary($conversation);
             $out['seen'] = $this->connect->seenUpTo($conversation, $me);
             if ($conversation->isDirect()) {
                 $other = $conversation->otherUser($me)?->refresh();
-                $out['presence'] = ConnectService::online($other) ? 'Online' : ($other?->last_seen_at ? 'Last seen ' . $other->last_seen_at->diffForHumans() : '');
+                $p = app(\App\Services\Presence\Presence::class);
+                $out['presence'] = $p->line($other);
+                $out['presence_state'] = $p->of($other)['state'];
+                $out['presence_color'] = $p->of($other)['color'];
             }
         }
         // After marking read, so the counts include what was just shown.
@@ -148,12 +157,26 @@ class ConnectController extends Controller
     public function send(Request $request, Conversation $conversation)
     {
         $data = $request->validate([
-            'body'        => ['nullable', 'string', 'max:5000'],
-            'reply_to_id' => ['nullable', 'integer'],
-            'thread_id'   => ['nullable', 'integer'],
-            'attachment'  => ['nullable', 'file', 'max:25600'],
+            'body'           => ['nullable', 'string', 'max:5000'],
+            'reply_to_id'    => ['nullable', 'integer'],
+            'thread_id'      => ['nullable', 'integer'],
+            'attachment'     => ['nullable', 'file', 'max:25600'],
+            'poll_question'  => ['nullable', 'string', 'max:300'],
+            'poll_options'   => ['nullable', 'array', 'max:10'],
+            'poll_options.*' => ['nullable', 'string', 'max:120'],
+            'poll_multiple'  => ['nullable', 'boolean'],
+            'gif_url'        => ['nullable', 'string', 'max:500'],
+            'gif_width'      => ['nullable', 'integer', 'min:0', 'max:4000'],
+            'gif_height'     => ['nullable', 'integer', 'min:0', 'max:4000'],
+            'gif_title'      => ['nullable', 'string', 'max:255'],
         ]);
-        $m = $this->connect->send($conversation, $request->user(), $data['body'] ?? null, $request->file('attachment'), $data['reply_to_id'] ?? null, $data['thread_id'] ?? null);
+        $me = $request->user();
+        $m = match (true) {
+            $request->filled('poll_question') => $this->connect->sendPoll($conversation, $me, $data['poll_question'], $data['poll_options'] ?? [], (bool) ($data['poll_multiple'] ?? false), $data['thread_id'] ?? null),
+            $request->filled('gif_url') => $this->connect->sendGif($conversation, $me, ['url' => $data['gif_url'], 'width' => $data['gif_width'] ?? null, 'height' => $data['gif_height'] ?? null, 'title' => $data['gif_title'] ?? null],
+                $data['body'] ?? null, $data['reply_to_id'] ?? null, $data['thread_id'] ?? null),
+            default => $this->connect->send($conversation, $me, $data['body'] ?? null, $request->file('attachment'), $data['reply_to_id'] ?? null, $data['thread_id'] ?? null),
+        };
 
         return $request->expectsJson()
             ? response()->json(['ok' => true, 'id' => $m->id])
@@ -218,6 +241,27 @@ class ConnectController extends Controller
         return $request->expectsJson() ? response()->json(['ok' => true]) : back();
     }
 
+    public function vote(Request $request, Message $message)
+    {
+        $data = $request->validate(['options' => ['present', 'array', 'max:10'], 'options.*' => ['integer', 'min:0', 'max:9']]);
+        $this->connect->vote($message, $request->user(), $data['options']);
+
+        return $request->expectsJson() ? response()->json(['ok' => true]) : back();
+    }
+
+    public function closePoll(Request $request, Message $message)
+    {
+        $this->connect->closePoll($message, $request->user());
+
+        return $request->expectsJson() ? response()->json(['ok' => true]) : back();
+    }
+
+    /** GIF search for the composer (trending when the box is empty). */
+    public function gifs(Request $request, GifSearch $gifs)
+    {
+        return response()->json(['enabled' => $gifs->enabled(), 'results' => $gifs->search((string) $request->query('q', ''))]);
+    }
+
     public function attachment(Request $request, Message $message)
     {
         abort_unless($message->attachment_path && $this->connect->canView($message->conversation, $request->user()), 404);
@@ -255,6 +299,30 @@ class ConnectController extends Controller
         abort_unless($projects->canView($project, $request->user()) && !$projects->isClientView($project, $request->user()), 403);
 
         return redirect()->route('connect.show', $this->connect->forProject($project, $request->user()));
+    }
+
+    /** The project's chat shared with the client: open to the team and the project's clients. */
+    public function projectClients(Request $request, Project $project)
+    {
+        $me = $request->user();
+        $projects = app(ProjectService::class);
+        abort_unless($projects->canView($project, $me), 403);
+        if ($this->connect->isGuest($me) || $projects->isClientView($project, $me)) {
+            $existing = Conversation::where('client_project_id', $project->id)->first();
+            abort_unless($existing && $this->connect->participant($existing, $me), 404);
+
+            return redirect()->route('connect.show', $existing);
+        }
+
+        return redirect()->route('connect.show', $this->connect->forProjectClients($project, $me));
+    }
+
+    public function guests(Request $request, Conversation $conversation)
+    {
+        $on = $request->boolean('on');
+        $this->connect->setGuests($conversation, $request->user(), $on);
+
+        return back()->with('success', $on ? 'Clients can now be added to this chat.' : 'This chat is now team only.');
     }
 
     public function join(Request $request, Conversation $conversation)
@@ -300,11 +368,15 @@ class ConnectController extends Controller
 
     protected function shell(User $me): array
     {
+        $guest = $this->connect->isGuest($me);
+
         return [
             'me'       => $me,
+            'isGuest'  => $guest,
             'inbox'    => $this->connect->inbox($me),
             'people'   => $this->connect->people(except: $me)->limit(500)->get(['id', 'name', 'email', 'user_type']),
-            'channels' => Conversation::where('type', 'channel')->whereNull('archived_at')->withCount('members')->orderBy('name')->get(),
+            'guests'   => $guest ? collect() : $this->connect->guests()->limit(500)->get(['id', 'name', 'email', 'user_type']),
+            'channels' => $guest ? collect() : Conversation::where('type', 'channel')->whereNull('archived_at')->withCount('members')->orderBy('name')->get(),
         ];
     }
 }

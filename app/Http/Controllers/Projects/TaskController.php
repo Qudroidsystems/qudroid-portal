@@ -30,6 +30,10 @@ class TaskController extends Controller
             ->when($request->query('assignee') === 'me', fn ($q) => $q->where('assignee_id', $user->id))
             ->when(ctype_digit((string) $request->query('assignee')), fn ($q) => $q->where('assignee_id', (int) $request->query('assignee')))
             ->when($request->integer('milestone'), fn ($q, $m) => $q->where('milestone_id', $m))
+            ->when(isset(Project::PRIORITIES[$request->query('priority')]), fn ($q) => $q->where('priority', $request->query('priority')))
+            ->when($request->query('due') === 'overdue', fn ($q) => $q->where('status', '!=', 'done')->whereDate('due_on', '<', today()))
+            ->when($request->query('due') === 'week', fn ($q) => $q->where('status', '!=', 'done')->whereDate('due_on', '>=', today())->whereDate('due_on', '<=', today()->addDays(7)))
+            ->when($request->query('due') === 'none', fn ($q) => $q->whereNull('due_on'))
             ->when(trim((string) $request->query('q')), function ($q, $s) use ($project) {
                 $n = preg_replace('/^' . preg_quote($project->code, '/') . '-/i', '', $s);
                 $q->where(fn ($w) => $w->where('title', 'like', "%{$s}%")->when(ctype_digit($n), fn ($x) => $x->orWhere('number', (int) $n)));
@@ -44,6 +48,7 @@ class TaskController extends Controller
             'client'   => $client,
             'canWork'  => $this->projects->canWork($project, $user),
             'people'   => $this->assignable($project),
+            'filtered' => $request->hasAny(['q', 'assignee', 'milestone', 'priority', 'due']) && collect($request->only(['q', 'assignee', 'milestone', 'priority', 'due']))->filter()->isNotEmpty(),
         ]);
     }
 

@@ -1,0 +1,2 @@
+pusher-js 8.4.0 (https://github.com/pusher/pusher-js)
+Copyright 2020, Pusher. Released under the MIT licence.

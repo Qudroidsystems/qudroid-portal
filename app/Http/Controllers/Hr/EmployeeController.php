@@ -52,6 +52,7 @@ class EmployeeController extends Controller
             'phone' => ['nullable', 'string', 'max:40'],
         ]);
         [$employee, $password] = $this->employees->create($this->withPay($request, $data));
+        \App\Support\BusinessUnits::apply($request, $employee);
 
         $redirect = redirect()->route('hr.employees.show', $employee)->with('success', $employee->user->name . ' added as ' . $employee->employee_no . '.');
 
@@ -87,6 +88,7 @@ class EmployeeController extends Controller
             'exit_reason' => ['nullable', 'string', 'max:255'],
         ]);
         $this->employees->update($employee, $this->withPay($request, $data));
+        \App\Support\BusinessUnits::apply($request, $employee);
 
         return redirect()->route('hr.employees.show', $employee)->with('success', 'Saved.');
     }

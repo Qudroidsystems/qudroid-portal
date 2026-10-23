@@ -115,3 +115,8 @@ test('polling reports who is typing, presence and how far the other person has r
     $this->svc->send($direct, $this->ben, 'Hello');
     $this->actingAs($this->ada)->getJson(route('connect.poll', $direct) . '?after=' . $m->id)->assertJsonPath('typing', []);
 });
+
+test('the Connect home page opens with no conversation selected', function () {
+    $this->svc->send($this->group, $this->ada, 'hello');
+    $this->actingAs($this->ben)->get(route('connect.index'))->assertOk()->assertSee('Design');
+});

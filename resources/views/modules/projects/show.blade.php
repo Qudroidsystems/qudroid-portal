@@ -10,6 +10,17 @@
             @if(!$client && auth()->user()->can('Use connect') && \Illuminate\Support\Facades\Route::has('connect.project'))
                 <a href="{{ route('connect.project', $project) }}" class="cb-hero-btn"><i class="ri-chat-smile-3-line"></i>Team chat</a>
             @endif
+            @if(\Illuminate\Support\Facades\Route::has('connect.project-clients'))
+                @php
+                    $clientChat = \App\Models\Connect\Conversation::where('client_project_id', $project->id)->first();
+                    $showClientChat = $client
+                        ? $clientChat && $clientChat->members()->where('user_id', auth()->id())->exists()
+                        : auth()->user()->can('Use connect') && ($clientChat || $project->members()->where('role', 'client')->exists());
+                @endphp
+                @if($showClientChat)
+                    <a href="{{ route('connect.project-clients', $project) }}" class="cb-hero-btn"><i class="ri-earth-line"></i>{{ $client ? 'Chat with the team' : 'Client chat' }}</a>
+                @endif
+            @endif
             @if(!$client && auth()->user()->can('View meetings') && \Illuminate\Support\Facades\Route::has('meetings.create'))
                 <a href="{{ route('meetings.create', ['project' => $project->id]) }}" class="cb-hero-btn"><i class="ri-video-chat-line"></i>Meeting</a>
             @endif
@@ -50,10 +61,10 @@
                     @if(!$client && $project->budget !== null)<dt class="col-sm-3 text-muted fw-normal">Budget</dt><dd class="col-sm-9">{{ \App\Support\Money::format($project->budget, $project->currency) }}</dd>@endif
                 </dl>
                 @if($canManage)
-                    <form method="POST" action="{{ route('projects.status', $project) }}" class="d-flex gap-2 align-items-center mt-3">
+                    <form method="POST" action="{{ route('projects.status', $project) }}" class="d-flex gap-2 align-items-center mt-3" data-live data-live-auto>
                         @csrf
                         <label class="small text-muted">Status</label>
-                        <select name="status" class="form-select form-select-sm" style="max-width: 12rem" onchange="this.form.submit()">
+                        <select name="status" class="form-select form-select-sm" style="max-width: 12rem">
                             @foreach(\App\Models\Projects\Project::STATUSES as $k => $v)<option value="{{ $k }}" @selected($project->status === $k)>{{ $v }}</option>@endforeach
                         </select>
                     </form>
@@ -81,8 +92,8 @@
                                 </td>
                                 @if($canManage)
                                     <td class="text-end text-nowrap">
-                                        <form method="POST" action="{{ route('projects.milestones.toggle', [$project, $ms]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-soft-success" title="{{ $ms->completed_at ? 'Reopen' : 'Mark reached' }}"><i class="{{ $ms->completed_at ? 'ri-arrow-go-back-line' : 'ri-check-line' }}"></i></button></form>
-                                        <form method="POST" action="{{ route('projects.milestones.destroy', [$project, $ms]) }}" class="d-inline" onsubmit="return confirm('Remove this milestone? Its tasks stay.')">@csrf @method('DELETE')<button class="btn btn-sm btn-ghost-danger"><i class="ri-delete-bin-line"></i></button></form>
+                                        <form method="POST" action="{{ route('projects.milestones.toggle', [$project, $ms]) }}" class="d-inline" data-live>@csrf<button class="btn btn-sm btn-soft-success" title="{{ $ms->completed_at ? 'Reopen' : 'Mark reached' }}"><i class="{{ $ms->completed_at ? 'ri-arrow-go-back-line' : 'ri-check-line' }}"></i></button></form>
+                                        <form method="POST" action="{{ route('projects.milestones.destroy', [$project, $ms]) }}" class="d-inline" data-confirm="Remove this milestone? Its tasks stay." data-live>@csrf @method('DELETE')<button class="btn btn-sm btn-ghost-danger"><i class="ri-delete-bin-line"></i></button></form>
                                     </td>
                                 @endif
                             </tr>
@@ -91,7 +102,7 @@
                     </table></div>
                 @endif
                 @if($canManage)
-                    <form method="POST" action="{{ route('projects.milestones.store', $project) }}" class="d-flex flex-wrap gap-2 p-3 border-top">
+                    <form method="POST" action="{{ route('projects.milestones.store', $project) }}" class="d-flex flex-wrap gap-2 p-3 border-top" data-live>
                         @csrf
                         <input name="title" class="form-control form-control-sm" style="flex: 1 1 14rem" maxlength="150" required placeholder="New milestone, e.g. Design signed off">
                         <input type="date" name="due_on" class="form-control form-control-sm" style="max-width: 11rem">
@@ -140,16 +151,16 @@
                             <span>{{ $m->user->name }}@if(!$canManage)<span class="small text-muted"> · {{ \App\Models\Projects\ProjectMember::ROLES[$m->role] }}</span>@endif</span>
                             @if($canManage)
                                 <span class="d-flex gap-1">
-                                    <form method="POST" action="{{ route('projects.members.update', [$project, $m]) }}">
+                                    <form method="POST" action="{{ route('projects.members.update', [$project, $m]) }}" data-live data-live-auto>
                                         @csrf @method('PUT')
-                                        <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                        <select name="role" class="form-select form-select-sm">
                                             @foreach(\App\Models\Projects\ProjectMember::ROLES as $k => $v)
                                                 @continue(($k === 'client') !== $m->user->isClient())
                                                 <option value="{{ $k }}" @selected($m->role === $k)>{{ $v }}</option>
                                             @endforeach
                                         </select>
                                     </form>
-                                    <form method="POST" action="{{ route('projects.members.destroy', [$project, $m]) }}" onsubmit="return confirm('Remove {{ e($m->user->name) }} from the project? Their open tasks become unassigned.')">
+                                    <form method="POST" action="{{ route('projects.members.destroy', [$project, $m]) }}" data-confirm="Remove {{ $m->user->name }} from the project? Their open tasks become unassigned." data-live>
                                         @csrf @method('DELETE')
                                         <button class="btn btn-sm btn-ghost-danger"><i class="ri-close-line"></i></button>
                                     </form>
@@ -159,7 +170,7 @@
                     @endforeach
                 </ul>
                 @if($canManage && $addable->isNotEmpty())
-                    <form method="POST" action="{{ route('projects.members.store', $project) }}" class="p-3 border-top">
+                    <form method="POST" action="{{ route('projects.members.store', $project) }}" class="p-3 border-top" data-live>
                         @csrf
                         <select name="user_id" class="form-select form-select-sm mb-2" required>
                             <option value="">Add someone…</option>

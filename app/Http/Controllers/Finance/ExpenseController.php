@@ -50,6 +50,7 @@ class ExpenseController extends Controller
             'attachment'  => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,heic,webp', 'max:10240'],
         ]);
         $expense = $this->expenses->submit($data, $request->user(), $request->file('attachment'));
+        \App\Support\BusinessUnits::apply($request, $expense);
 
         return redirect()->route('finance.expenses.show', $expense)->with('success', "Expense {$expense->number} recorded and sent for approval.");
     }

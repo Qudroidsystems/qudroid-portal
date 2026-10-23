@@ -11,7 +11,10 @@
     <div id="pn-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:-60px;width:340px;max-width:92vw;background:var(--vz-dropdown-bg,#fff);border:1px solid var(--vz-border-color,#e9ebec);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.14);z-index:9999;overflow:hidden;">
         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
             <strong style="font-size:14px;">Notifications</strong>
-            <button type="button" id="pn-readall" class="btn btn-link btn-sm p-0 text-decoration-none">Mark all read</button>
+            <span class="d-flex align-items-center gap-3">
+                <button type="button" id="pn-sound" class="btn btn-link btn-sm p-0 text-decoration-none text-muted" title="Sounds on this device"><i class="ri-volume-up-line"></i> <span>Sounds on</span></button>
+                <button type="button" id="pn-readall" class="btn btn-link btn-sm p-0 text-decoration-none">Mark all read</button>
+            </span>
         </div>
         <div id="pn-list" style="max-height:360px;overflow:auto;"><div class="p-3 small text-muted">Loading…</div></div>
         <a href="{{ route('notifications.index') }}" class="d-block text-center py-2 border-top small text-decoration-none">View all</a>
@@ -43,11 +46,42 @@
         if (open) load();
     });
     document.addEventListener('click', e => { if (!document.getElementById('pn-wrapper').contains(e.target)) dd.style.display = 'none'; });
+    const snd = document.getElementById('pn-sound');
+    function showSound() {
+        const on = !window.QSound || QSound.on();
+        snd.querySelector('i').className = on ? 'ri-volume-up-line' : 'ri-volume-mute-line';
+        snd.querySelector('span').textContent = on ? 'Sounds on' : 'Sounds off';
+    }
+    snd.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!window.QSound) return;
+        QSound.setOn(!QSound.on()); showSound();
+        if (QSound.on()) QSound.notify();
+    });
+    window.addEventListener('load', showSound);
     document.getElementById('pn-readall').addEventListener('click', async () => {
         await fetch(READALL, { method: 'POST', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' } }).catch(() => {});
         load();
     });
-    // Refresh the badge every 2 minutes while the page is open.
-    setInterval(() => { if (!document.hidden) fetch(FEED, { headers: { Accept: 'application/json' } }).then(r => r.json()).then(j => setCount(j.unread || 0)).catch(() => {}); }, 120000);
+    // Refresh the badge every 30 seconds, with a chime when something new arrives.
+    // On the Connect page, chat messages make their own sound there.
+    let seenLatest = null;
+    const onConnect = location.pathname.indexOf('/connect') === 0;
+    function refresh() {
+        fetch(FEED, { headers: { Accept: 'application/json' } }).then(r => r.json()).then(j => {
+            setCount(j.unread || 0);
+            const latest = j.latest || null;
+            if (seenLatest !== null && latest && latest.id !== seenLatest && window.QSound) {
+                if (latest.type === 'message') { if (!onConnect) QSound.message(); }
+                else if (latest.type !== 'call') QSound.notify();   // calls ring on their own
+            }
+            seenLatest = latest ? latest.id : '';
+        }).catch(() => {});
+    }
+    refresh();
+    setInterval(refresh, 30000);
+    // With instant updates on, refresh as soon as something arrives.
+    let soon;
+    document.addEventListener('realtime:notification', () => { clearTimeout(soon); soon = setTimeout(refresh, 300); });
 })();
 </script>

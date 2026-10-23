@@ -11,7 +11,7 @@
     <div class="row g-3">
         <div class="col-xl-8">
             <x-cb.card title="Entries" icon="ri-time-line" :count="$entries->count()" :flush="true">
-                <form class="cb-toolbar" method="GET">
+                <form class="cb-toolbar" method="GET" data-live>
                     <label class="small text-muted">From</label><input type="date" name="from" value="{{ $from->toDateString() }}" class="cb-select">
                     <label class="small text-muted">To</label><input type="date" name="to" value="{{ $to->toDateString() }}" class="cb-select">
                     <button class="btn btn-sm btn-soft-primary">Show</button>
@@ -31,7 +31,7 @@
                                 <td data-label="Time" class="num">{{ \App\Models\Projects\TimeEntry::format($e->minutes) }}</td>
                                 <td class="text-end">
                                     @if($e->user_id === auth()->id() || $canManage)
-                                        <form method="POST" action="{{ route('projects.time.destroy', [$project, $e]) }}" onsubmit="return confirm('Remove this entry?')">@csrf @method('DELETE')<button class="btn btn-sm btn-ghost-danger"><i class="ri-delete-bin-line"></i></button></form>
+                                        <form method="POST" action="{{ route('projects.time.destroy', [$project, $e]) }}" data-confirm="Remove this entry?" data-live>@csrf @method('DELETE')<button class="btn btn-sm btn-ghost-danger"><i class="ri-delete-bin-line"></i></button></form>
                                     @endif
                                 </td>
                             </tr>
@@ -53,7 +53,7 @@
             </x-cb.card>
             @if($canWork)
                 <x-cb.card title="Log time" icon="ri-add-line">
-                    <form method="POST" action="{{ route('projects.time.store', $project) }}">
+                    <form method="POST" action="{{ route('projects.time.store', $project) }}" data-live>
                         @csrf
                         <select name="task_id" class="form-select form-select-sm mb-2">
                             <option value="">General project work</option>

@@ -26,7 +26,7 @@
                                 <td class="small text-muted">{{ $c->started_at->format('j M, H:i') }}</td>
                                 <td class="d-none d-sm-table-cell small">{{ $c->isLive() ? 'In progress' : $c->durationLabel() }}</td>
                                 <td class="d-none d-md-table-cell small text-muted">{{ $joined->map(fn ($p) => $p->user_id === $me->id ? 'You' : $p->user?->first_name)->filter()->implode(', ') }}</td>
-                                <td class="text-end">@if($c->isLive())<a href="{{ route('connect.calls.show', $c) }}" target="_blank" rel="noopener" class="btn btn-sm btn-success">Join</a>@endif</td>
+                                <td class="text-end text-nowrap">@if($c->isLive())<a href="{{ route('connect.calls.show', $c) }}" target="_blank" rel="noopener" class="btn btn-sm btn-success">Join</a>@endif @if(!$missed && \Illuminate\Support\Facades\Route::has('connect.calls.recap'))<a href="{{ route('connect.calls.recap', $c) }}" class="btn btn-sm btn-soft-secondary" title="Recordings, transcript and notes"><i class="ri-file-list-3-line"></i> Recap</a>@endif</td>
                             </tr>
                         @endforeach
                     </tbody>

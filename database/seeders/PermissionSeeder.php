@@ -19,6 +19,7 @@ class PermissionSeeder extends Seeder
     public const PERMISSIONS = [
         'Dashboard' => [
             'View dashboard' => 'See the organisation overview on the dashboard (users, sign-ins, recent activity).',
+            'View command center' => 'See the Command Center: money, students, sales, projects, people and stock across the whole organisation.',
         ],
         'Users' => [
             'View user'   => 'See the list of accounts and each person\'s profile.',
@@ -43,6 +44,10 @@ class PermissionSeeder extends Seeder
         'Security & Audit' => [
             'View activity log' => 'See every change made in the portal and export it.',
             'View online staff' => 'See which staff are signed in right now.',
+        ],
+        'Settings' => [
+            'Manage settings' => 'Change portal-wide settings, such as the Paystack keys and payroll tax rates.',
+            'Manage workflows' => 'Build, switch on and test workflow automations, and see their run history.',
         ],
 
         // ── Modules (switched on in the launcher as each one is built) ─────
@@ -71,6 +76,7 @@ class PermissionSeeder extends Seeder
         'Qudroid Connect' => [
             'Use connect'      => 'Chat in channels and direct messages, share files and join calls.',
             'Manage channels'  => 'Create, archive and moderate channels.',
+            'Chat as a guest'  => 'Clients: chat only in conversations shared with them, with the people in them.',
         ],
         'Meetings & Calendar' => [
             'View meetings'   => 'See and join meetings and shared calendars.',

@@ -68,10 +68,53 @@ class CallService
         if ($c->type !== 'channel') {
             $others = Participant::where('conversation_id', $c->id)->whereNull('left_at')->where('user_id', '!=', $me->id)->pluck('user_id')->all();
             PortalNotifier::toUsers($others, ($call->kind === 'audio' ? 'Voice' : 'Video') . ' call from ' . $me->name,
-                $c->isDirect() ? 'Tap to join.' : 'In ' . $c->titleFor($me) . '. Tap to join.', route('connect.calls.show', $call), 'message', 'connect-call:' . $call->id);
+                $c->isDirect() ? 'Tap to join.' : 'In ' . $c->titleFor($me) . '. Tap to join.', route('connect.calls.show', $call), 'call', 'connect-call:' . $call->id);
+            \App\Services\Realtime\Realtime::toUsers($others, 'call', ['call_id' => $call->id]);
+            // Ring the phones: the app shows its incoming-call screen from this.
+            $ring = \App\Services\Presence\Presence::withoutDnd($others);
+            if ($ring) \App\Services\Push\PushService::toUsers($ring, ($call->kind === 'audio' ? 'Voice' : 'Video') . ' call from ' . $me->name,
+                $c->isDirect() ? 'Incoming call' : 'In ' . $c->titleFor($me), [
+                    'type' => 'call', 'call_id' => $call->id, 'conversation_id' => $c->id, 'from' => $me->name, 'from_id' => $me->id,
+                    'avatar' => $me->avatar_url, 'video' => $call->kind === 'video' ? '1' : '0', 'group' => $c->isDirect() ? '0' : '1',
+                    'title' => $c->isDirect() ? '' : $c->titleFor($me), 'url' => route('connect.calls.show', $call),
+                ]);
         }
 
         return $call;
+    }
+
+    /**
+     * A huddle: a voice room in the chat that people drop in and out of.
+     * Nobody is rung or notified; the chat shows it is on. If a call is
+     * already running here, that one is used.
+     */
+    public function huddle(Conversation $c, User $me): Call
+    {
+        $this->check(!$this->connect->participant($c, $me), 'call', $c->type === 'channel' ? 'Join the channel to start a huddle.' : 'You are not in this conversation.');
+        $this->check($c->archived_at !== null, 'call', 'This conversation is archived.');
+        if ($existing = $this->live($c)) return $existing;
+
+        return DB::transaction(function () use ($c, $me) {
+            $call = Call::create(['conversation_id' => $c->id, 'started_by' => $me->id, 'kind' => 'audio', 'is_huddle' => true, 'started_at' => now()]);
+            $this->announce($c, $me->name . ' started a huddle');
+
+            return $call;
+        });
+    }
+
+    /** The live call or huddle in a chat, for its banner: who is in it and where to join. */
+    public function summary(Conversation $c): ?array
+    {
+        $call = $this->live($c);
+        if (!$call) return null;
+        $here = $this->present($call);
+
+        return [
+            'id' => $call->id, 'huddle' => $call->is_huddle, 'kind' => $call->kind,
+            'people' => $here->map(fn ($p) => ['id' => $p->user_id, 'name' => $p->user?->name, 'avatar' => $p->user?->avatar_url])->values()->all(),
+            'starter' => $call->starter?->name, 'started' => $call->started_at->diffForHumans(),
+            'url' => route('connect.calls.show', $call),
+        ];
     }
 
     /** Join (or rejoin) a call. Returns who else is in it right now. */
@@ -89,6 +132,7 @@ class CallService
             DB::table('connect_call_signals')->where('call_id', $call->id)->where('to_user_id', $me->id)->delete();
             if ($here->count() + 1 > $call->peak_people) $call->update(['peak_people' => $here->count() + 1]);
         });
+        \App\Services\Realtime\Realtime::poke('call.' . $call->id, 'people', ['call_id' => $call->id]);
 
         return $here->values();
     }
@@ -104,6 +148,7 @@ class CallService
         DB::table('connect_call_signals')->insert([
             'call_id' => $call->id, 'from_user_id' => $me->id, 'to_user_id' => $to, 'type' => $type, 'payload' => $payload, 'created_at' => now(),
         ]);
+        \App\Services\Realtime\Realtime::toUsers([$to], 'signal', ['call_id' => $call->id]);
     }
 
     /**
@@ -138,7 +183,8 @@ class CallService
     {
         CallPerson::where('call_id', $call->id)->where('user_id', $me->id)->whereNull('left_at')->update(['left_at' => now()]);
         DB::table('connect_call_signals')->where('call_id', $call->id)->where(fn ($q) => $q->where('to_user_id', $me->id)->orWhere('from_user_id', $me->id))->delete();
-        $this->sweep($call);
+        if (!$this->sweep($call)) app(CallRecordingService::class)->closeOrphans($call);
+        \App\Services\Realtime\Realtime::poke('call.' . $call->id, 'people', ['call_id' => $call->id]);
     }
 
     /** Say no to a ringing call. In a direct chat that ends the call for the caller too. */
@@ -161,7 +207,7 @@ class CallService
             ->limit(20)->get()->each(fn ($call) => $this->sweep($call));
 
         return Call::with('conversation', 'starter')->whereNull('ended_at')->whereIn('conversation_id', $conversationIds)
-            ->where('started_by', '!=', $me->id)->whereNotIn('id', $answered)
+            ->where('started_by', '!=', $me->id)->whereNotIn('id', $answered)->where('is_huddle', false)
             ->where('started_at', '>=', now()->subSeconds(self::RING_SECONDS))
             ->whereHas('conversation', fn ($q) => $q->where('type', '!=', 'channel'))
             ->latest('id')->get()
@@ -216,9 +262,20 @@ class CallService
         $call->refresh();
         CallPerson::where('call_id', $call->id)->whereNull('left_at')->whereNotNull('joined_at')->update(['left_at' => now()]);
         DB::table('connect_call_signals')->where('call_id', $call->id)->delete();
+        app(CallRecordingService::class)->closeOrphans($call);
+        \App\Services\Realtime\Realtime::poke('call.' . $call->id, 'people', ['call_id' => $call->id, 'ended' => true]);
+        // Phones still ringing stop.
+        if (!$call->is_huddle && $call->conversation->type !== 'channel') {
+            $rung = Participant::where('conversation_id', $call->conversation_id)->whereNull('left_at')->where('user_id', '!=', $call->started_by)->pluck('user_id')->all();
+            if ($rung) \App\Services\Push\PushService::toUsers($rung, 'Call ended', '', ['type' => 'call_end', 'call_id' => $call->id]);
+        }
 
         $answered = CallPerson::where('call_id', $call->id)->whereNotNull('joined_at')->where('user_id', '!=', $call->started_by)->exists();
-        $text = $why ?? ($answered ? 'Call ended · ' . $call->durationLabel() : 'Missed ' . ($call->kind === 'audio' ? 'voice' : 'video') . ' call');
+        $text = $why ?? match (true) {
+            $call->is_huddle => 'Huddle ended · ' . $call->durationLabel(),
+            $answered => 'Call ended · ' . $call->durationLabel(),
+            default => 'Missed ' . ($call->kind === 'audio' ? 'voice' : 'video') . ' call',
+        };
         $this->announce($call->conversation, $text);
     }
 

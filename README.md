@@ -347,6 +347,210 @@ Calls are built in (WebRTC, no outside service). Press the phone or camera butto
 
 Meetings link into the workspace: each meeting has a **Meeting chat** (members follow the invite list) and a **Start video call** button. On the Calendar page each person gets a private **subscribe link** (`/calendar/<token>.ics`) to add to Google Calendar, Outlook or Apple Calendar; it covers one month back to six months ahead, refreshes on the calendar app's schedule, and can be reset if it leaks.
 
+## Settings (Paystack and payroll tax)
+
+**Administration → Settings** (permission *Manage settings*; the Super Administrator always has it).
+
+- **Payments**: switch online payments on or off, choose Test or Live, and save the Paystack public and secret keys. Secret keys are stored encrypted with `APP_KEY` and are never shown again (only the last four characters). Anything left empty falls back to the `PAYSTACK_*` values in `.env`, and "Use the .env values instead" removes everything saved here. "Test the key" asks Paystack's `/balance` endpoint whether the key works. The page shows the webhook URL to paste into the Paystack dashboard; Paystack signs webhooks with the secret key, so there is no separate webhook secret.
+- **Payroll tax** (also open to *Manage payroll*): the PAYE bands, pension, NHF, rent relief and working days used by payroll, with example tax figures. Saved rates apply the next time a payroll is generated. An accountant's check can be recorded against the current rates; changing any rate clears it, and the Payroll page warns until the rates are checked. "Use the built-in rates" goes back to the Nigeria Tax Act 2025 defaults in `config/qudroid.php`.
+
+After pulling this, run `php artisan migrate` and `php artisan db:seed --class=PermissionSeeder` (adds *Manage settings*).
+
+## Command Center
+
+`/command-center` (permission *View command center*) is the executive view across every module for this month, last month, this quarter or this year, each compared with the period before:
+
+- Cash collected, expenses paid, profit from the ledger, money owed (and overdue), new enrolments, deals won, the open pipeline (also weighted by stage), and headcount.
+- Money in and out for the last 12 months as a chart, which can also be shown as a table.
+- Sales pipeline by stage, upcoming cohorts with seats taken, and active projects with progress and overdue tasks.
+- **Needs attention**: overdue invoices, payroll not yet paid, expenses to approve or pay, overdue tasks, late projects, applications to review, leave to decide, late deals and stock running low. Each item links to where it's handled.
+
+The figures come from `App\Services\Reports\CommandCenter`. Run `php artisan db:seed --class=PermissionSeeder` to add the permission.
+
+## Business units
+
+The organisation is split into business units: **Qudroid Systems** (QS), **Coding Academy** (QCA) and **ViteSchool** (VS) to start with. They're managed under **Settings → Business units**, where you can rename, recolour, reorder, add or switch off units.
+
+- Invoices, expenses, deals, projects, employees and academy courses each belong to a unit, with a *Business unit* field on their forms. The field only appears while more than one unit is in use.
+- New records default to `QUDROID_DEFAULT_UNIT` (QS). Courses, and invoices for course fees, default to `QUDROID_ACADEMY_UNIT` (QCA).
+- Payments count towards their invoice's unit, and leave and enrolments towards their employee's or course's unit.
+- When this is installed, existing courses and fee invoices go to the Coding Academy and everything else goes to Qudroid Systems.
+- The **Command Center** can show one unit or all of them, and has a *By business unit* table with a combined total. The ledger isn't split by unit, so a single unit's view shows its cash result (collected less expenses paid) instead of ledger profit. Stock and payroll runs are organisation-wide.
+
+## Search, notifications, apps menu and sounds
+
+- **Search**: press `Ctrl+K` (or `⌘K`), or use the search icon on phones, to search pages and records together: people, students, courses, projects, tasks (type a key like `WEB-14`), clients, deals, invoices, payments, expenses, staff, stock, assets, meetings, Drive files and chat messages. Each source checks permissions, so people only find what they could open. Press Enter for the full results page at `/search?q=…`. Sources live in `App\Services\Search\GlobalSearch`.
+- **Notifications**: filter the inbox by kind (messages, calls, meetings, tasks, files, money, leave and approvals, academy, clients, stock), switch kinds off under *What to tell me about* (announcements and system messages always arrive), and clear read ones. The bell checks every 30 seconds.
+- **Apps menu**: the grid button in the top bar opens every module the person can use.
+- **Sounds** (made in the browser, so there are no audio files): a ringtone for incoming calls on any page, ringback while you wait for someone to join, a short tone when someone joins, falling beeps when a call ends, a chime for new notifications and a tone for new chat messages. They can be switched off per device from the bell or the Notifications page. Browsers only allow sound after the person has clicked or typed on the page once.
+
+After pulling this, run `php artisan migrate` (adds `users.muted_notifications`).
+
+## Live pages and the project board
+
+Pages can send a form in the background and swap in the new content without a reload. The sidebar, calls and sounds keep running and the result shows as a toast. This lives in `resources/views/layouts/partials/live.blade.php` (plain JavaScript, so there is no build step). To use it on a form, add `data-live`:
+
+- `data-live-auto` submits when a select, checkbox or date changes, or 350 ms after typing in a search box (useful for filters and inline edits).
+- `data-confirm="…"` asks first.
+- `data-live-also="/url"` also refreshes the matching regions from that page.
+
+Controllers don't change: they still redirect back with a flash message. A region is any element with an `id` and `data-live-region`, and the whole page region is `.main-content`. Page scripts can listen for `live:swapped` to re-bind.
+
+**Projects** uses this everywhere:
+
+- **Board:** drag and drop (SortableJS, bundled in `public/vendor/sortablejs`, works on touch too), adding tasks inline, filters for assignee, priority, due date and milestone, and a side panel that opens a task without leaving the board (`?task=12` links straight to it). The board refreshes every 20 seconds when someone else changes it.
+- **List view and My work:** status, priority, assignee and due date can be edited in place.
+- **Overview and Time:** milestones, members, status and time entries all update in place.
+
+## Chat: emoji, polls and GIFs
+
+- **Emoji:** the smiley button in the composer opens a picker. Reactions can use any emoji in the picker, and hovering a reaction shows who reacted.
+- **Polls:** the chart button creates a poll with 2 to 10 options, single or multiple choice. People can change their vote or take it back. The person who asked, or a conversation admin, can close the poll. Votes are in `connect_poll_votes`.
+- **GIFs:** the GIF button searches GIPHY through the portal (`/connect/gifs`), so the key never reaches the browser. Only `giphy.com` image links are accepted. To turn it on, add a free key under Settings → Integrations (stored encrypted) or set `GIPHY_API_KEY` in .env. `GIPHY_RATING` defaults to `pg`.
+
+After pulling this, run `php artisan migrate`.
+
+## Status and do not disturb
+
+Open the avatar menu and choose **Set a status**. From there you can:
+
+- **Set your availability:** Automatic, Away, Busy or Do not disturb, either until you change it or for a set time.
+- **Set a status message:** an emoji and a short text, with presets such as "On leave", which can clear itself.
+
+On Automatic, the portal works out your availability for you: On a call (in a Connect call), In a meeting (a meeting on your calendar is happening now), Online, Away (seen in the last 15 minutes) or Offline.
+
+Do not disturb silences the portal's sounds and skips phone push notifications. Notifications still arrive in the bell.
+
+Status appears on your avatar, in direct chats, in the Connect list and on the Workspace "Online now" card. The logic lives in `App\Services\Presence\Presence`. The app uses `GET` and `POST /api/v1/me/status`.
+
+After pulling this, run `php artisan migrate`.
+
+## Send later and reminders
+
+- **Send later:** the clock button next to Send schedules the message you've written. You can pick a preset time (in 20 minutes, in 1 hour, in 3 hours, tomorrow at 9:00, next Monday at 9:00) or choose your own date and time. The message is sent from you at that time.
+- **Remind me about this:** available on any message, and it arrives as a notification in the bell (reminders are never muted).
+- **Later page:** `/connect/later` (the alarm button in Connect) lists your reminders and scheduled messages. You can mark reminders done, snooze or delete them, and send, reschedule or cancel scheduled messages.
+- **What does the sending:** the `connect:later` command, every minute, needs the scheduler cron. If a scheduled message can't be sent (for example, you left the chat), it says why and notifies you.
+
+After pulling this, run `php artisan migrate`.
+
+## Huddles
+
+The headphones button in a group or channel starts a huddle: a drop-in voice room that doesn't ring or notify anyone. The chat shows a bar with who is in it and a Join button. The conversation list shows a headphones icon while a huddle is on.
+
+The huddle opens in a small window docked on the Connect page (the call page in `?embed=1` mode). You can make it bigger, pop it out into its own tab, or leave. People can still turn on a camera or share their screen.
+
+A huddle ends when the last person leaves, and "Huddle ended · duration" appears in the chat. Under the hood it is an ordinary Connect call with `is_huddle` set, so the same WebRTC mesh and limits apply.
+
+After pulling this, run `php artisan migrate`.
+
+## Notes and files in a chat
+
+Every chat has **Notes** and **Files** tabs, opened with the note button in the chat header.
+
+**Notes** are shared documents that anyone in the chat can edit: agendas, decisions, how-tos and checklists. To start one, use the Meeting notes, Checklist or How-to template.
+- The editor uses Markdown, with a toolbar, a preview and side-by-side view. It saves as you type and shows who else has the note open.
+- If two people save at the same moment, the second person is asked whether to load the other version or keep theirs. Nothing is overwritten silently.
+- Every save is kept in the version history, and any version can be restored.
+- Notes are shown as safe HTML: raw HTML and `javascript:` links are stripped.
+- Only the author or a chat admin can delete a note.
+
+**Files** lists everything sent in the chat.
+
+After pulling this, run `php artisan migrate`.
+
+## Clients in chat (guest access)
+
+Clients can talk to the team in Connect without seeing the rest of it. The
+Client role has the **Chat as a guest** permission (added by the migration
+and the seeders); staff keep **Use connect**.
+
+- A guest sees only chats they were added to that are **shared with clients**.
+  Channels, new groups, new channels, adding people and Drive are hidden and
+  refused for them.
+- A guest can start a direct chat only with someone they already share a
+  chat with, and never with another client. Staff can message any client.
+- On a project with a client, **Client chat** (project page) opens a group
+  with the project team and the client. Once it exists the client sees
+  **Chat with the team** on the same page.
+- A group admin can turn on **Share with clients** in People, then add
+  clients from the Clients list. Sharing cannot be turned off while clients
+  are still in the group.
+- Shared chats show an **External** tag, a banner for staff, and a
+  **Client** tag on clients' messages. The API marks them with
+  `shared_with_clients`.
+
+## Call recording, transcript and notes
+
+Any call, huddle or meeting call can be recorded and transcribed from the
+call page.
+
+- **Record** (the red button): the browser of the person recording mixes
+  everyone's sound and, for video calls, draws the tiles onto a 1280x720
+  picture. It uploads a piece every 4 seconds to
+  `storage/app/private/calls/{call}/`, so a closed tab loses only a few
+  seconds. Everyone sees a **Recording** badge; the chat says who started
+  and stopped it and then shows the recording. One recording at a time
+  per call. `QUDROID_RECORDING_MAX_MB` caps one recording (default 1024).
+- **Transcript** (the CC button): when it is on, each person's browser
+  writes down their own speech (Chrome, Edge and Safari can; Firefox
+  cannot), so every line has the right name. Lines show as live captions.
+  Set the language with `QUDROID_TRANSCRIPT_LANG` (default `en-NG`).
+  Chrome sends the audio to Google's speech service to do this.
+- **Recap** (`/connect/calls/{id}/recap`, also linked from the call
+  history, the end-of-call screen and a meeting's page): play or download
+  recordings, search and download the transcript, see who came, and
+  **Write notes**, which opens a shared chat note with the date, people,
+  sections for decisions and action items, and the transcript.
+- Recordings can be deleted by whoever recorded them or a chat admin.
+  Tell people before recording; the confirm prompt and the badge are
+  there so nobody is recorded without knowing.
+
+## Instant updates (Reverb)
+
+Out of the box every page polls, so chat, the bell and calls all work with no extra server. With
+Laravel Reverb running, they update the moment something happens (about a third of a second in
+testing) and the polling slows to a 15 second safety net.
+
+1. `composer install` (adds `laravel/reverb`).
+2. In `.env` set `BROADCAST_CONNECTION=reverb` and fill `REVERB_APP_ID`, `REVERB_APP_KEY` and
+   `REVERB_APP_SECRET` with any random values (for example `php -r "echo bin2hex(random_bytes(16));"`),
+   plus `REVERB_HOST`, `REVERB_PORT` and `REVERB_SCHEME` as the browser should reach the server.
+   On XAMPP: `REVERB_HOST=localhost`, `REVERB_PORT=8080`, `REVERB_SCHEME=http`.
+3. `php artisan config:clear`, then keep `php artisan reverb:start` running (Supervisor or a
+   service in production; behind HTTPS, proxy `wss://` to it and set `REVERB_SCHEME=https`).
+
+If Reverb stops, nothing breaks: the pages notice the socket is gone and go back to normal polling.
+
+Only small "something changed" signals go over the socket, never message text. The browser then
+fetches through the usual endpoints, which check access as before. The private channels are
+`user.{id}` (inbox, notification, call, signal), `connect.c.{id}` (message, changed, typing,
+read) and `call.{id}` (people). Who may listen is in `routes/channels.php`. The mobile app gets
+the settings from `GET /api/v1/realtime` and signs channels at `POST /api/v1/broadcasting/auth`.
+
+## Workflows (automation)
+
+Workflows → New workflow (permission "Manage workflows"; the Super Administrator has it). A workflow is:
+
+- **When**: one of 25 triggers, such as a task added, moved or overdue, a deal won or lost, an invoice raised,
+  paid or overdue, a payment confirmed, an expense submitted, a course application, a new employee, a leave
+  request, low stock, a meeting scheduled, a message in a public channel (never direct messages), or a schedule
+  (daily, weekly, monthly).
+- **Only if** (optional): rules on the record's details, such as "Priority is Urgent".
+- **Then**: steps in order: notification (bell and phone), e-mail, post in a channel or group (as whoever built the
+  workflow), create a task, call a webhook (JSON POST signed with `X-Qudroid-Signature: sha256=HMAC` when a
+  secret is set; public addresses only), wait, and "only continue if".
+
+Text fields take `{{task.title}}`-style fields from the record ("Insert field" lists them). After a Wait, later steps
+see the record as it is then, so "wait 3 days, then only if the invoice is not paid" works. **Try it** shows what
+each step would do with the newest real record without sending anything. Ten ready-made workflows are on the
+Workflows page. Each run is logged under Runs; a failed run can be tried again.
+
+Steps run just after the page responds, so a slow webhook never slows anyone down. The scheduler's
+`workflows:tick` (every minute) resumes waits, checks for overdue tasks and invoices (each counts once per due
+date) and starts scheduled workflows (within two hours of their time). Workflows that set off other workflows stop
+after three levels and never loop back into themselves. E-mail uses the normal `MAIL_*` settings.
+
 ## Adding a module
 
 1. Routes: `routes/modules/<module>.php` (loaded automatically inside the
@@ -368,5 +572,42 @@ Signed in (Bearer token): `GET auth/me`, `POST auth/logout`, `POST auth/logout-a
 `PUT auth/password`, `POST|DELETE devices`, `GET notifications`,
 `GET notifications/unread-count`, `POST notifications/read-all`,
 `POST notifications/{id}/read`, `GET|PUT me/profile`, `GET|PUT me/preferences`.
+Home and status: `GET home`, `GET search?q=`, `GET|PUT me/status`.
+
+Chat (`connect/…`): `GET conversations`, `POST conversations` (group or
+channel), `GET|POST conversations/{id}/members`,
+`DELETE conversations/{id}/members/{user}` (yourself = leave),
+`POST conversations/{id}/mute|typing|read`, `GET|POST conversations/{id}/messages`
+(`kind=poll|gif`, `parent_id`, `files[]`),
+`GET conversations/{id}/messages/{message}/thread`, `PUT|DELETE messages/{id}`,
+`POST messages/{id}/react|vote|close-poll|pin|save`, `GET messages/{id}/file`,
+`GET saved`, `GET search?q=`, `GET gifs?q=`, `GET people`, `POST direct`, and
+`GET poll?since=` (new and changed messages, typing, presence and unread for
+every chat in one call; pass back the `cursor` it returns).
+
+Calls (`calls/…`): `GET ice-servers`, `GET ringing`, `POST /` (`conversation_id`
+or `meeting_id`, `video`, `huddle`), `GET {id}`, `POST {id}/join|leave|decline`,
+`POST {id}/signal` (`to_user_id`, `type`, `payload`) and `GET {id}/signals?since=`
+(the once-a-second check-in). Incoming calls are a data-only, high-priority
+push `{type: "call", call_id, conversation_id, from, from_id, avatar, video,
+group}` that expires after a minute, then `{type: "call_end", call_id}`.
+iPhones get a time-sensitive alert; ringing a closed iPhone app needs a VoIP
+(PushKit) certificate, which is not set up yet.
+
+Meetings: `GET meetings`, `GET meetings/calendar`, `GET meetings/people`,
+`POST meetings`, `GET|PUT|DELETE meetings/{id}` (DELETE cancels),
+`POST meetings/{id}/respond`. A meeting's `join` gives its chat and live call.
+
+Drive (`drive/…`): `GET /?folder_id=|project_id=|q=`, `GET projects`,
+`GET shared-with-me|recent|starred|trash|people`, `POST folders`,
+`POST files` (multipart `file` or `files[]`), `GET files/{id}`,
+`GET files/{id}/download` (`?version=`, `?inline=1`),
+`PUT|DELETE items/{type}/{id}` (rename/move; DELETE trashes, `?forever=1`
+from the trash), `POST items/{type}/{id}/restore|star`,
+`POST|DELETE items/{type}/{id}/share` and `POST|DELETE items/{type}/{id}/link`.
+
+Instant updates: `GET realtime` gives `enabled` and, when on, the Pusher-protocol `key`, `host`,
+`port`, `tls`, `auth_url` and channel names; sign private channels at `POST broadcasting/auth`
+(see "Instant updates (Reverb)"). Keep polling when `enabled` is false or the socket drops.
 
 Every response: `{ "success": true, "message": "...", "data": ..., "meta": {...} }`.

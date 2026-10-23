@@ -14,9 +14,9 @@ class Conversation extends Model
 
     protected $table = 'connect_conversations';
 
-    protected $fillable = ['type', 'name', 'description', 'direct_key', 'project_id', 'meeting_id', 'created_by', 'last_message_id', 'last_message_at', 'archived_at'];
+    protected $fillable = ['type', 'name', 'description', 'direct_key', 'project_id', 'meeting_id', 'created_by', 'last_message_id', 'last_message_at', 'archived_at', 'guests_allowed', 'client_project_id'];
 
-    protected $casts = ['last_message_at' => 'datetime', 'archived_at' => 'datetime'];
+    protected $casts = ['guests_allowed' => 'boolean', 'last_message_at' => 'datetime', 'archived_at' => 'datetime'];
 
     public function participants(): HasMany
     {

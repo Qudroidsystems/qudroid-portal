@@ -64,6 +64,7 @@ class ProjectController extends Controller
             $data['company_id'] ??= $deal->company_id;
         }
         $project = $this->projects->create($data, $request->user());
+        \App\Support\BusinessUnits::apply($request, $project);
         $deal?->update(['project_id' => $project->id]);
 
         return redirect()->route('projects.show', $project)->with('success', 'Project created. Add people and tasks next.');
@@ -110,6 +111,7 @@ class ProjectController extends Controller
     {
         abort_unless($this->projects->canManage($project, $request->user()), 403);
         $this->projects->update($project, $this->validated($request, false));
+        \App\Support\BusinessUnits::apply($request, $project);
 
         return redirect()->route('projects.show', $project)->with('success', 'Project updated.');
     }

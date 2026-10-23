@@ -12,13 +12,17 @@
                 <h5 class="mb-0"><i class="ri-chat-smile-3-line"></i> Connect</h5>
                 <div class="d-flex gap-1">
                     <button class="btn btn-sm btn-soft-primary" data-bs-toggle="modal" data-bs-target="#cxNewChat" title="New message"><i class="ri-edit-box-line"></i></button>
-                    <button class="btn btn-sm btn-soft-secondary" data-bs-toggle="modal" data-bs-target="#cxNewGroup" title="New group"><i class="ri-group-line"></i></button>
-                    <button class="btn btn-sm btn-soft-secondary" data-bs-toggle="modal" data-bs-target="#cxChannels" title="Channels"><i class="ri-hashtag"></i></button>
+                    @unless($isGuest ?? false)
+                        <button class="btn btn-sm btn-soft-secondary" data-bs-toggle="modal" data-bs-target="#cxNewGroup" title="New group"><i class="ri-group-line"></i></button>
+                        <button class="btn btn-sm btn-soft-secondary" data-bs-toggle="modal" data-bs-target="#cxChannels" title="Channels"><i class="ri-hashtag"></i></button>
+                    @endunless
                     <a href="{{ route('connect.calls.index') }}" class="btn btn-sm btn-soft-secondary" title="Calls" aria-label="Call history"><i class="ri-phone-line"></i></a>
                 </div>
             </div>
             <form action="{{ route('connect.search') }}" class="cx-search">
                 <i class="ri-search-line"></i><input name="q" class="form-control form-control-sm" placeholder="Search messages and files" aria-label="Search messages">
+                @php $laterCount = \App\Models\Connect\Reminder::where('user_id', $me->id)->open()->where('remind_at', '<=', now())->count(); @endphp
+                <a href="{{ route('connect.later') }}" class="btn btn-sm btn-ghost-secondary position-relative" title="Later: reminders and scheduled messages" aria-label="Later"><i class="ri-alarm-line"></i>@if($laterCount)<span class="badge rounded-pill bg-danger cx-later-badge">{{ $laterCount }}</span>@endif</a>
                 <a href="{{ route('connect.saved') }}" class="btn btn-sm btn-ghost-secondary" title="Saved messages" aria-label="Saved messages"><i class="ri-bookmark-line"></i></a>
             </form>
             <div class="cx-list" id="cxInbox">
@@ -32,17 +36,19 @@
                 <div class="cx-empty">
                     <i class="ri-chat-smile-3-line"></i>
                     <h5>Qudroid Connect</h5>
-                    <p class="text-muted">Pick a conversation, or start a new one.</p>
+                    <p class="text-muted">{{ ($isGuest ?? false) ? 'Your conversations with the Qudroid team show here.' : 'Pick a conversation, or start a new one.' }}</p>
                 </div>
             @else
                 <div class="cx-head">
                     <a href="{{ route('connect.index') }}" class="btn btn-sm btn-ghost-secondary d-lg-none"><i class="ri-arrow-left-line"></i></a>
                     <div class="flex-grow-1 min-w-0">
-                        <div class="fw-semibold text-truncate">{{ $conversation->titleFor($me) }}</div>
+                        <div class="fw-semibold text-truncate">{{ $conversation->titleFor($me) }}@if($conversation->guests_allowed) <span class="cx-ext" title="Clients can be in this chat">External</span>@endif</div>
                         <div class="small text-muted text-truncate">
                             @if($conversation->isDirect())
                                 @php $other = $conversation->otherUser($me); @endphp
-                                <span id="cxPresence" class="{{ \App\Services\Connect\ConnectService::online($other) ? 'text-success' : '' }}">{{ \App\Services\Connect\ConnectService::online($other) ? 'Online' : ($other?->last_seen_at ? 'Last seen ' . $other->last_seen_at->diffForHumans() : $other?->email) }}</span>
+                                @php $otherPresence = app(\App\Services\Presence\Presence::class)->of($other); @endphp
+                                <span class="cx-pdot" id="cxPresenceDot" style="background: {{ $otherPresence['color'] }}"></span>
+                                <span id="cxPresence" class="{{ $otherPresence['state'] === 'online' ? 'text-success' : ($otherPresence['dnd'] ? 'text-danger' : '') }}">{{ app(\App\Services\Presence\Presence::class)->line($other) }}</span>
                             @else
                                 {{ $conversation->members->count() }} {{ \Illuminate\Support\Str::plural('member', $conversation->members->count()) }}
                                 @if($conversation->description) · {{ $conversation->description }}@endif
@@ -56,6 +62,7 @@
                             @csrf
                             <button name="kind" value="audio" class="btn btn-sm btn-ghost-secondary" title="Voice call" aria-label="Start a voice call"><i class="ri-phone-line"></i></button>
                             <button name="kind" value="video" class="btn btn-sm btn-ghost-secondary" title="Video call" aria-label="Start a video call"><i class="ri-vidicon-line"></i></button>
+                            @unless($conversation->isDirect())<button type="button" class="btn btn-sm btn-ghost-secondary" id="cxHuddleBtn" title="Start or join a huddle: a drop-in voice room that doesn't ring anyone" aria-label="Huddle"><i class="ri-headphone-line"></i></button>@endunless
                         </form>
                     @endif
                     @if($pinned->isNotEmpty())
@@ -71,6 +78,8 @@
                             </div>
                         </div>
                     @endif
+                    @php $noteCount = \App\Models\Connect\Note::where('conversation_id', $conversation->id)->count(); @endphp
+                    <a href="{{ route('connect.notes.index', $conversation) }}" class="btn btn-sm btn-ghost-secondary" title="Notes and files" aria-label="Notes and files"><i class="ri-sticky-note-line"></i>@if($noteCount)<span class="small ms-1">{{ $noteCount }}</span>@endif</a>
                     @if($participant)
                         <form method="POST" action="{{ route('connect.mute', $conversation) }}">
                             @csrf <input type="hidden" name="muted" value="{{ $participant->muted ? 0 : 1 }}">
@@ -82,12 +91,10 @@
                     @endunless
                 </div>
 
-                @if($liveCall)
-                    <div class="cx-live">
-                        <span><span class="cx-live-dot"></span> {{ $liveCall->kind === 'audio' ? 'Voice' : 'Video' }} call in progress · started by {{ $liveCall->starter?->name }} {{ $liveCall->started_at->diffForHumans() }}</span>
-                        <a href="{{ route('connect.calls.show', $liveCall) }}" target="_blank" rel="noopener" class="btn btn-sm btn-success">Join</a>
-                    </div>
+                @if($conversation->guests_allowed && !($isGuest ?? false))
+                    <div class="cx-ext-bar"><i class="ri-earth-line"></i> Shared with clients. Everything here, including files and notes, is visible to the clients in this chat.</div>
                 @endif
+                <div id="cxCallBar" aria-live="polite"></div>
                 <div class="cx-scroll" id="cxScroll">
                     @if($messages->count() >= 50)
                         <div class="text-center my-2"><button class="btn btn-sm btn-soft-secondary" id="cxOlder">Load earlier messages</button></div>
@@ -106,17 +113,53 @@
                         <div class="cx-suggest d-none"></div>
                         <input type="hidden" name="reply_to_id" id="cxReplyTo">
                         <div class="cx-replying d-none" id="cxReplying"><span></span><button type="button" class="btn btn-sm btn-ghost-secondary" id="cxReplyCancel"><i class="ri-close-line"></i></button></div>
+                        <div class="cx-panel d-none" id="cxGifPanel" aria-label="GIFs">
+                            <div class="d-flex gap-2 mb-2"><input type="search" class="form-control form-control-sm" id="cxGifQ" placeholder="Search GIPHY" autocomplete="off" aria-label="Search GIFs"><button type="button" class="btn btn-sm btn-ghost-secondary cx-panel-close" aria-label="Close"><i class="ri-close-line"></i></button></div>
+                            <div class="cx-gif-grid" id="cxGifGrid"></div>
+                            <div class="small text-muted mt-1 text-end">Powered by GIPHY</div>
+                        </div>
+                        <div class="cx-panel d-none" id="cxPollPanel" aria-label="New poll">
+                            <div class="d-flex justify-content-between align-items-center mb-2"><strong><i class="ri-bar-chart-horizontal-line"></i> New poll</strong><button type="button" class="btn btn-sm btn-ghost-secondary cx-panel-close" aria-label="Close"><i class="ri-close-line"></i></button></div>
+                            <input class="form-control form-control-sm mb-2" id="cxPollQ" maxlength="300" placeholder="Ask a question" aria-label="Question">
+                            <div id="cxPollOpts">
+                                <input class="form-control form-control-sm mb-1 cx-poll-in" maxlength="120" placeholder="Option 1" aria-label="Option 1">
+                                <input class="form-control form-control-sm mb-1 cx-poll-in" maxlength="120" placeholder="Option 2" aria-label="Option 2">
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 align-items-center mt-1">
+                                <button type="button" class="btn btn-sm btn-ghost-secondary" id="cxPollAdd"><i class="ri-add-line"></i> Add option</button>
+                                <div class="form-check mb-0"><input type="checkbox" class="form-check-input" id="cxPollMulti"><label class="form-check-label small" for="cxPollMulti">People can pick more than one</label></div>
+                                <button type="button" class="btn btn-sm btn-primary ms-auto" id="cxPollSend">Post poll</button>
+                            </div>
+                        </div>
+                        @php $myScheduled = \App\Models\Connect\ScheduledMessage::pending()->where('conversation_id', $conversation->id)->where('user_id', $me->id)->count(); @endphp
+                        @if($myScheduled)
+                            <a href="{{ route('connect.later') }}" class="cx-sched-chip"><i class="ri-time-line"></i> {{ $myScheduled }} scheduled {{ \Illuminate\Support\Str::plural('message', $myScheduled) }} here</a>
+                        @endif
+                        <div class="cx-panel d-none" id="cxSchedPanel" aria-label="Schedule message">
+                            <div class="d-flex justify-content-between align-items-center mb-2"><strong><i class="ri-time-line"></i> Send later</strong><button type="button" class="btn btn-sm btn-ghost-secondary cx-panel-close" aria-label="Close"><i class="ri-close-line"></i></button></div>
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                @foreach(\App\Services\Connect\LaterService::CHOICES as $k => $v)<button type="button" class="cx-sched-opt" data-when="{{ $k }}">{{ $v }}</button>@endforeach
+                            </div>
+                            <div class="d-flex gap-2"><input type="datetime-local" class="form-control form-control-sm" id="cxSchedAt" aria-label="Pick a date and time" min="{{ now()->addMinute()->format('Y-m-d\TH:i') }}"><button type="button" class="btn btn-sm btn-primary" id="cxSchedGo">Schedule</button></div>
+                            <div class="small text-muted mt-1">Write the message first. It's sent from you at that time.</div>
+                        </div>
                         <div class="cx-file-chosen d-none" id="cxFileChosen"><i class="ri-attachment-2"></i> <span></span><button type="button" class="btn btn-sm btn-ghost-secondary" id="cxFileCancel"><i class="ri-close-line"></i></button></div>
                         <div class="d-flex gap-2 align-items-end">
                             <div class="dropup">
                                 <button type="button" class="btn btn-ghost-secondary" data-bs-toggle="dropdown" title="Attach" aria-label="Attach"><i class="ri-attachment-2 fs-5"></i></button>
                                 <div class="dropdown-menu">
                                     <label class="dropdown-item mb-0" role="button"><i class="ri-upload-2-line me-2"></i>Upload a file<input type="file" name="attachment" id="cxFile" hidden></label>
-                                    @if(\Illuminate\Support\Facades\Route::has('drive.send'))<button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#cxDrive"><i class="ri-folder-cloud-line me-2"></i>From Drive</button>@endif
+                                    @if(\Illuminate\Support\Facades\Route::has('drive.send') && !($isGuest ?? false))<button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#cxDrive"><i class="ri-folder-cloud-line me-2"></i>From Drive</button>@endif
                                 </div>
                             </div>
+                            <button type="button" class="btn btn-ghost-secondary cx-tool" id="cxEmojiBtn" title="Emoji" aria-label="Emoji"><i class="ri-emotion-happy-line fs-5"></i></button>
+                            <button type="button" class="btn btn-ghost-secondary cx-tool cx-gif-btn" id="cxGifBtn" title="GIF" aria-label="GIF" aria-expanded="false">GIF</button>
+                            <button type="button" class="btn btn-ghost-secondary cx-tool" id="cxPollBtn" title="Poll" aria-label="Create a poll" aria-expanded="false"><i class="ri-bar-chart-horizontal-line fs-5"></i></button>
                             <textarea name="body" id="cxBody" rows="1" class="form-control cx-input" maxlength="5000" placeholder="Write a message. @ to mention someone. Enter sends, Shift+Enter for a new line" aria-label="Message"></textarea>
-                            <button class="btn btn-primary" id="cxSend"><i class="ri-send-plane-2-fill"></i></button>
+                            <div class="btn-group">
+                                <button class="btn btn-primary" id="cxSend" aria-label="Send"><i class="ri-send-plane-2-fill"></i></button>
+                                <button type="button" class="btn btn-primary cx-sched-btn" id="cxSchedBtn" title="Send later" aria-label="Send later" aria-expanded="false"><i class="ri-time-line"></i></button>
+                            </div>
                         </div>
                     </form>
                 @elseif($conversation->type === 'channel')
@@ -151,6 +194,17 @@
                 @endif
             </aside>
         @endif
+    </div>
+
+    {{-- ── Huddle dock ──────────────────────────────────────────────────── --}}
+    <div class="cx-dock d-none" id="cxDock" role="dialog" aria-label="Huddle">
+        <div class="cx-dock-head">
+            <i class="ri-headphone-line"></i><span class="flex-grow-1 text-truncate" id="cxDockTitle">Huddle</span>
+            <button type="button" class="btn btn-sm btn-ghost-light" id="cxDockSize" title="Bigger" aria-label="Make bigger"><i class="ri-fullscreen-line"></i></button>
+            <button type="button" class="btn btn-sm btn-ghost-light" id="cxDockPop" title="Open in a new tab" aria-label="Open in a new tab"><i class="ri-external-link-line"></i></button>
+            <button type="button" class="btn btn-sm btn-ghost-light" id="cxDockClose" title="Leave" aria-label="Leave the huddle"><i class="ri-close-line"></i></button>
+        </div>
+        <div class="cx-dock-body" id="cxDockBody"></div>
     </div>
 
     {{-- ── New direct message ─────────────────────────────────────────── --}}
@@ -211,7 +265,7 @@
     </div></div></div>
 
     {{-- ── Share from Drive ───────────────────────────────────────────── --}}
-    @if($conversation && ($participant ?? null) && \Illuminate\Support\Facades\Route::has('drive.send'))
+    @if($conversation && ($participant ?? null) && !($isGuest ?? false) && \Illuminate\Support\Facades\Route::has('drive.send'))
         <div class="modal fade" id="cxDrive" tabindex="-1" aria-labelledby="cxDriveTitle"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content">
             <div class="modal-header"><h5 class="modal-title" id="cxDriveTitle">Share from Drive</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
             <div class="modal-body">
@@ -240,21 +294,35 @@
                 <ul class="list-group mb-3">
                     @foreach($conversation->members->sortBy('user.name') as $p)
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><img src="{{ $p->user->avatar_url }}" class="rounded-circle me-2" width="24" height="24" alt="">{{ $p->user->name }}@if($p->role === 'admin') <span class="badge bg-light text-muted">admin</span>@endif</span>
+                            <span><img src="{{ $p->user->avatar_url }}" class="rounded-circle me-2" width="24" height="24" alt="">{{ $p->user->name }}@if($p->role === 'admin') <span class="badge bg-light text-muted">admin</span>@endif @if(!$p->user->can('Use connect'))<span class="cx-ext">Client</span>@endif</span>
                             @if($isAdmin && $p->user_id !== $me->id && !$conversation->isManaged())
                                 <form method="POST" action="{{ route('connect.members.remove', [$conversation, $p->user]) }}" onsubmit="return confirm('Remove {{ e($p->user->name) }}?')">@csrf @method('DELETE')<button class="btn btn-sm btn-ghost-danger"><i class="ri-close-line"></i></button></form>
                             @endif
                         </li>
                     @endforeach
                 </ul>
-                @if($participant && !$conversation->isManaged() && ($isAdmin || $conversation->type === 'channel'))
+                @if($participant && !$conversation->isManaged() && !($isGuest ?? false) && ($isAdmin || $conversation->type === 'channel'))
                     <form method="POST" action="{{ route('connect.members.add', $conversation) }}" class="mb-3">
                         @csrf
                         <label class="form-label">Add people</label>
                         <select name="users[]" class="form-select mb-2" multiple size="6">
-                            @foreach($people->whereNotIn('id', $conversation->members->pluck('user_id')) as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
+                            <optgroup label="Team">
+                                @foreach($people->whereNotIn('id', $conversation->members->pluck('user_id')) as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
+                            </optgroup>
+                            @if($conversation->guests_allowed)
+                                <optgroup label="Clients">
+                                    @foreach(($guests ?? collect())->whereNotIn('id', $conversation->members->pluck('user_id')) as $p)<option value="{{ $p->id }}">{{ $p->name }} ({{ $p->email }})</option>@endforeach
+                                </optgroup>
+                            @endif
                         </select>
                         <button class="btn btn-sm btn-primary">Add</button>
+                    </form>
+                @endif
+                @if($isAdmin && $conversation->type === 'group' && !$conversation->isManaged())
+                    <form method="POST" action="{{ route('connect.guests', $conversation) }}" class="mb-3 d-flex align-items-center gap-2 border rounded p-2">
+                        @csrf <input type="hidden" name="on" value="{{ $conversation->guests_allowed ? 0 : 1 }}">
+                        <div class="flex-grow-1 small"><strong>{{ $conversation->guests_allowed ? 'Shared with clients' : 'Team only' }}</strong><div class="text-muted">{{ $conversation->guests_allowed ? 'Clients can be added to this group.' : 'Turn on sharing to add clients to this group.' }}</div></div>
+                        <button class="btn btn-sm {{ $conversation->guests_allowed ? 'btn-soft-secondary' : 'btn-soft-primary' }}">{{ $conversation->guests_allowed ? 'Make team only' : 'Share with clients' }}</button>
                     </form>
                 @endif
                 @if($participant && !$conversation->isManaged())
@@ -286,6 +354,8 @@
     .cx-main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
     .cx-empty { margin: auto; text-align: center; }
     .cx-empty i { font-size: 56px; color: var(--cb-teal); }
+    .cx-ext { display: inline-block; font-size: 11px; font-weight: 600; line-height: 1; padding: 3px 6px; border-radius: 4px; background: #fef3c7; color: #92400e; vertical-align: middle; }
+    .cx-ext-bar { display: flex; gap: 6px; align-items: center; padding: 6px 16px; font-size: 13px; background: #fffbeb; color: #92400e; border-bottom: 1px solid #fde68a; }
     .cx-head { display: flex; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--cb-border); }
     .min-w-0 { min-width: 0; }
     .cx-scroll { flex: 1; overflow-y: auto; padding: 16px; background: var(--cb-surface-2); }
@@ -305,7 +375,42 @@
     .cx-image { max-width: 260px; max-height: 260px; border-radius: 10px; display: block; margin-bottom: 4px; }
     .cx-file { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.04); margin-bottom: 4px; }
     .cx-file i { font-size: 22px; }
+    .cx-pdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
     .cx-reactions { display: flex; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+    .cx-react-add { color: var(--cb-muted); opacity: 0; transition: opacity .15s; }
+    .cx-msg:hover .cx-react-add, .cx-react-add:focus { opacity: 1; }
+    .cx-react-add i + i { font-size: 9px; margin-left: -2px; }
+    .cx-later-badge { position: absolute; top: -4px; right: -4px; font-size: 9px; }
+    .cx-sched-btn { border-left: 1px solid rgba(255,255,255,.35); padding-left: .45rem; padding-right: .45rem; }
+    .cx-sched-chip { display: inline-block; font-size: 12px; margin-bottom: 6px; color: var(--cb-muted); }
+    .cx-sched-opt { border: 1px solid var(--cb-border); background: var(--cb-surface-2); border-radius: 14px; font-size: 12px; padding: 2px 10px; color: var(--cb-text); }
+    .cx-sched-opt:hover { border-color: var(--cb-teal); }
+    .cx-tool { padding-left: .45rem; padding-right: .45rem; }
+    .cx-gif-btn { font-size: 11px; font-weight: 800; letter-spacing: .5px; }
+    .cx-panel { border: 1px solid var(--cb-border); border-radius: var(--cb-radius-sm); background: var(--cb-surface); padding: 10px; margin-bottom: 8px; }
+    .cx-gif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; max-height: 260px; overflow-y: auto; }
+    .cx-gif-grid button { border: 0; padding: 0; background: var(--cb-surface-2); border-radius: 8px; overflow: hidden; height: 100px; }
+    .cx-gif-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cx-gif { display: block; max-width: min(280px, 100%); height: auto; border-radius: 10px; margin: 2px 0 4px; }
+    .cx-gif-tag { font-size: 9px; font-weight: 700; color: var(--cb-muted); letter-spacing: .5px; }
+    .cx-poll { min-width: min(320px, 70vw); }
+    .cx-poll-q { font-weight: 600; color: var(--cb-heading); margin-bottom: 2px; }
+    .cx-poll-hint { font-size: 12px; color: var(--cb-muted); margin-bottom: 6px; }
+    .cx-poll-opt { position: relative; display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; border: 1px solid var(--cb-border); background: var(--cb-surface); border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; overflow: hidden; color: var(--cb-text); }
+    .cx-poll-opt:not(:disabled):hover { border-color: var(--cb-teal); }
+    .cx-poll-opt.me { border-color: var(--cb-teal); }
+    .cx-poll-bar { position: absolute; inset: 0 auto 0 0; background: rgba(13,148,136,.14); transition: width .3s; }
+    .cx-poll-label, .cx-poll-count { position: relative; }
+    .cx-poll-label i { color: var(--cb-teal); }
+    .cx-poll-count { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .cx-poll.closed .cx-poll-opt { cursor: default; }
+    #cxEmojiPop { position: fixed; z-index: 1080; width: 320px; max-width: calc(100vw - 16px); background: var(--cb-surface); border: 1px solid var(--cb-border); border-radius: 12px; box-shadow: 0 12px 32px rgba(15,35,66,.18); padding: 8px; }
+    #cxEmojiPop .cx-em-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--cb-border); padding-bottom: 6px; margin-bottom: 6px; overflow-x: auto; }
+    #cxEmojiPop .cx-em-tabs button { border: 0; background: none; font-size: 12px; padding: 2px 8px; border-radius: 6px; color: var(--cb-muted); white-space: nowrap; }
+    #cxEmojiPop .cx-em-tabs button.active { background: var(--cb-surface-2); color: var(--cb-heading); font-weight: 600; }
+    #cxEmojiPop .cx-em-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-height: 220px; overflow-y: auto; }
+    #cxEmojiPop .cx-em-grid button { border: 0; background: none; font-size: 22px; line-height: 1.2; padding: 3px; border-radius: 6px; }
+    #cxEmojiPop .cx-em-grid button:hover, #cxEmojiPop .cx-em-grid button:focus { background: var(--cb-surface-2); }
     .cx-react { border: 1px solid var(--cb-border); background: var(--cb-surface); border-radius: 12px; font-size: 12px; padding: 0 6px; }
     .cx-react.me { border-color: var(--cb-teal); background: rgba(13,148,136,.1); }
     .cx-actions { opacity: 0; transition: opacity .15s; }
@@ -337,6 +442,15 @@
     .cx-pins .dropdown-item { white-space: normal; }
     .cx-seen { font-size: 11px; color: var(--cb-muted); text-align: right; margin: -2px 40px 6px 0; }
     .cx-composer { position: relative; }
+    .cx-dock { position: fixed; right: 16px; bottom: 16px; width: min(380px, calc(100vw - 32px)); height: 340px; background: #0f1115; border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.35); z-index: 1060; display: flex; flex-direction: column; overflow: hidden; }
+    .cx-dock.big { width: min(820px, calc(100vw - 32px)); height: min(560px, calc(100vh - 100px)); }
+    .cx-dock-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; color: #f3f4f6; font-size: 13px; font-weight: 600; background: #1b1e25; }
+    .cx-dock-head .btn { color: #d1d5db; }
+    .cx-dock-body { flex: 1; min-height: 0; }
+    .cx-dock-body iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .cx-live .cx-faces { display: inline-flex; margin-left: 6px; vertical-align: middle; }
+    .cx-live .cx-faces img { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--cb-surface); margin-left: -6px; object-fit: cover; }
+    .cx-live.huddle { background: rgba(124,58,237,.08); }
     .cx-live { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(34,197,94,.1); border-bottom: 1px solid var(--cb-border); font-size: 13px; }
     .cx-live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-right: 4px; animation: cxBlink 1.2s infinite; }
     @keyframes cxBlink { 50% { opacity: .3; } }
@@ -413,13 +527,18 @@
     }
     markSeen();
 
+    let lastTotal = null, inboxNext = false;
     function poll(force) {
         if (busy || (!force && document.hidden)) return;
         busy = true; ticks++;
-        let url = pollBase + '?after=' + lastId + '&since=10' + (force || ticks % 3 === 1 ? '&inbox=1' : '');
+        let url = pollBase + '?after=' + lastId + '&since=10' + (inboxNext || ticks % 3 === 1 || (force && !window.QRealtime?.connected) ? '&inbox=1' : '');
+        inboxNext = false;
         if (thread.id) url += '&thread=' + thread.id + '&thread_after=' + thread.lastId;
         fetch(url, { headers }).then(r => r.ok ? r.json() : null).then(data => {
             if (!data) return;
+            // message tone: new messages from others here, or more unread elsewhere
+            if (window.QSound && ((data.incoming || 0) + (data.thread?.incoming || 0) > 0 || (lastTotal !== null && data.total > lastTotal))) QSound.message();
+            lastTotal = data.total;
             if (badge) { badge.textContent = data.total; badge.style.display = data.total ? '' : 'none'; }
             if (data.inbox && inbox) inbox.innerHTML = data.inbox;
             if (list) {
@@ -434,17 +553,86 @@
                 thread.lastId = Math.max(thread.lastId, data.thread.last_id || 0);
                 if (data.thread.html && stick) toBottom(tScroll);
             }
+            if (data.call !== undefined) renderCall(data.call);
             if (typingEl) {
                 const t = data.typing || [];
                 typingEl.textContent = !t.length ? '' : t.length === 1 ? t[0] + ' is typing…' : t.length === 2 ? t[0] + ' and ' + t[1] + ' are typing…' : 'Several people are typing…';
             }
-            if (presence && data.presence !== undefined) { presence.textContent = data.presence; presence.classList.toggle('text-success', data.presence === 'Online'); }
+            if (presence && data.presence !== undefined) {
+                presence.textContent = data.presence;
+                presence.classList.toggle('text-success', data.presence_state === 'online');
+                presence.classList.toggle('text-danger', data.presence_state === 'dnd');
+                const pd = document.getElementById('cxPresenceDot'); if (pd && data.presence_color) pd.style.background = data.presence_color;
+            }
             if (data.seen !== undefined && data.seen !== seen) { seen = data.seen; markSeen(); } else if (data.html) { markSeen(); }
         }).catch(() => {}).finally(() => busy = false);
     }
-    // Every 2 seconds while a conversation is open and on screen, every 6 otherwise.
-    (function loop() { poll(); setTimeout(loop, list && !document.hidden ? 2000 : 6000); })();
+    // Every 2 seconds while a conversation is open and on screen, every 6 otherwise. With instant
+    // updates (Reverb) connected, the server says when to look, and the timer is only a safety net.
+    (function loop() {
+        const live = window.QRealtime && QRealtime.connected;
+        if (!live) poll();
+        setTimeout(loop, live ? 15000 : (list && !document.hidden ? 2000 : 6000));
+    })();
+    if (window.QRealtime) {
+        let soon = null;
+        const now = (inbox) => { clearTimeout(soon); soon = setTimeout(() => { inboxNext = inboxNext || inbox; poll(true); }, 120); };
+        @if($conversation)
+            ['message', 'changed', 'typing', 'read'].forEach(e => QRealtime.on('connect.c.' + @json($conversation->id), e, () => now(false)));
+        @endif
+        QRealtime.on('user.' + QRealtime.me, 'inbox', () => now(true));
+        setInterval(() => { if (QRealtime.connected) poll(true); }, 15000);
+    }
     document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(true); });
+
+    // ── Live call / huddle bar and the huddle dock ─────────────────────
+    const callBar = document.getElementById('cxCallBar');
+    const dock = document.getElementById('cxDock'), dockBody = document.getElementById('cxDockBody');
+    let dockCall = null;
+    const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function renderCall(c) {
+        if (!callBar) return;
+        if (!c) { callBar.innerHTML = ''; return; }
+        const names = c.people.map(p => p.name);
+        const who = names.length ? (names.length <= 3 ? names.join(', ') : names.slice(0, 2).join(', ') + ' and ' + (names.length - 2) + ' more') : 'nobody yet';
+        const inIt = dockCall === c.id;
+        callBar.innerHTML = '<div class="cx-live ' + (c.huddle ? 'huddle' : '') + '"><span><span class="cx-live-dot"></span> '
+            + (c.huddle ? '<i class="ri-headphone-line"></i> Huddle' : (c.kind === 'audio' ? 'Voice call' : 'Video call') + ' in progress')
+            + ' · ' + esc(who) + '<span class="cx-faces">' + c.people.slice(0, 5).map(p => '<img src="' + esc(p.avatar) + '" alt="" title="' + esc(p.name) + '">').join('') + '</span></span>'
+            + (inIt ? '<span class="small text-muted">You\'re in it</span>' : (c.huddle ? '<button type="button" class="btn btn-sm btn-success cx-huddle-join" data-url="' + esc(c.url) + '" data-id="' + c.id + '">Join</button>'
+                : '<a href="' + esc(c.url) + '" target="_blank" rel="noopener" class="btn btn-sm btn-success">Join</a>')) + '</div>';
+    }
+    function openDock(url, id) {
+        if (dockCall === id) return;
+        dockCall = id;
+        dockBody.innerHTML = '';
+        const f = document.createElement('iframe');
+        f.src = url + (url.includes('?') ? '&' : '?') + 'embed=1';
+        f.allow = 'microphone; camera; display-capture; autoplay';
+        f.title = 'Huddle';
+        dockBody.appendChild(f);
+        document.getElementById('cxDockTitle').textContent = 'Huddle · ' + @json($conversation?->titleFor($me) ?? '');
+        dock.classList.remove('d-none');
+        dock.dataset.url = url;
+        poll(true);
+    }
+    function closeDock() { dockBody.innerHTML = ''; dock.classList.add('d-none'); dock.classList.remove('big'); dockCall = null; poll(true); }
+    window.addEventListener('message', e => {
+        if (e.origin !== location.origin || !e.data || typeof e.data.type !== 'string') return;
+        if (e.data.type === 'huddle:close' || e.data.type === 'huddle:ended') setTimeout(closeDock, e.data.type === 'huddle:ended' ? 1500 : 0);
+    });
+    document.getElementById('cxDockClose')?.addEventListener('click', closeDock);
+    document.getElementById('cxDockSize')?.addEventListener('click', () => dock.classList.toggle('big'));
+    document.getElementById('cxDockPop')?.addEventListener('click', () => { const u = dock.dataset.url; closeDock(); window.open(u, '_blank', 'noopener'); });
+    callBar?.addEventListener('click', e => { const b = e.target.closest('.cx-huddle-join'); if (b) openDock(b.dataset.url, +b.dataset.id); });
+    document.getElementById('cxHuddleBtn')?.addEventListener('click', () => {
+        fetch(@json($conversation ? route('connect.huddle', $conversation) : ''), { method: 'POST', headers })
+            .then(r => r.json().then(j => r.ok ? j : Promise.reject(j)))
+            .then(j => j.huddle ? openDock(j.url, j.id) : window.open(j.url, '_blank', 'noopener'))
+            .catch(j => alert((j && j.message) || 'The huddle could not be started.'));
+    });
+    renderCall(@json($callBar ?? null));
+    window.addEventListener('beforeunload', e => { if (dockCall) { e.preventDefault(); e.returnValue = ''; } });
 
     if (!list) return;
     const msgUrl = @json(url('connect/m')) + '/';
@@ -499,7 +687,7 @@
             e.preventDefault();
             const file = form.querySelector('input[type=file]');
             if (!input.value.trim() && !(file && file.files.length)) return;
-            const button = form.querySelector('button.btn-primary');
+            const button = form.querySelector('button.btn-primary:not([type=button])');
             button.disabled = true;
             fetch(form.action, { method: 'POST', headers, body: new FormData(form) })
                 .then(r => r.ok ? r.json() : r.json().then(j => Promise.reject(j)))
@@ -543,7 +731,22 @@
             const msg = e.target.closest('.cx-msg'); if (!msg) return;
             const id = msg.dataset.id;
             const react = e.target.closest('.cx-react');
-            if (react) {
+            const opt = e.target.closest('.cx-poll-opt');
+            if (e.target.closest('.cx-react-add')) {
+                emojiPicker(e.target.closest('.cx-react-add'), emoji => post(msgUrl + id + '/react', { emoji }).then(r => r.ok ? poll(true) : r.json().then(j => alert(j.message))));
+            } else if (opt) {
+                if (opt.disabled) return;
+                const box = opt.closest('.cx-poll'), i = +opt.dataset.option;
+                let picked = [...box.querySelectorAll('.cx-poll-opt.me')].map(b => +b.dataset.option);
+                if (box.dataset.multiple === '1') picked = picked.includes(i) ? picked.filter(x => x !== i) : picked.concat(i);
+                else picked = picked.includes(i) ? [] : [i];
+                opt.classList.toggle('me');
+                post(msgUrl + id + '/vote', { options: picked }).then(r => r.ok ? poll(true) : r.json().then(j => { alert(j.message || 'Your vote was not saved.'); poll(true); }));
+            } else if (e.target.closest('.cx-remind')) {
+                remindChooser(msg.querySelector('.cx-bubble') || msg, id);
+            } else if (e.target.closest('.cx-poll-close')) {
+                if (confirm('Close this poll? No one will be able to vote after that.')) post(msgUrl + id + '/close-poll').then(() => poll(true));
+            } else if (react) {
                 post(msgUrl + id + '/react', { emoji: react.dataset.emoji }).then(() => poll(true));
             } else if (e.target.closest('.cx-thread-open')) {
                 openThread(id);
@@ -568,6 +771,160 @@
     actions(list, false);
     actions(tList, true);
     actions(tRoot, true);
+
+    // ── Emoji picker (reactions and the composer) ──────────────────────
+    const EMOJI = @json(\App\Models\Connect\Reaction::PICKER);
+    let pop = null, popPick = null;
+    function closePicker() { if (pop) { pop.remove(); pop = null; document.removeEventListener('mousedown', outside, true); } }
+    function outside(e) { if (pop && !pop.contains(e.target)) closePicker(); }
+    function emojiPicker(anchor, pick) {
+        closePicker();
+        popPick = pick;
+        pop = document.createElement('div');
+        pop.id = 'cxEmojiPop';
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', 'Emoji');
+        const groups = Object.keys(EMOJI);
+        pop.innerHTML = '<div class="cx-em-tabs">' + groups.map((g, i) => '<button type="button" data-g="' + i + '" class="' + (i ? '' : 'active') + '">' + g + '</button>').join('') + '</div><div class="cx-em-grid"></div>';
+        const grid = pop.querySelector('.cx-em-grid');
+        const show = i => { grid.innerHTML = EMOJI[groups[i]].map(e => '<button type="button" data-e="' + e + '" aria-label="' + e + '">' + e + '</button>').join(''); pop.querySelectorAll('.cx-em-tabs button').forEach(b => b.classList.toggle('active', +b.dataset.g === i)); };
+        show(0);
+        pop.addEventListener('click', e => {
+            const t = e.target.closest('[data-g]'); if (t) return show(+t.dataset.g);
+            const b = e.target.closest('[data-e]'); if (b) { const f = popPick; closePicker(); f(b.dataset.e); }
+        });
+        pop.addEventListener('keydown', e => { if (e.key === 'Escape') { closePicker(); anchor.focus(); } });
+        document.body.appendChild(pop);
+        const r = anchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+        pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + 'px';
+        pop.style.top = (r.top - h - 6 > 8 ? r.top - h - 6 : Math.min(window.innerHeight - h - 8, r.bottom + 6)) + 'px';
+        setTimeout(() => document.addEventListener('mousedown', outside, true));
+        grid.querySelector('button')?.focus();
+    }
+
+    const body = document.getElementById('cxBody');
+    document.getElementById('cxEmojiBtn')?.addEventListener('click', e => emojiPicker(e.currentTarget, emoji => {
+        const a = body.selectionStart ?? body.value.length, b = body.selectionEnd ?? a;
+        body.value = body.value.slice(0, a) + emoji + body.value.slice(b);
+        body.focus(); body.setSelectionRange(a + emoji.length, a + emoji.length);
+        body.dispatchEvent(new Event('input'));
+    }));
+
+    // ── GIFs and polls (panels above the main composer) ────────────────
+    const gifPanel = document.getElementById('cxGifPanel'), pollPanel = document.getElementById('cxPollPanel'), schedPanel = document.getElementById('cxSchedPanel');
+    function panel(which) {
+        document.getElementById('cxSchedBtn')?.setAttribute('aria-expanded', !!which && which === schedPanel && schedPanel.classList.contains('d-none'));
+        [gifPanel, pollPanel, schedPanel].forEach(p => { if (p) p.classList.toggle('d-none', p !== which || !p.classList.contains('d-none')); });
+        document.getElementById('cxGifBtn')?.setAttribute('aria-expanded', gifPanel && !gifPanel.classList.contains('d-none'));
+        document.getElementById('cxPollBtn')?.setAttribute('aria-expanded', pollPanel && !pollPanel.classList.contains('d-none'));
+    }
+    document.querySelectorAll('.cx-panel-close').forEach(b => b.addEventListener('click', () => panel(null)));
+
+    const sendExtra = data => {
+        const fd = new FormData();
+        fd.append('_token', token);
+        if (replyTo?.value) fd.append('reply_to_id', replyTo.value);
+        Object.entries(data).forEach(([k, v]) => Array.isArray(v) ? v.forEach(x => fd.append(k + '[]', x)) : fd.append(k, v));
+        return fetch(form.action, { method: 'POST', headers, body: fd }).then(r => r.ok ? r.json() : r.json().then(j => Promise.reject(j)))
+            .then(() => { replyTo.value = ''; replying.classList.add('d-none'); poll(true); setTimeout(() => toBottom(scroll), 300); });
+    };
+
+    const gifGrid = document.getElementById('cxGifGrid'), gifQ = document.getElementById('cxGifQ');
+    const gifUrl = @json(route('connect.gifs'));
+    let gifTimer, gifSeq = 0;
+    function loadGifs() {
+        const mine = ++gifSeq;
+        gifGrid.innerHTML = '<div class="small text-muted p-2">Loading…</div>';
+        fetch(gifUrl + '?q=' + encodeURIComponent(gifQ.value.trim()), { headers }).then(r => r.json()).then(data => {
+            if (mine !== gifSeq) return;
+            if (!data.enabled) { gifGrid.innerHTML = '<div class="small text-muted p-2">GIFs are not set up yet. An administrator can add a free GIPHY key under Settings → Integrations.</div>'; return; }
+            if (!data.results.length) { gifGrid.innerHTML = '<div class="small text-muted p-2">No GIFs found.</div>'; return; }
+            gifGrid.innerHTML = '';
+            data.results.forEach(g => {
+                const b = document.createElement('button'); b.type = 'button'; b.title = g.title || 'GIF';
+                const img = document.createElement('img'); img.src = g.preview; img.alt = g.title || 'GIF'; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+                b.appendChild(img);
+                b.addEventListener('click', () => {
+                    b.disabled = true;
+                    sendExtra({ gif_url: g.url, gif_width: g.width, gif_height: g.height, gif_title: g.title || '' }).then(() => panel(null)).catch(j => alert((j && j.message) || 'The GIF was not sent.')).finally(() => b.disabled = false);
+                });
+                gifGrid.appendChild(b);
+            });
+        }).catch(() => { gifGrid.innerHTML = '<div class="small text-muted p-2">Could not load GIFs.</div>'; });
+    }
+    document.getElementById('cxGifBtn')?.addEventListener('click', () => { panel(gifPanel); if (!gifPanel.classList.contains('d-none')) { gifQ.focus(); if (!gifGrid.children.length) loadGifs(); } });
+    gifQ?.addEventListener('input', () => { clearTimeout(gifTimer); gifTimer = setTimeout(loadGifs, 350); });
+
+    const pollOpts = document.getElementById('cxPollOpts');
+    document.getElementById('cxPollBtn')?.addEventListener('click', () => { panel(pollPanel); if (!pollPanel.classList.contains('d-none')) document.getElementById('cxPollQ').focus(); });
+    document.getElementById('cxPollAdd')?.addEventListener('click', () => {
+        const n = pollOpts.querySelectorAll('input').length;
+        if (n >= 10) return;
+        const i = document.createElement('input');
+        i.className = 'form-control form-control-sm mb-1 cx-poll-in'; i.maxLength = 120; i.placeholder = 'Option ' + (n + 1); i.setAttribute('aria-label', 'Option ' + (n + 1));
+        pollOpts.appendChild(i); i.focus();
+        if (n + 1 >= 10) document.getElementById('cxPollAdd').disabled = true;
+    });
+    document.getElementById('cxPollSend')?.addEventListener('click', e => {
+        const q = document.getElementById('cxPollQ').value.trim();
+        const opts = [...pollOpts.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
+        if (!q || opts.length < 2) { alert('Write a question and at least two options.'); return; }
+        e.currentTarget.disabled = true;
+        sendExtra({ poll_question: q, poll_options: opts, poll_multiple: document.getElementById('cxPollMulti').checked ? 1 : 0 })
+            .then(() => {
+                document.getElementById('cxPollQ').value = ''; document.getElementById('cxPollMulti').checked = false;
+                pollOpts.querySelectorAll('input').forEach((i, n) => n < 2 ? i.value = '' : i.remove());
+                document.getElementById('cxPollAdd').disabled = false;
+                panel(null);
+            })
+            .catch(j => alert((j && j.message) || 'The poll was not posted.'))
+            .finally(() => e.currentTarget && (document.getElementById('cxPollSend').disabled = false));
+    });
+
+    // ── Send later and reminders ───────────────────────────────────────
+    const scheduleUrl = @json($conversation ? route('connect.schedule', $conversation) : '');
+    const remindUrl = @json(route('connect.reminders.store'));
+    const say = (text, kind) => window.Live ? Live.toast(text, kind) : alert(text);
+    function schedule(when, at) {
+        const text = body.value.trim();
+        if (!text) { say('Write the message first, then choose when to send it.', 'danger'); body.focus(); return; }
+        post(scheduleUrl, { body: text, when: when || '', at: at || '', reply_to_id: replyTo?.value || '' })
+            .then(r => r.json().then(j => r.ok ? j : Promise.reject(j)))
+            .then(j => { body.value = ''; body.dispatchEvent(new Event('input')); replyTo.value = ''; replying.classList.add('d-none'); panel(null); say(j.message); })
+            .catch(j => say((j && j.message) || 'It was not scheduled.', 'danger'));
+    }
+    document.getElementById('cxSchedBtn')?.addEventListener('click', () => panel(schedPanel));
+    schedPanel?.querySelectorAll('.cx-sched-opt').forEach(b => b.addEventListener('click', () => schedule(b.dataset.when)));
+    document.getElementById('cxSchedGo')?.addEventListener('click', () => {
+        const at = document.getElementById('cxSchedAt').value;
+        if (!at) { say('Pick a date and time.', 'danger'); return; }
+        schedule('', at);
+    });
+
+    let remindPop = null;
+    function remindChooser(anchor, messageId) {
+        remindPop?.remove();
+        remindPop = document.createElement('div');
+        remindPop.id = 'cxEmojiPop';
+        remindPop.setAttribute('role', 'dialog');
+        remindPop.setAttribute('aria-label', 'Remind me');
+        remindPop.innerHTML = '<div class="fw-semibold small mb-2"><i class="ri-alarm-line"></i> Remind me about this</div>'
+            + @js(collect(\App\Services\Connect\LaterService::CHOICES)->map(fn ($v, $k) => '<button type="button" class="cx-sched-opt mb-1 me-1" data-when="' . $k . '">' . e($v) . '</button>')->implode(''))
+            + '<div class="d-flex gap-2 mt-1"><input type="datetime-local" class="form-control form-control-sm" aria-label="Pick a time"><button type="button" class="btn btn-sm btn-primary">Set</button></div>';
+        const go = (when, at) => {
+            post(remindUrl, { message_id: messageId, when: when || '', at: at || '' }).then(r => r.json().then(j => r.ok ? j : Promise.reject(j)))
+                .then(j => { say(j.message); remindPop?.remove(); remindPop = null; }).catch(j => say((j && j.message) || 'The reminder was not set.', 'danger'));
+        };
+        remindPop.querySelectorAll('[data-when]').forEach(b => b.addEventListener('click', () => go(b.dataset.when)));
+        remindPop.querySelector('.btn-primary').addEventListener('click', () => { const v = remindPop.querySelector('input').value; v ? go('', v) : say('Pick a time.', 'danger'); });
+        document.body.appendChild(remindPop);
+        const r = anchor.getBoundingClientRect(), w = remindPop.offsetWidth, h = remindPop.offsetHeight;
+        remindPop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + 'px';
+        remindPop.style.top = (r.top - h - 6 > 8 ? r.top - h - 6 : Math.min(window.innerHeight - h - 8, r.bottom + 6)) + 'px';
+        const outside = e => { if (remindPop && !remindPop.contains(e.target)) { remindPop.remove(); remindPop = null; document.removeEventListener('mousedown', outside, true); } };
+        setTimeout(() => document.addEventListener('mousedown', outside, true));
+        remindPop.querySelector('button').focus();
+    }
 
     const older = document.getElementById('cxOlder');
     if (older) older.addEventListener('click', () => {

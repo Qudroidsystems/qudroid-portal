@@ -97,7 +97,7 @@
 @if(!$list)
 @can('Manage clients')
 @push('scripts')
-<script src="{{ asset('theme/layouts/assets/libs/sortablejs/Sortable.min.js') }}"></script>
+<script src="{{ asset('vendor/sortablejs/Sortable.min.js') }}"></script>
 <script>
 (function () {
     const moveUrl = @json(route('crm.deals.move', '__ID__'));

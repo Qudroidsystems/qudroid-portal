@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employee extends Model
 {
+    use \App\Models\Concerns\HasBusinessUnit;
     public const TYPES = ['full_time' => 'Full time', 'part_time' => 'Part time', 'contract' => 'Contract', 'intern' => 'Intern'];
     public const STATUSES = ['active' => 'Active', 'suspended' => 'Suspended', 'exited' => 'Left'];
 

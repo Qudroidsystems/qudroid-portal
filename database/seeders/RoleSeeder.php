@@ -62,7 +62,7 @@ class RoleSeeder extends Seeder
         ]],
 
         'Client' => ['#8b5cf6', [
-            'View projects',
+            'View projects', 'Chat as a guest',
         ]],
 
         'Inventory Officer' => ['#f97316', [

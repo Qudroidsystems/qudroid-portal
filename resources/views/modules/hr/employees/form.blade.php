@@ -31,6 +31,7 @@
                 <div class="col-md-6"><label class="form-label">Job title</label><input name="job_title" class="form-control" value="{{ $v('job_title') }}" maxlength="100"></div>
                 <div class="col-md-6"><label class="form-label">Department</label>
                     <select name="department_id" class="form-select"><option value="">None</option>@foreach($departments as $d)<option value="{{ $d->id }}" @selected((int) $v('department_id') === $d->id)>{{ $d->name }}</option>@endforeach</select></div>
+                @include('partials.unit-select', ['value' => $employee->business_unit_id ?? null, 'class' => 'col-md-6'])
                 <div class="col-md-6"><label class="form-label">Reports to</label>
                     <select name="manager_id" class="form-select"><option value="">Nobody</option>@foreach($managers as $m)<option value="{{ $m->id }}" @selected((int) $v('manager_id') === $m->id)>{{ $m->name }}</option>@endforeach</select>
                     <div class="form-text">Their manager approves their leave.</div></div>

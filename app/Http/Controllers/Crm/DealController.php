@@ -39,6 +39,7 @@ class DealController extends Controller
     public function store(Request $request)
     {
         $deal = $this->crm->saveDeal($this->validated($request), $request->user());
+        \App\Support\BusinessUnits::apply($request, $deal);
 
         return $request->boolean('back')
             ? back()->with('success', 'Deal added.')
@@ -62,6 +63,7 @@ class DealController extends Controller
     {
         $data = $this->validated($request, true);
         $this->crm->saveDeal($data, $request->user(), $deal);
+        \App\Support\BusinessUnits::apply($request, $deal);
 
         return back()->with('success', 'Deal saved.');
     }

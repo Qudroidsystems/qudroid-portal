@@ -46,6 +46,8 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1,api'])->group(f
 
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread');
+    Route::get('me/status', [\App\Http\Controllers\Api\V1\StatusController::class, 'show'])->name('status.show');
+    Route::post('me/status', [\App\Http\Controllers\Api\V1\StatusController::class, 'update'])->middleware('throttle:60,1')->name('status.update');
     Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::post('notifications/{id}/read', [NotificationController::class, 'read'])->name('notifications.read');
 

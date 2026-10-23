@@ -11,7 +11,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // One per request, so meeting and call lookups are shared across a page.
+        $this->app->scoped(\App\Services\Presence\Presence::class);
     }
 
     public function boot(): void
@@ -24,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, $ability) {
             return method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin() ? true : null;
         });
+
+        // Workflow automations listen for record changes (tasks, deals, invoices...).
+        \App\Services\Workflows\Engine::listen();
 
         // Branding for every view (layout, login, e-mails).
         View::share('brand', config('qudroid'));

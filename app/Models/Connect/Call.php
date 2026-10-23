@@ -11,9 +11,9 @@ class Call extends Model
 {
     protected $table = 'connect_calls';
 
-    protected $fillable = ['conversation_id', 'started_by', 'kind', 'started_at', 'ended_at', 'peak_people'];
+    protected $fillable = ['conversation_id', 'started_by', 'kind', 'is_huddle', 'started_at', 'ended_at', 'peak_people', 'transcribing_by', 'note_id'];
 
-    protected $casts = ['started_at' => 'datetime', 'ended_at' => 'datetime'];
+    protected $casts = ['started_at' => 'datetime', 'ended_at' => 'datetime', 'is_huddle' => 'boolean'];
 
     public function conversation(): BelongsTo
     {
@@ -28,6 +28,21 @@ class Call extends Model
     public function people(): HasMany
     {
         return $this->hasMany(CallPerson::class);
+    }
+
+    public function recordings(): HasMany
+    {
+        return $this->hasMany(CallRecording::class);
+    }
+
+    public function transcript(): HasMany
+    {
+        return $this->hasMany(TranscriptLine::class)->orderBy('id');
+    }
+
+    public function note(): BelongsTo
+    {
+        return $this->belongsTo(Note::class);
     }
 
     public function isLive(): bool

@@ -94,6 +94,10 @@ return [
         'turn_credential' => env('QUDROID_TURN_CREDENTIAL'),
         // People per call. Each browser sends to every other one, so keep this small.
         'max_people'      => (int) env('QUDROID_CALL_MAX_PEOPLE', 8),
+        // Recordings are uploaded in pieces while the call runs; this caps one recording.
+        'recording_max_mb' => (int) env('QUDROID_RECORDING_MAX_MB', 1024),
+        // Language the browsers listen for when transcribing (a BCP 47 tag, e.g. en-NG, en-GB, fr-FR).
+        'transcript_lang' => env('QUDROID_TRANSCRIPT_LANG', 'en-NG'),
     ],
 
     /*
@@ -116,6 +120,16 @@ return [
     ],
 
     /*
+    | Business units: new records go to `default` unless another unit is
+    | chosen; academy courses and student fees go to `academy`. Codes match
+    | Settings → Business units.
+    */
+    'units' => [
+        'default' => env('QUDROID_DEFAULT_UNIT', 'QS'),
+        'academy' => env('QUDROID_ACADEMY_UNIT', 'QCA'),
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Modules (the app launcher on the dashboard and the sidebar)
     |--------------------------------------------------------------------------
@@ -125,18 +139,20 @@ return [
     | `phase` follows the development roadmap.
     */
     'modules' => [
+        'command_center' => ['name' => 'Command Center',  'icon' => 'ri-dashboard-3-line',    'route' => 'command-center',     'permission' => 'View command center', 'phase' => 6, 'color' => '#0f172a', 'description' => 'The executive view: money, students, sales, projects, people and stock.'],
         'academy'      => ['name' => 'Academy & LMS',       'icon' => 'ri-book-open-line', 'route' => 'academy.index',      'permission' => 'View academy',      'phase' => 2, 'color' => '#6366f1', 'description' => 'Admissions, courses, lessons, assessments and progress.'],
         'certificates' => ['name' => 'Certificates',        'icon' => 'ri-award-line',          'route' => 'certificates.index', 'permission' => 'View certificates', 'phase' => 2, 'color' => '#f59e0b', 'description' => 'Templates, numbering, QR verification and revocation.'],
         'attendance'   => ['name' => 'Attendance',          'icon' => 'ri-calendar-check-line', 'route' => 'attendance.index',   'permission' => 'View attendance',   'phase' => 2, 'color' => '#14b8a6', 'description' => 'Class sessions, registers and staff attendance.'],
         'projects'     => ['name' => 'Projects & Tasks',    'icon' => 'ri-layout-column-line',         'route' => 'projects.index',     'permission' => 'View projects',     'phase' => 3, 'color' => '#0ea5e9', 'description' => 'Workspaces, boards, docs, time tracking and approvals.'],
         'crm'          => ['name' => 'Clients & CRM',       'icon' => 'ri-briefcase-4-line',    'route' => 'crm.index',          'permission' => 'View clients',      'phase' => 3, 'color' => '#8b5cf6', 'description' => 'Clients, leads, proposals, contracts and support tickets.'],
         'workspace'    => ['name' => 'Workspace',           'icon' => 'ri-apps-2-line',         'route' => 'workspace.index',    'permission' => 'Use connect',       'phase' => 4, 'color' => '#14b8a6', 'description' => 'Your chats, calls, meetings and files in one place.'],
-        'connect'      => ['name' => 'Qudroid Connect',     'icon' => 'ri-chat-smile-3-line',   'route' => 'connect.index',      'permission' => 'Use connect',       'phase' => 4, 'color' => '#22c55e', 'description' => 'Channels, direct messages, files and calls.'],
+        'connect'      => ['name' => 'Qudroid Connect',     'icon' => 'ri-chat-smile-3-line',   'route' => 'connect.index',      'permission' => 'Use connect|Chat as a guest',       'phase' => 4, 'color' => '#22c55e', 'description' => 'Channels, direct messages, files and calls.'],
         'drive'        => ['name' => 'Drive',               'icon' => 'ri-folder-cloud-line',   'route' => 'drive.index',        'permission' => 'Use connect',       'phase' => 4, 'color' => '#3b82f6', 'description' => 'Your files and folders, project files, sharing and links.'],
         'meetings'     => ['name' => 'Meetings & Calendar', 'icon' => 'ri-video-chat-line',     'route' => 'meetings.index',     'permission' => 'View meetings',     'phase' => 4, 'color' => '#ec4899', 'description' => 'Scheduled meetings, rooms and shared calendars.'],
         'finance'      => ['name' => 'Finance & Invoicing', 'icon' => 'ri-money-dollar-circle-line', 'route' => 'finance.index', 'permission' => 'View finance',      'phase' => 2, 'color' => '#10b981', 'description' => 'Invoices, payments, bills, expenses and reports.'],
         'inventory'    => ['name' => 'Inventory & Assets',  'icon' => 'ri-archive-line',        'route' => 'inventory.index',    'permission' => 'View inventory',    'phase' => 5, 'color' => '#f97316', 'description' => 'Stock, procurement, suppliers and the IT asset register.'],
         'hr'           => ['name' => 'HR & Payroll',        'icon' => 'ri-team-line',           'route' => 'hr.index',           'permission' => 'View employees',    'phase' => 5, 'color' => '#ef4444', 'description' => 'Employees, leave, timesheets, payroll and payslips.'],
+        'workflows'    => ['name' => 'Workflows',           'icon' => 'ri-flow-chart',          'route' => 'workflows.index',    'permission' => 'Manage workflows',  'phase' => 6, 'color' => '#7c3aed', 'description' => 'Automations: when something happens, notify, e-mail, post, create tasks or call webhooks.'],
     ],
 
 ];

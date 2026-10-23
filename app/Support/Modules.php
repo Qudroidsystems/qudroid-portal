@@ -41,7 +41,11 @@ class Modules
     protected static function can($user, string $permission): bool
     {
         try {
-            return $user->can($permission);
+            foreach (explode('|', $permission) as $p) {
+                if ($user->can(trim($p))) return true;
+            }
+
+            return false;
         } catch (\Throwable $e) {
             // Permission not created yet (module not installed).
             return method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();

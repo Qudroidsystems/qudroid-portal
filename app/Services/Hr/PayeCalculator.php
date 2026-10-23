@@ -14,13 +14,13 @@ use App\Models\Hr\Employee;
  *                         bonus paid this month adds to the year's tax
  *
  * Unpaid leave reduces every pay item by unpaid days ÷ working days in a month.
- * Rates and bands come from config('qudroid.payroll').
+ * Rates and bands come from Settings → Payroll tax, or config('qudroid.payroll').
  */
 class PayeCalculator
 {
     public function __construct(protected ?array $config = null)
     {
-        $this->config ??= config('qudroid.payroll');
+        $this->config ??= app(\App\Services\Settings\Settings::class)->payroll();
     }
 
     /**

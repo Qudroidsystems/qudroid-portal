@@ -45,6 +45,7 @@
                         <div class="col-7"><label class="form-label">Due date</label><input name="due_date" type="date" class="form-control" value="{{ old('due_date', today()->addDays(config('qudroid.finance.default_due_days', 14))->format('Y-m-d')) }}"></div>
                         <div class="col-5"><label class="form-label">Currency</label><input name="currency" class="form-control text-uppercase" maxlength="3" required value="{{ old('currency', config('qudroid.academy.currency', 'NGN')) }}"></div>
                     </div>
+                    @include('partials.unit-select', ['value' => null, 'class' => 'mb-2'])
                     <div class="mb-3"><label class="form-label">Notes</label><textarea name="notes" class="form-control" rows="3">{{ old('notes') }}</textarea></div>
                     <button class="btn btn-primary w-100">Issue invoice</button>
                     <div class="form-text">An issued invoice can't be edited. Mistakes are fixed by voiding it and issuing a new one.</div>

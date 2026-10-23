@@ -60,7 +60,10 @@ class User extends Authenticatable
             'is_disabled'          => 'boolean',
             'last_login_at'        => 'datetime',
             'last_seen_at'         => 'datetime',
+            'presence_until'       => 'datetime',
+            'status_until'         => 'datetime',
             'password'             => 'hashed',
+            'muted_notifications'  => 'array',
         ];
     }
 

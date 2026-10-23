@@ -88,8 +88,10 @@
             @endif
 
             <x-cb.card title="Online now" icon="ri-user-voice-line" :count="$online->count()">
+                @php $wsPresence = app(\App\Services\Presence\Presence::class)->prime($online->pluck('id')); @endphp
                 @forelse($online as $u)
-                    <a href="{{ route('connect.direct', $u) }}" class="ws-person" title="Message {{ $u->name }}"><img src="{{ $u->avatar_url }}" alt=""><span class="text-truncate">{{ $u->first_name }}</span></a>
+                    @php $pr = $wsPresence->of($u); @endphp
+                    <a href="{{ route('connect.direct', $u) }}" class="ws-person" title="{{ $u->name }}: {{ $wsPresence->line($u) }}"><span class="position-relative d-inline-block"><img src="{{ $u->avatar_url }}" alt=""><span class="ws-pdot" style="background: {{ $pr['color'] }}"></span></span><span class="text-truncate">{{ $u->first_name }}@if($pr['emoji']) {{ $pr['emoji'] }}@endif</span></a>
                 @empty
                     <div class="text-muted small">Nobody else is online right now.</div>
                 @endforelse
@@ -110,6 +112,7 @@
     .ws-date span { display:block; font-size:.7rem; text-transform:uppercase; color:var(--vz-secondary-color, #878a99); }
     .ws-date strong { font-size:1.2rem; }
     .ws-person { display:inline-flex; color:inherit; text-decoration:none; flex-direction:column; align-items:center; gap:.25rem; width:64px; margin:0 .25rem .5rem 0; border:0; background:none; font-size:.75rem; position:relative; }
+    .ws-pdot { position:absolute; right:-1px; bottom:-1px; width:10px; height:10px; border-radius:50%; border:2px solid var(--cb-surface); }
     .ws-person img { width:40px; height:40px; border-radius:50%; box-shadow:0 0 0 2px #0ab39c; }
     .ws-person span { max-width:64px; }
 </style>

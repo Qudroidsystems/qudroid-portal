@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** Money the company spends: submitted, approved (or rejected), then paid. */
 class Expense extends Model
 {
+    use \App\Models\Concerns\HasBusinessUnit;
     public const STATUSES = ['submitted' => 'Awaiting approval', 'approved' => 'Approved, to pay', 'rejected' => 'Rejected', 'paid' => 'Paid'];
 
     protected $table = 'finance_expenses';

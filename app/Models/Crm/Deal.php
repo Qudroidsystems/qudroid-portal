@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Deal extends Model
 {
+    use \App\Models\Concerns\HasBusinessUnit;
     /** stage => [label, default probability %] */
     public const STAGES = [
         'new'         => ['New', 10],

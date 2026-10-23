@@ -60,6 +60,7 @@
                         </div>
                         <label class="form-label small">Owner</label>
                         <select name="owner_id" class="form-select form-select-sm mb-2"><option value="">Nobody</option>@foreach($staff as $s)<option value="{{ $s->id }}" @selected($deal->owner_id === $s->id)>{{ $s->name }}</option>@endforeach</select>
+                        @include('partials.unit-select', ['value' => $deal->business_unit_id, 'class' => 'mb-2'])
                         <textarea name="notes" rows="3" class="form-control form-control-sm mb-2" maxlength="5000" placeholder="Notes">{{ $deal->notes }}</textarea>
                         <button class="btn btn-sm btn-primary w-100">Save</button>
                         <div class="form-text">Save after changing the company to pick one of its contacts.</div>

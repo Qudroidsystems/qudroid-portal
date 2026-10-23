@@ -47,20 +47,36 @@ class FcmClient
     {
         if (!$this->configured()) return 'error';
 
-        $message = [
-            'token' => $token,
-            'notification' => ['title' => $title, 'body' => $body],
-            // FCM data values must be strings.
-            'data' => array_map(fn ($v) => is_scalar($v) || $v === null ? (string) $v : json_encode($v), $data),
-            'android' => [
-                'priority' => 'high',
-                'notification' => [
-                    'channel_id' => in_array($data['type'] ?? '', ['message', 'meeting'], true) ? 'messages' : 'general',
-                    'sound' => 'default',
+        // FCM data values must be strings.
+        $strings = array_map(fn ($v) => is_scalar($v) || $v === null ? (string) $v : json_encode($v), $data);
+        if (in_array($data['type'] ?? '', ['call', 'call_end'], true)) {
+            // Incoming calls: a data-only, high-priority message, so the Android app can show its own
+            // ringing screen even when closed; it expires after a minute (a missed call is not news).
+            // iOS gets a time-sensitive alert (ringing a closed iPhone app needs a VoIP push).
+            $message = [
+                'token' => $token,
+                'data' => $strings + ['title' => $title, 'body' => $body],
+                'android' => ['priority' => 'high', 'ttl' => $data['type'] === 'call' ? '60s' : '30s'],
+                'apns' => $data['type'] === 'call'
+                    ? ['headers' => ['apns-priority' => '10', 'apns-expiration' => (string) (time() + 60)],
+                        'payload' => ['aps' => ['alert' => ['title' => $title, 'body' => $body], 'sound' => 'default', 'interruption-level' => 'time-sensitive']]]
+                    : ['headers' => ['apns-priority' => '5', 'apns-push-type' => 'background'], 'payload' => ['aps' => ['content-available' => 1]]],
+            ];
+        } else {
+            $message = [
+                'token' => $token,
+                'notification' => ['title' => $title, 'body' => $body],
+                'data' => $strings,
+                'android' => [
+                    'priority' => 'high',
+                    'notification' => [
+                        'channel_id' => in_array($data['type'] ?? '', ['message', 'meeting'], true) ? 'messages' : 'general',
+                        'sound' => 'default',
+                    ],
                 ],
-            ],
-            'apns' => ['payload' => ['aps' => ['sound' => 'default']]],
-        ];
+                'apns' => ['payload' => ['aps' => ['sound' => 'default']]],
+            ];
+        }
 
         try {
             $res = Http::withToken($this->accessToken())

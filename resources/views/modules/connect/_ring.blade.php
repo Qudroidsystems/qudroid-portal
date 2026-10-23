@@ -21,16 +21,10 @@
     const url = @json(route('connect.calls.ringing'));
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
     const dismissed = new Set();
-    let current = null, tone = null;
+    let current = null, stopTone = null;
 
-    function beep() {
-        try {
-            const ctx = tone || (tone = new (window.AudioContext || window.webkitAudioContext)());
-            const o = ctx.createOscillator(), g = ctx.createGain();
-            o.frequency.value = 520; g.gain.value = 0.05; o.connect(g); g.connect(ctx.destination);
-            o.start(); o.stop(ctx.currentTime + 0.35);
-        } catch (e) {}
-    }
+    function ring() { if (!stopTone && window.QSound) stopTone = QSound.ringtone(); }
+    function quiet() { if (stopTone) { stopTone(); stopTone = null; } }
     function show(c) {
         current = c;
         document.getElementById('cxRingAvatar').src = c.avatar || '';
@@ -38,9 +32,9 @@
         document.getElementById('cxRingWhat').textContent = (c.kind === 'audio' ? 'Voice call' : 'Video call') + (c.where ? ' in ' + c.where : '');
         document.getElementById('cxRingYes').href = c.url;
         box.classList.remove('d-none');
-        beep();
+        ring();
     }
-    function hide() { box.classList.add('d-none'); current = null; }
+    function hide() { box.classList.add('d-none'); current = null; quiet(); }
     document.getElementById('cxRingYes').addEventListener('click', () => { if (current) dismissed.add(current.id); hide(); });
     document.getElementById('cxRingNo').addEventListener('click', () => {
         if (!current) return;
@@ -49,15 +43,14 @@
         hide();
     });
     function check() {
-        if (document.hidden && !current) return;
         fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.ok ? r.json() : null).then(d => {
             const c = (d?.calls || []).find(c => !dismissed.has(c.id));
             if (c && (!current || current.id !== c.id)) show(c);
-            else if (c) beep();
             else if (!c && current) hide();
         }).catch(() => {});
     }
     check();
     setInterval(check, 4000);
+    document.addEventListener('realtime:call', () => check());
 })();
 </script>

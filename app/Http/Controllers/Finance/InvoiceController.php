@@ -55,6 +55,8 @@ class InvoiceController extends Controller
             'due_date' => $data['due_date'] ?? null, 'currency' => $data['currency'], 'notes' => $data['notes'] ?? null,
         ]);
 
+        \App\Support\BusinessUnits::apply($request, $invoice);
+
         return redirect()->route('finance.invoices.show', $invoice)->with('success', "Invoice {$invoice->number} issued.");
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Services\Finance;
 
+use App\Services\Settings\Settings;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -14,14 +15,30 @@ class PaystackGateway
 {
     protected string $base = 'https://api.paystack.co';
 
+    public function __construct(protected ?Settings $settings = null)
+    {
+        $this->settings ??= app(Settings::class);
+    }
+
+    /** Keys and mode: saved in Settings → Payments, or from .env. */
+    public function config(): array
+    {
+        return $this->settings->paystack();
+    }
+
     public function enabled(): bool
     {
-        return (bool) config('services.paystack.active') && $this->secret() !== '';
+        return (bool) ($this->config()['active'] ?? false) && $this->secret() !== '';
+    }
+
+    public function mode(): string
+    {
+        return ($this->config()['mode'] ?? 'sandbox') === 'live' ? 'live' : 'sandbox';
     }
 
     public function secret(): string
     {
-        $c = config('services.paystack');
+        $c = $this->config();
         $key = ($c['mode'] ?? 'sandbox') === 'live'
             ? (($c['live_secret_key'] ?? null) ?: ($c['secret_key'] ?? null))
             : (($c['test_secret_key'] ?? null) ?: ($c['secret_key'] ?? null));
@@ -66,5 +83,20 @@ class PaystackGateway
     {
         return $signature !== null && $this->secret() !== ''
             && hash_equals(hash_hmac('sha512', $payload, $this->secret()), $signature);
+    }
+
+    /** Check a secret key with Paystack. Returns null when it works, or the reason it doesn't. */
+    public function check(?string $secret = null): ?string
+    {
+        $secret ??= $this->secret();
+        if ($secret === '') return 'No secret key is set.';
+        try {
+            $res = Http::withToken($secret)->acceptJson()->timeout(15)->get($this->base . '/balance');
+        } catch (\Throwable $e) {
+            return 'Could not reach Paystack: ' . $e->getMessage();
+        }
+        if ($res->successful() && $res->json('status')) return null;
+
+        return $res->json('message') ?: 'Paystack answered HTTP ' . $res->status() . '.';
     }
 }

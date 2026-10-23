@@ -60,6 +60,25 @@
                     @endif
                 </x-cb.card>
             @endif
+
+            @if(($recaps ?? collect())->isNotEmpty())
+                <x-cb.card title="Recordings and transcripts" icon="ri-record-circle-line" :count="$recaps->count()" :flush="true">
+                    <ul class="list-group list-group-flush">
+                        @foreach($recaps as $c)
+                            <li class="list-group-item d-flex align-items-center gap-2 flex-wrap">
+                                <i class="ri-video-chat-line text-muted"></i>
+                                <a href="{{ route('connect.calls.recap', $c) }}" class="fw-semibold">{{ $c->started_at->format('j M, H:i') }}</a>
+                                <span class="small text-muted">{{ $c->durationLabel() }}</span>
+                                <span class="ms-auto d-flex gap-1">
+                                    @if($c->recordings_count)<span class="badge bg-danger-subtle text-danger">{{ $c->recordings_count }} {{ \Illuminate\Support\Str::plural('recording', $c->recordings_count) }}</span>@endif
+                                    @if($c->transcript_count)<span class="badge bg-info-subtle text-info">Transcript</span>@endif
+                                    @if($c->note_id)<span class="badge bg-success-subtle text-success">Notes</span>@endif
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </x-cb.card>
+            @endif
         </div>
 
         <div class="col-xl-4">

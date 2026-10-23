@@ -5,6 +5,7 @@ namespace App\Services\Connect;
 use App\Models\Connect\Conversation;
 use App\Models\Connect\Message;
 use App\Models\Connect\Participant;
+use App\Models\Connect\PollVote;
 use App\Models\Connect\Reaction;
 use App\Models\Projects\Project;
 use App\Models\User;
@@ -23,6 +24,9 @@ use Illuminate\Validation\ValidationException;
  *  - Groups: private; admins add and remove people.
  *  - Channels: open to everyone with Use connect; anyone can browse and
  *    join, members post. Staff create channels.
+ *  - Guests (clients with Chat as a guest, without Use connect) only see
+ *    chats shared with clients that they were added to, and can only start
+ *    a direct chat with people they already share one with.
  *
  * Direct and group messages notify the other people (bell and phone
  * push), once until they have read the conversation again. Channels do
@@ -39,7 +43,13 @@ class ConnectService
 
     public function canView(Conversation $c, User $user): bool
     {
-        return $c->type === 'channel' || $this->participant($c, $user) !== null;
+        return ($c->type === 'channel' && !$this->isGuest($user)) || $this->participant($c, $user) !== null;
+    }
+
+    /** A client chatting as a guest: limited to chats shared with clients. */
+    public function isGuest(User $user): bool
+    {
+        return !$user->can('Use connect') && $user->can('Chat as a guest');
     }
 
     public function isAdmin(Conversation $c, User $user): bool
@@ -47,13 +57,31 @@ class ConnectService
         return $this->participant($c, $user)?->role === 'admin';
     }
 
-    /** People who can be messaged: active accounts with Use connect. */
+    /**
+     * People who can be messaged: active accounts with Use connect. For a guest (passed as
+     * $except), only the people they already share a client chat with.
+     */
     public function people(?string $search = null, ?User $except = null)
     {
-        $ids = PortalNotifier::userIdsWithPermission('Use connect');
+        $ids = $except && $this->isGuest($except)
+            ? DB::table('connect_participants as mine')
+                ->join('connect_conversations as c', fn ($j) => $j->on('c.id', '=', 'mine.conversation_id')->where('c.guests_allowed', true)->whereNull('c.archived_at'))
+                ->join('connect_participants as them', fn ($j) => $j->on('them.conversation_id', '=', 'mine.conversation_id')->whereNull('them.left_at'))
+                ->where('mine.user_id', $except->id)->whereNull('mine.left_at')->distinct()->pluck('them.user_id')
+            : PortalNotifier::userIdsWithPermission('Use connect');
 
         return User::whereIn('id', $ids)->where('is_disabled', false)
             ->when($except, fn ($q) => $q->whereKeyNot($except->id))
+            ->when($search, fn ($q, $s) => $q->where(fn ($w) => $w->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%")))
+            ->orderBy('name');
+    }
+
+    /** Clients who can be added to chats shared with clients. */
+    public function guests(?string $search = null)
+    {
+        $ids = collect(PortalNotifier::userIdsWithPermission('Chat as a guest'))->diff(PortalNotifier::userIdsWithPermission('Use connect'));
+
+        return User::whereIn('id', $ids)->where('is_disabled', false)
             ->when($search, fn ($q, $s) => $q->where(fn ($w) => $w->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%")))
             ->orderBy('name');
     }
@@ -169,6 +197,10 @@ class ConnectService
         $list = array_filter((array) Cache::get($key, []), fn ($t) => ($t['at'] ?? 0) > $now - 6);
         $list[$me->id] = ['name' => $me->first_name ?: $me->name, 'at' => $now];
         Cache::put($key, $list, 15);
+        // At most one websocket poke per person every few seconds while typing.
+        if (\App\Services\Realtime\Realtime::enabled() && Cache::add('cx:typing-poke:' . $c->id . ':' . $me->id, 1, 3)) {
+            \App\Services\Realtime\Realtime::poke('connect.c.' . $c->id, 'typing', ['user_id' => $me->id]);
+        }
     }
 
     /** First names of the others typing in the conversation right now. */
@@ -204,10 +236,14 @@ class ConnectService
     public function direct(User $me, User $other): Conversation
     {
         $this->check($me->id === $other->id, 'user', 'Pick someone else to message.');
-        $this->check(!$other->can('Use connect') || $other->is_disabled, 'user', 'That person cannot use Connect.');
+        $this->check(!($other->can('Use connect') || $other->can('Chat as a guest')) || $other->is_disabled, 'user', 'That person cannot use Connect.');
+        $this->check($this->isGuest($me) && !$this->people(except: $me)->whereKey($other->id)->exists(), 'user', 'You can message people you already share a chat with.');
+        $this->check($this->isGuest($me) && $this->isGuest($other), 'user', 'Clients can message the team, not other clients.');
+        $shared = $this->isGuest($me) || $this->isGuest($other);
 
-        return DB::transaction(function () use ($me, $other) {
+        return DB::transaction(function () use ($me, $other, $shared) {
             $c = Conversation::firstOrCreate(['direct_key' => Conversation::directKey($me->id, $other->id)], ['type' => 'direct', 'created_by' => $me->id]);
+            if ($shared && !$c->guests_allowed) $c->update(['guests_allowed' => true]);
             foreach ([$me, $other] as $u) {
                 Participant::updateOrCreate(['conversation_id' => $c->id, 'user_id' => $u->id], ['left_at' => null]);
             }
@@ -220,6 +256,7 @@ class ConnectService
     public function group(User $me, string $name, array $userIds): Conversation
     {
         $name = trim($name);
+        $this->check($this->isGuest($me), 'name', 'Clients cannot start groups.');
         $this->check($name === '', 'name', 'Give the group a name.');
         $ids = $this->people()->whereIn('id', $userIds)->whereKeyNot($me->id)->pluck('id');
         $this->check($ids->isEmpty(), 'users', 'Add at least one other person.');
@@ -272,11 +309,53 @@ class ConnectService
         });
     }
 
+    /**
+     * The project's client chat: the project team plus its clients (project members with the
+     * Client role, or the client account itself), shared with clients. People added by hand stay.
+     */
+    public function forProjectClients(Project $project, User $me): Conversation
+    {
+        return DB::transaction(function () use ($project, $me) {
+            $c = Conversation::firstOrCreate(['client_project_id' => $project->id, 'type' => 'group'],
+                ['name' => mb_substr($project->name . ' · client chat', 0, 100), 'created_by' => $me->id, 'guests_allowed' => true]);
+            if ($c->wasRecentlyCreated) $this->system($c, $me->name . ' started a chat shared with the client');
+            foreach ($project->members()->with('user')->get() as $m) {
+                $u = $m->user;
+                if (!$u || $u->is_disabled) continue;
+                $ok = $m->role === 'client' ? ($u->can('Chat as a guest') || $u->can('Use connect')) : $u->can('Use connect');
+                if (!$ok) continue;
+                $p = Participant::firstOrNew(['conversation_id' => $c->id, 'user_id' => $u->id]);
+                if ($p->exists && !$p->left_at) continue;
+                $p->fill(['left_at' => null, 'role' => $m->role === 'manager' ? 'admin' : 'member'])->save();
+            }
+            if ($me->can('Use connect') && !$this->participant($c, $me)) {
+                Participant::updateOrCreate(['conversation_id' => $c->id, 'user_id' => $me->id], ['left_at' => null, 'role' => 'admin']);
+            }
+
+            return $c;
+        });
+    }
+
+    /** Admins share a group with clients, or stop sharing it (only once no clients are left in it). */
+    public function setGuests(Conversation $c, User $by, bool $on): void
+    {
+        $this->check($c->type !== 'group' || $c->project_id || $c->meeting_id, 'guests', 'Only groups can be shared with clients.');
+        $this->check(!$this->isAdmin($c, $by), 'guests', 'Only group admins change this.');
+        if (!$on) {
+            $guestsLeft = $c->members()->with('user')->get()->filter(fn ($p) => $p->user && $this->isGuest($p->user));
+            $this->check($guestsLeft->isNotEmpty(), 'guests', 'Remove the clients first: ' . $guestsLeft->pluck('user.name')->implode(', ') . '.');
+        }
+        if ((bool) $c->guests_allowed === $on) return;
+        $c->update(['guests_allowed' => $on]);
+        $this->system($c, $by->name . ($on ? ' shared this chat with clients' : ' stopped sharing this chat with clients'));
+    }
+
     // ── Membership ──────────────────────────────────────────────────────
 
     public function join(Conversation $c, User $me): void
     {
         $this->check($c->type !== 'channel', 'conversation', 'Only channels are open to join.');
+        $this->check($this->isGuest($me), 'conversation', 'Clients cannot join channels.');
         $p = Participant::firstOrNew(['conversation_id' => $c->id, 'user_id' => $me->id]);
         if ($p->exists && !$p->left_at) return;
         $p->fill(['left_at' => null, 'last_read_message_id' => (int) $c->last_message_id])->save();
@@ -304,8 +383,10 @@ class ConnectService
         $this->check($c->isDirect() || $c->isManaged(), 'users', 'People cannot be added here.');
         $this->check($c->type === 'group' && !$this->isAdmin($c, $by), 'users', 'Only group admins add people.');
         $this->check($c->type === 'channel' && !$this->participant($c, $by), 'users', 'Join the channel first.');
+        $this->check($this->isGuest($by), 'users', 'Only the team adds people.');
 
         $users = $this->people()->whereIn('id', $userIds)->get();
+        if ($c->guests_allowed) $users = $users->concat($this->guests()->whereIn('id', $userIds)->get())->unique('id');
         $added = 0;
         foreach ($users as $u) {
             $p = Participant::firstOrNew(['conversation_id' => $c->id, 'user_id' => $u->id]);
@@ -334,22 +415,24 @@ class ConnectService
 
     // ── Messages ────────────────────────────────────────────────────────
 
-    public function send(Conversation $c, User $me, ?string $body, ?UploadedFile $file = null, ?int $replyTo = null, ?int $threadId = null): Message
+    /** @param  array{kind?: string, meta?: array}  $extra  a poll or a GIF */
+    public function send(Conversation $c, User $me, ?string $body, ?UploadedFile $file = null, ?int $replyTo = null, ?int $threadId = null, array $extra = []): Message
     {
         $p = $this->participant($c, $me);
         $this->check(!$p, 'body', $c->type === 'channel' ? 'Join the channel to post.' : 'You are not in this conversation.');
         $this->check($c->archived_at !== null, 'body', 'This conversation is archived.');
         $body = trim((string) $body);
-        $this->check($body === '' && !$file, 'body', 'Write a message or attach a file.');
+        $this->check($body === '' && !$file && empty($extra['meta']), 'body', 'Write a message or attach a file.');
         $this->check(mb_strlen($body) > 5000, 'body', 'That message is too long.');
         $this->check($replyTo && !Message::where('conversation_id', $c->id)->whereKey($replyTo)->exists(), 'reply_to_id', 'That message is not in this conversation.');
 
         $root = $threadId ? Message::where('conversation_id', $c->id)->whereNull('thread_id')->where('is_system', false)->find($threadId) : null;
         $this->check($threadId && !$root, 'thread_id', 'That thread is not in this conversation.');
 
-        $message = DB::transaction(function () use ($c, $me, $p, $body, $file, $replyTo, $root) {
+        $message = DB::transaction(function () use ($c, $me, $p, $body, $file, $replyTo, $root, $extra) {
             $m = Message::create([
                 'conversation_id' => $c->id, 'user_id' => $me->id, 'body' => $body !== '' ? $body : null, 'reply_to_id' => $replyTo ?: null,
+                'kind' => $extra['kind'] ?? null, 'meta' => $extra['meta'] ?? null,
                 'thread_id' => $root?->id, 'mentions' => $this->parseMentions($c, $body, $me),
                 'attachment_path' => $file?->store('connect/' . $c->id, 'local'),
                 'attachment_name' => $file ? mb_substr($file->getClientOriginalName(), 0, 255) : null,
@@ -424,8 +507,10 @@ class ConnectService
     {
         $this->check($m->user_id !== $me->id || $m->is_system, 'body', 'You can only edit your own messages.');
         $this->check($m->isDeleted(), 'body', 'This message was deleted.');
+        $this->check($m->kind === 'poll', 'body', 'A poll cannot be edited. Close it and ask again.');
+        $this->check($m->kind === 'recording', 'body', 'A recording cannot be edited.');
         $body = trim($body);
-        $this->check($body === '' && !$m->attachment_path, 'body', 'Write something, or delete the message.');
+        $this->check($body === '' && !$m->attachment_path && $m->kind !== 'gif', 'body', 'Write something, or delete the message.');
         $m->update(['body' => $body ?: null, 'mentions' => $this->parseMentions($m->conversation, $body, $me), 'edited_at' => now()]);
 
         return $m;
@@ -437,15 +522,16 @@ class ConnectService
         $this->check(!$mine && !$this->isAdmin($m->conversation, $me), 'message', 'You can only delete your own messages.');
         $this->check($m->is_system, 'message', 'System messages stay.');
         if ($m->attachment_path) Storage::disk('local')->delete($m->attachment_path);
-        $m->update(['body' => null, 'attachment_path' => null, 'attachment_name' => null, 'attachment_mime' => null, 'attachment_size' => null, 'deleted_at' => now()]);
+        $m->update(['body' => null, 'meta' => null, 'attachment_path' => null, 'attachment_name' => null, 'attachment_mime' => null, 'attachment_size' => null, 'deleted_at' => now()]);
         $m->reactions()->delete();
+        $m->votes()->delete();
 
         return $m;
     }
 
     public function react(Message $m, User $me, string $emoji): void
     {
-        $this->check(!in_array($emoji, Reaction::ALLOWED, true), 'emoji', 'Pick one of the reactions offered.');
+        $this->check(!Reaction::allowed($emoji), 'emoji', 'Pick one of the reactions offered.');
         $this->check($m->isDeleted() || $m->is_system, 'emoji', 'You cannot react to this.');
         $this->check(!$this->participant($m->conversation, $me), 'emoji', 'Join the conversation first.');
         $existing = Reaction::where(['message_id' => $m->id, 'user_id' => $me->id, 'emoji' => $emoji])->first();
@@ -453,10 +539,76 @@ class ConnectService
         $m->touch(); // so open chats pick up the change
     }
 
+    // ── Polls and GIFs ──────────────────────────────────────────────────
+
+    /** @param  string[]  $options */
+    public function sendPoll(Conversation $c, User $me, string $question, array $options, bool $multiple = false, ?int $threadId = null): Message
+    {
+        $question = trim($question);
+        $options = array_values(array_unique(array_filter(array_map(fn ($o) => trim((string) $o), $options), fn ($o) => $o !== '')));
+        $this->check($question === '' || mb_strlen($question) > 300, 'poll_question', 'Ask a question of up to 300 characters.');
+        $this->check(count($options) < 2 || count($options) > 10, 'poll_options', 'Give between 2 and 10 different options.');
+        $this->check(collect($options)->contains(fn ($o) => mb_strlen($o) > 120), 'poll_options', 'Keep each option under 120 characters.');
+
+        return $this->send($c, $me, $question, null, null, $threadId, ['kind' => 'poll', 'meta' => ['options' => $options, 'multiple' => $multiple]]);
+    }
+
+    /** @param  array{url: string, preview?: ?string, width?: ?int, height?: ?int, title?: ?string}  $gif */
+    public function sendGif(Conversation $c, User $me, array $gif, ?string $caption = null, ?int $replyTo = null, ?int $threadId = null): Message
+    {
+        $this->check(!self::isGifUrl($gif['url'] ?? ''), 'gif_url', 'Pick a GIF from the list.');
+        $meta = ['url' => $gif['url'], 'width' => (int) ($gif['width'] ?? 0) ?: null, 'height' => (int) ($gif['height'] ?? 0) ?: null,
+            'title' => mb_substr(trim((string) ($gif['title'] ?? '')), 0, 120) ?: null];
+
+        return $this->send($c, $me, $caption, null, $replyTo, $threadId, ['kind' => 'gif', 'meta' => $meta]);
+    }
+
+    /** Only GIFs served by GIPHY are shown, so a message can't load images from anywhere else. */
+    public static function isGifUrl(string $url): bool
+    {
+        return (bool) preg_match('~^https://(media\d?|i)\.giphy\.com/[\w./-]+\.(gif|webp)(\?[\w=&.-]*)?$~i', $url);
+    }
+
+    /**
+     * Vote in a poll. The options given replace the person's earlier vote;
+     * an empty list takes the vote back.
+     *
+     * @param  int[]  $options
+     */
+    public function vote(Message $m, User $me, array $options): Message
+    {
+        $this->check(!$m->isPoll(), 'options', 'That is not a poll.');
+        $this->check($m->pollClosed(), 'options', 'This poll is closed.');
+        $this->check(!$this->participant($m->conversation, $me), 'options', 'Join the conversation first.');
+        $options = array_values(array_unique(array_map('intval', $options)));
+        $count = count($m->meta['options'] ?? []);
+        $this->check(collect($options)->contains(fn ($o) => $o < 0 || $o >= $count), 'options', 'Pick one of the options.');
+        $this->check(empty($m->meta['multiple']) && count($options) > 1, 'options', 'Pick one option.');
+
+        DB::transaction(function () use ($m, $me, $options) {
+            PollVote::where('message_id', $m->id)->where('user_id', $me->id)->delete();
+            foreach ($options as $o) PollVote::create(['message_id' => $m->id, 'user_id' => $me->id, 'option' => $o]);
+            $m->touch();
+        });
+
+        return $m;
+    }
+
+    public function closePoll(Message $m, User $me): Message
+    {
+        $this->check(!$m->isPoll(), 'options', 'That is not a poll.');
+        $this->check($m->user_id !== $me->id && !$this->isAdmin($m->conversation, $me), 'options', 'Only the person who asked can close the poll.');
+        $m->update(['meta' => array_merge($m->meta ?? [], ['closed_at' => now()->toIso8601String(), 'closed_by' => $me->id])]);
+
+        return $m;
+    }
+
     public function markRead(Conversation $c, User $me, ?int $upTo = null): void
     {
         $upTo ??= (int) $c->last_message_id;
-        Participant::where('conversation_id', $c->id)->where('user_id', $me->id)->where('last_read_message_id', '<', $upTo)->update(['last_read_message_id' => $upTo]);
+        $moved = Participant::where('conversation_id', $c->id)->where('user_id', $me->id)->where('last_read_message_id', '<', $upTo)->update(['last_read_message_id' => $upTo]);
+        // "Seen" in a direct chat updates for the other person straight away.
+        if ($moved && $c->isDirect()) \App\Services\Realtime\Realtime::poke('connect.c.' . $c->id, 'read', ['user_id' => $me->id]);
         // Clear the bell for this conversation too.
         if (PortalNotifier::available()) {
             $me->unreadNotifications()->where('data', 'like', '%"key":"connect:' . $c->id . ':%')->update(['read_at' => now()]);

@@ -13,6 +13,7 @@ use App\Support\Money;
 /** An invoice. Once issued it is never edited; corrections void it and issue a new one. */
 class Invoice extends Model
 {
+    use \App\Models\Concerns\HasBusinessUnit;
     public const STATUSES = [
         'issued'         => 'Unpaid',
         'partially_paid' => 'Part paid',
@@ -102,5 +103,16 @@ class Invoice extends Model
     public function getStatusLabelAttribute(): string
     {
         return $this->isOverdue() ? 'Overdue' : (self::STATUSES[$this->status] ?? ucfirst((string) $this->status));
+    }
+
+    /** Student fees follow their course's unit; other invoices go to the default unit. */
+    protected function defaultBusinessUnitId(): ?int
+    {
+        if ($this->enrollment_id) {
+            return \App\Models\Academy\Enrollment::with('course')->find($this->enrollment_id)?->course?->business_unit_id
+                ?? \App\Models\BusinessUnit::academyId();
+        }
+
+        return \App\Models\BusinessUnit::defaultId();
     }
 }

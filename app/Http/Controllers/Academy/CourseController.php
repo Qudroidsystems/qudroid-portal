@@ -42,6 +42,7 @@ class CourseController extends Controller
         $data = $this->validated($request);
         $course = Course::create($data + ['created_by' => $request->user()->id]);
         $course->prerequisites()->sync($request->input('prerequisites', []));
+        \App\Support\BusinessUnits::apply($request, $course);
 
         return redirect()->route('academy.courses.show', $course)->with('success', 'Course created. Add a cohort when you are ready to take registrations.');
     }
@@ -73,6 +74,7 @@ class CourseController extends Controller
     public function update(Request $request, Course $course)
     {
         $course->update($this->validated($request, $course));
+        \App\Support\BusinessUnits::apply($request, $course);
         $course->prerequisites()->sync(array_diff($request->input('prerequisites', []), [$course->id]));
 
         return redirect()->route('academy.courses.show', $course)->with('success', 'Course updated. Fee changes apply to new enrollments only.');

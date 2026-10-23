@@ -22,6 +22,7 @@
                         </select>
                     </div>
                     <div class="col-md-4"><label class="form-label">Amount ({{ config('qudroid.academy.currency', 'NGN') }})</label><input type="number" name="amount" step="0.01" min="0.01" class="form-control" value="{{ old('amount') }}" required></div>
+                    @include('partials.unit-select', ['value' => null, 'class' => 'col-md-6'])
                     <div class="col-12"><label class="form-label">Receipt or bill <span class="text-muted">(optional)</span></label><input type="file" name="attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp"><div class="form-text">PDF or photo, up to 10 MB.</div></div>
                 </div>
                 <div class="mt-4"><button class="btn btn-primary">Send for approval</button></div>

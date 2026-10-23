@@ -40,6 +40,12 @@ return [
     'auth_token' => env('TWILIO_AUTH_TOKEN'),
     'phone_number' => env('TWILIO_PHONE_NUMBER'),
     ],
+    // GIFs in chat. A key saved under Settings → Integrations wins over this.
+    'giphy' => [
+        'key'    => env('GIPHY_API_KEY'),
+        'rating' => env('GIPHY_RATING', 'pg'),
+    ],
+
     'paystack' => [
         'active'          => env('PAYSTACK_ACTIVE', true),
         'mode'            => env('PAYSTACK_MODE', 'sandbox'),

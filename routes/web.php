@@ -85,6 +85,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/settings', [NotificationController::class, 'mute'])->name('notifications.settings');
+    Route::get('/me/status', [\App\Http\Controllers\StatusController::class, 'show'])->name('status.show');
+    Route::post('/me/status', [\App\Http\Controllers\StatusController::class, 'update'])->middleware('throttle:60,1')->name('status.update');
+    Route::post('/notifications/clear-read', [NotificationController::class, 'clearRead'])->name('notifications.clear-read');
     Route::get('/notifications/{id}/open', [NotificationController::class, 'open'])->name('notifications.open');
 
     // ── Activity log & who's online ─────────────────────────────────────

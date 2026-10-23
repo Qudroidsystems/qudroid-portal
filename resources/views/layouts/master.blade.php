@@ -455,7 +455,7 @@
                     @endif
 
                     {{-- ADMINISTRATION --}}
-                    @if(auth()->user()->can('View user') || auth()->user()->can('View role') || auth()->user()->can('View permission') || auth()->user()->can('View activity log') || auth()->user()->can('View online staff'))
+                    @if(auth()->user()->can('View user') || auth()->user()->can('View role') || auth()->user()->can('View permission') || auth()->user()->can('View activity log') || auth()->user()->can('View online staff') || auth()->user()->can('Manage settings'))
                         <li class="menu-title"><i class="ri-more-fill"></i> <span data-key="t-pages">ADMINISTRATION</span></li>
                     @endif
 
@@ -498,6 +498,14 @@
                                     @endcan
                                 </ul>
                             </div>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()->can('Manage settings') || auth()->user()->can('Manage payroll'))
+                        <li class="nav-item">
+                            <a class="nav-link menu-link {{ request()->routeIs('portal-settings.*') ? 'active' : '' }}" href="{{ auth()->user()->can('Manage settings') ? route('portal-settings.payments') : route('portal-settings.payroll') }}">
+                                <i class="ri-settings-4-line"></i> <span>Settings</span>
+                            </a>
                         </li>
                     @endif
 
@@ -596,6 +604,8 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-1">
+                    <button type="button" id="spotlight-trigger-m" class="btn btn-icon btn-topbar btn-ghost-dark rounded-circle d-md-none" style="width:38px;height:38px;" aria-label="Search"><i class="ri-search-line fs-20"></i></button>
+                    @include('layouts.partials.app-launcher')
                     <!-- Notifications bell -->
                     @include('layouts.partials.online-badge')
                     @include('layouts.partials.notification-bell')
@@ -625,7 +635,9 @@
                     <div class="dropdown position-relative ms-sm-3 header-item topbar-user" id="user-dropdown-wrapper">
                         <button type="button" id="user-menu-btn" class="btn shadow-none p-0" style="background:transparent;border:none;">
                             <span class="d-flex align-items-center gap-2">
+                                @php $topPresence = app(\App\Services\Presence\Presence::class)->of($userdata); @endphp
                                 <span style="display:inline-block;width:42px;height:42px;flex-shrink:0;position:relative;">
+                                    <span class="st-avatar-dot" id="st-avatar-dot" style="background: {{ $topPresence['color'] }}" title="{{ app(\App\Services\Presence\Presence::class)->line($userdata) }}"></span>
                                     @if($srcPath)
                                         <img id="topbar-avatar-img" src="{{ $srcPath }}" alt="{{ $fullName }}" style="width:42px;height:42px;border-radius:10px;object-fit:cover;" onerror="this.style.display='none';document.getElementById('topbar-avatar-fallback').style.display='flex';">
                                         <span id="topbar-avatar-fallback" style="display:none;width:42px;height:42px;border-radius:10px;background:#405189;color:#fff;align-items:center;justify-content:center;">{{ $initials }}</span>
@@ -653,6 +665,7 @@
                                 </div>
                             </div>
                             <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="#" data-open-status><i class="ri-emotion-line me-2"></i>Set a status</a>
                             <a class="dropdown-item" href="{{ route('users.overview', $userdata->id) }}"><i class="mdi mdi-account-circle me-2"></i>My Profile</a>
                             <a class="dropdown-item" href="{{ route('profile.settings', ['id' => $userdata->id]) }}"><i class="mdi mdi-cog me-2"></i>Account Settings</a>
                             <div class="dropdown-divider"></div>
@@ -820,7 +833,7 @@
             <div id="spotlight-empty" style="padding:48px 24px;text-align:center;color:rgba(255,255,255,0.35);">
                 <i class="mdi mdi-lightning-bolt" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.4;"></i>
                 <span style="font-size:15px;">Start typing to search…</span>
-                <div style="margin-top:16px;font-size:12px;opacity:0.4;">Try: users, roles, notifications, activity</div>
+                <div style="margin-top:16px;font-size:12px;opacity:0.4;">Pages, people, projects, tasks, invoices, clients, files, messages and more</div>
             </div>
             <ul id="spotlight-list" style="list-style:none;margin:0;padding:0;display:none;"></ul>
             <div id="spotlight-loading" style="display:none;padding:48px;text-align:center;">
@@ -1063,6 +1076,12 @@
         @if(auth()->user()->can('View online staff') || auth()->user()->can('View activity log'))
         {title:"Who's Online",              url:'{{ route("online-staff.index") }}',                          icon:'mdi-account-clock',    category:'Security & Audit',   keywords:['online','presence','signed in']},
         @endif
+        @can('Manage settings')
+        {title:'Payment settings (Paystack)', url:'{{ route("portal-settings.payments") }}',                    icon:'mdi-credit-card-settings-outline', category:'Administration', keywords:['paystack','keys','api','webhook','payments','settings']},
+        @endcan
+        @if(auth()->user()->can('Manage settings') || auth()->user()->can('Manage payroll'))
+        {title:'Payroll tax rates',         url:'{{ route("portal-settings.payroll") }}',                     icon:'mdi-percent',          category:'Administration',     keywords:['paye','tax','pension','nhf','payroll','rates','settings']},
+        @endif
         @can('View activity log')
         {title:'Activity Log',              url:'{{ route("activity.index") }}',                              icon:'mdi-history',          category:'Security & Audit',   keywords:['audit','log','changes','history','trail']},
         @endcan
@@ -1081,6 +1100,9 @@
         'General':'#4f8ef7','My Account':'#2a9d8f','Administration':'#405189',
         'Security & Audit':'#ef4444','Workspace':'#10b981'
     };
+    @foreach(\App\Services\Search\GlobalSearch::CATEGORIES as $cat => [$icon, $color])
+    CAT_COLORS[@json($cat)] = @json($color);
+    @endforeach
 
     /* ── popular / suggestion chips ── */
     var POPULAR = [
@@ -1366,7 +1388,7 @@
                     + '<span class="result-title" style="display:block;font-size:15px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
                     + highlightText(r.title, query)
                     + '</span>'
-                    + '<span style="display:block;font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;">'+escHtml(r.category)+'</span></span>'
+                    + '<span style="display:block;font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(r.subtitle || r.category)+'</span></span>'
                     + '<i class="mdi mdi-arrow-right" style="font-size:16px;color:rgba(255,255,255,.25);flex-shrink:0;transition:transform .2s;"></i>';
 
                 var idx = globalIdx;
@@ -1394,6 +1416,8 @@
 
     /* ── event listeners ── */
     if (trigger)   trigger.addEventListener('click', open);
+    var triggerM = document.getElementById('spotlight-trigger-m');
+    if (triggerM)  triggerM.addEventListener('click', open);
     if (escBtn)    escBtn.addEventListener('click', close);
     if (clearBtn)  clearBtn.addEventListener('click', function(){ localStorage.removeItem(HISTORY_KEY); renderHistory(); showEmpty(true); });
     if (clearMain) clearMain.addEventListener('click', function(){ localStorage.removeItem(HISTORY_KEY); renderHistory(); showEmpty(true); });
@@ -1412,6 +1436,10 @@
             else if (e.key==='Enter' && activeIndex>=0 && currentResults[activeIndex]) {
                 addHistory(input.value, currentResults[activeIndex]); saveHistory(getHistory());
                 window.location.href = currentResults[activeIndex].url;
+            }
+            else if (e.key==='Enter' && REMOTE_SEARCH_URL && input.value.trim().length >= 2) {
+                // no result picked: open the full results page
+                window.location.href = REMOTE_SEARCH_URL + '?q=' + encodeURIComponent(input.value.trim());
             }
         });
         input.addEventListener('input', function(){
@@ -1439,8 +1467,12 @@
 @if (Route::is('users.*') || Route::is('profile.*')) @include('layouts.pages-assets.js.users-list-js') @endif
 @if (Route::is('roles.*'))                         @include('layouts.pages-assets.js.role-list-js') @endif
 @if (Route::is('permissions.*'))                   @include('layouts.pages-assets.js.permissions-list-js') @endif
+@include('layouts.partials.realtime')
+@include('layouts.partials.status')
+@include('layouts.partials.sounds')
+@include('layouts.partials.live')
 @stack('scripts')
-@if(auth()->check() && Route::has('connect.calls.ringing') && auth()->user()->can('Use connect'))
+@if(auth()->check() && Route::has('connect.calls.ringing') && (auth()->user()->can('Use connect') || auth()->user()->can('Chat as a guest')))
     @include('modules.connect._ring')
 @endif
 

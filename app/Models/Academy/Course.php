@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 /** A course students register and pay for. Each run of it is a Cohort. */
 class Course extends Model
 {
+    use \App\Models\Concerns\HasBusinessUnit;
     use SoftDeletes;
 
     public const LEVELS = ['beginner' => 'Beginner', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced'];
@@ -105,5 +106,10 @@ class Course extends Model
     public function getModeLabelAttribute(): string
     {
         return self::MODES[$this->delivery_mode] ?? ucfirst((string) $this->delivery_mode);
+    }
+
+    protected function defaultBusinessUnitId(): ?int
+    {
+        return \App\Models\BusinessUnit::academyId();
     }
 }
