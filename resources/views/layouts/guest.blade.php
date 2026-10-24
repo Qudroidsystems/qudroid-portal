@@ -23,6 +23,7 @@
         .apply-cohort { border-top: 1px solid #f0f1f5; }
         .hp-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
     </style>
+    <link href="{{ asset('css/qlouds-logo.css') }}?v={{ @filemtime(public_path('css/qlouds-logo.css')) }}" rel="stylesheet" type="text/css">
 </head>
 <body>
     @include('layouts.partials.app-loader')

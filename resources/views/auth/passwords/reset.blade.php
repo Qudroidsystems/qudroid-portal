@@ -1,196 +1,72 @@
-<!doctype html>
-<html lang="en" data-layout="vertical" data-sidebar="dark" data-sidebar-size="lg" data-preloader="disable" data-theme="default" data-topbar="light" data-bs-theme="light">
+@extends('layouts.auth')
 
+@section('title', 'Reset Password')
+@section('heading', 'Create a new password')
+@section('subheading', 'Your new password must be different from the one you used before')
 
+@section('content')
+    <form method="POST" action="{{ route('password.update') }}" id="resetForm" data-auth-form>
+        @csrf
+        <input type="hidden" name="token" value="{{ $token }}">
 
-<!-- Mirrored from themesbrand.com/steex/layouts/auth-pass-change.html by HTTrack Website Copier/3.x [XR&CO'2014], Mon, 12 Jun 2023 02:58:34 GMT -->
-<head>
+        @include('auth.partials.errors')
 
-    <meta charset="utf-8">
-    <title>Reset Password | {{ $brand['name'] }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta content="{{ $brand['company'] }} portal" name="description">
-    <meta content="Themesbrand" name="author">
-    <!-- App favicon -->
-    <link rel="shortcut icon" href="{{ asset($brand['favicon']) }}">
-
-    <!-- Fonts css load -->
-    <link rel="preconnect" href="https://fonts.googleapis.com/">
-    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
-    <link id="fontsLink" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
-
-    <!-- Layout config Js -->
-    <script src="{{ asset('theme/layouts/assets/js/layout.js')}}"></script>
-    <!-- Bootstrap Css -->
-    <link href="{{ asset('theme/layouts/assets/css/bootstrap.min.css')}}" rel="stylesheet" type="text/css">
-    <!-- Icons Css -->
-    <link href="{{ asset('theme/layouts/assets/css/icons.min.css')}}" rel="stylesheet" type="text/css">
-    <!-- App Css-->
-    <link href="{{ asset('theme/layouts/assets/css/app.min.css')}}" rel="stylesheet" type="text/css">
-    <!-- custom Css-->
-    <link href="{{ asset('theme/layouts/assets/css/custom.min.css')}}" rel="stylesheet" type="text/css">
-
-</head>
-
-<body>
-    @include('layouts.partials.app-loader')
-
-    <section class="auth-page-wrapper py-5 position-relative d-flex align-items-center justify-content-center min-vh-100">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-lg-11">
-                    <div class="card mb-0">
-                        <div class="row g-0 align-items-center">
-                            <div class="col-xxl-5">
-                                <div class="card auth-card bg-secondary h-100 border-0 shadow-none d-none d-sm-block mb-0">
-                                    <div class="card-body py-5 d-flex justify-content-between flex-column">
-                                        <div class="text-center">
-                                            <h3 class="text-white">Start your journey with us.</h3>
-                                            <p class="text-white opacity-75 fs-base">{{ $brand['tagline'] }}</p>
-                                        </div>
-                        
-                                        <div class="auth-effect-main my-5 position-relative rounded-circle d-flex align-items-center justify-content-center mx-auto">
-                                            <div class="effect-circle-1 position-relative mx-auto rounded-circle d-flex align-items-center justify-content-center">
-                                                <div class="effect-circle-2 position-relative mx-auto rounded-circle d-flex align-items-center justify-content-center">
-                                                    <div class="effect-circle-3 mx-auto rounded-circle position-relative text-white fs-4xl d-flex align-items-center justify-content-center">
-                                                        Welcome to <span class="text-primary ms-1">{{ $brand['name'] }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <ul class="auth-user-list list-unstyled">
-                                                <li>
-                                                    <div class="avatar-sm d-inline-block">
-                                                        <div class="avatar-title bg-white shadow-lg overflow-hidden rounded-circle">
-                                                            <img src="{{ asset('theme/layouts/assets/images/users/avatar-1.jpg')}}" alt="" class="img-fluid">
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                                <li>
-                                                    <div class="avatar-sm d-inline-block">
-                                                        <div class="avatar-title bg-white shadow-lg overflow-hidden rounded-circle">
-                                                            <img src="{{ asset('theme/layouts/assets/images/users/avatar-2.jpg')}}" alt="" class="img-fluid">
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                                <li>
-                                                    <div class="avatar-sm d-inline-block">
-                                                        <div class="avatar-title bg-white shadow-lg overflow-hidden rounded-circle">
-                                                            <img src="{{ asset('theme/layouts/assets/images/users/avatar-3.jpg')}}" alt="" class="img-fluid">
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                                <li>
-                                                    <div class="avatar-sm d-inline-block">
-                                                        <div class="avatar-title bg-white shadow-lg overflow-hidden rounded-circle">
-                                                            <img src="{{ asset('theme/layouts/assets/images/users/avatar-4.jpg')}}" alt="" class="img-fluid">
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                                <li>
-                                                    <div class="avatar-sm d-inline-block">
-                                                        <div class="avatar-title bg-white shadow-lg overflow-hidden rounded-circle">
-                                                            <img src="{{ asset('theme/layouts/assets/images/users/avatar-5.jpg')}}" alt="" class="img-fluid">
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            </ul>
-                                        </div>
-                        
-                                        <div class="text-center">
-                                            <p class="text-white opacity-75 mb-0 mt-3">
-                                                {{ now()->year }} &copy; {{ $brand['company'] ?? 'Qudroid Systems' }} &middot; {{ $brand['name'] ?? 'Qlouds Workspace' }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!--end col-->
-                            <div class="col-xxl-6 mx-auto">
-                                <div class="card mb-0 border-0 shadow-none mb-0">
-                                    <div class="card-body p-sm-5 m-lg-4">
-                                        <div class="text-center">
-                                            <h5 class="fs-3xl">Create new password</h5>
-                                            <p class="text-muted mb-5">Your new password must be different from previous used password.</p>
-                                        </div>
-
-                                        <div class="p-2">
-                                            <form method="POST" action="{{ route('password.update') }}">
-                                                @csrf
-                                                <input type="hidden" name="token" value="{{ $token }}">
-
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="email">Email address</label>
-                                                    <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" id="email" value="{{ $email ?? old('email') }}" required autocomplete="email">
-                                                    @error('email')
-                                                        <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
-                                                    @enderror
-                                                </div>
-                            
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="password-input">Password</label>
-                                                    <div class="position-relative auth-pass-inputgroup">
-                                                        <input type="password" class="form-control pe-5 password-input @error('password') is-invalid @enderror" onpaste="return false" placeholder="Enter password" name="password" id="password-input" aria-describedby="passwordInput" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" autocomplete="new-password" required>
-                                                        <button class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted password-addon" type="button" id="password-addon"><i class="ri-eye-fill align-middle"></i></button>
-                                                        @error('password')
-                                                            <span class="invalid-feedback" role="alert">
-                                                                <strong>{{ $message }}</strong>
-                                                            </span>
-                                                        @enderror
-                                                    </div>
-                                                    <div id="passwordInput" class="form-text">Your password must be 8-20 characters long.</div>
-                                                </div>
-
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="confirm-password-input">Confirm Password</label>
-                                                    <div class="position-relative auth-pass-inputgroup mb-3">
-                                                        <input type="password" class="form-control pe-5 password-input" onpaste="return false" placeholder="Confirm password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" id="confirm-password-input" name="password_confirmation" required autocomplete="new-password">
-                                                        <button class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted password-addon" type="button"><i class="ri-eye-fill align-middle"></i></button>
-                                                    </div>
-                                                </div>
-
-                                                <div id="password-contain" class="p-3 bg-light mb-2 rounded">
-                                                    <h5 class="fs-sm">Password must contain:</h5>
-                                                    <p id="pass-length" class="invalid fs-xs mb-2">Minimum <b>8 characters</b></p>
-                                                    <p id="pass-lower" class="invalid fs-xs mb-2">At <b>lowercase</b> letter (a-z)</p>
-                                                    <p id="pass-upper" class="invalid fs-xs mb-2">At least <b>uppercase</b> letter (A-Z)</p>
-                                                    <p id="pass-number" class="invalid fs-xs mb-0">A least <b>number</b> (0-9)</p>
-                                                </div>
-
-
-                                                <div class="mt-4">
-                                                    <button class="btn btn-primary w-100" type="submit">Reset Password</button>
-                                                </div>
-
-                                            </form>
-                                        </div>
-                                        <div class="mt-4 text-center">
-                                            <p class="mb-0">Wait, I remember my password... <a href="{{ route('login') }}" class="fw-semibold text-primary text-decoration-underline"> Click here </a> </p>
-                                        </div>
-                                    </div><!-- end card body -->
-                                </div><!-- end card -->
-                            </div>
-                            <!--end col-->
-                        </div>
-                        <!--end row-->
-                    </div>
-                </div>
-                <!--end col-->
-            </div>
-            <!--end row-->
+        <div class="mb-4">
+            <label class="form-label" for="email">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control apple-input @error('email') is-invalid @enderror" name="email" id="email" value="{{ $email ?? old('email') }}" required autocomplete="email">
+            @error('email')
+                <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+            @enderror
         </div>
-        <!--end container-->
-    </section>
 
-    <!-- JAVASCRIPT -->
-    <script src="{{ asset('theme/layouts/assets/libs/bootstrap/js/bootstrap.bundle.min.js')}}"></script>
-    <script src="{{ asset('theme/layouts/assets/libs/simplebar/simplebar.min.js')}}"></script>
-    <script src="{{ asset('theme/layouts/assets/js/plugins.js')}}"></script>
+        <div class="mb-4">
+            <label class="form-label" for="password-input">New password <span class="text-danger">*</span></label>
+            <div class="position-relative auth-pass-inputgroup">
+                <input type="password" class="form-control apple-input pe-5 password-input @error('password') is-invalid @enderror" onpaste="return false" placeholder="Enter a new password" name="password" id="password-input" autocomplete="new-password" required>
+                <button class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted password-addon" type="button"><i class="ri-eye-fill align-middle"></i></button>
+                @error('password')
+                    <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+                @enderror
+            </div>
+        </div>
 
-    <!-- password create init js-->
-    <script src="{{ asset('theme/layouts/assets/js/pages/passowrd-create.init.js')}}"></script>
+        <div class="mb-4">
+            <label class="form-label" for="confirm-password-input">Confirm password <span class="text-danger">*</span></label>
+            <div class="position-relative auth-pass-inputgroup">
+                <input type="password" class="form-control apple-input pe-5 password-input" onpaste="return false" placeholder="Type it again" id="confirm-password-input" name="password_confirmation" required autocomplete="new-password">
+                <button class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted password-addon" type="button"><i class="ri-eye-fill align-middle"></i></button>
+            </div>
+        </div>
 
-</body>
+        @include('auth.partials.password-rules')
 
+        <div class="mt-4">
+            <button class="btn btn-primary w-100 apple-button" type="submit" data-loading-text="Saving...">
+                <span>Reset Password</span>
+            </button>
+        </div>
+    </form>
+@endsection
 
-<!-- Mirrored from themesbrand.com/steex/layouts/auth-pass-change.html by HTTrack Website Copier/3.x [XR&CO'2014], Mon, 12 Jun 2023 02:58:34 GMT -->
-</html>
+@section('footer')
+    <p class="mb-0 text-muted small">Remembered it? <a href="{{ route('login') }}" class="fw-semibold text-primary text-decoration-none">Back to Sign In</a></p>
+@endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const password = document.getElementById('password-input');
+        const confirm = document.getElementById('confirm-password-input');
+
+        @if($errors->has('password')) shakeElement(password); @endif
+
+        document.getElementById('resetForm').addEventListener('submit', function (e) {
+            let bad = false;
+            if (!checkPasswordStrength(password.value)) { fieldError(password, 'Please meet all password requirements.'); shakeElement(password); bad = true; }
+            if (confirm.value !== password.value) { fieldError(confirm, "The passwords don't match."); shakeElement(confirm); bad = true; }
+            if (bad) e.preventDefault();
+        });
+        confirm.addEventListener('input', () => fieldError(confirm, null));
+    });
+</script>
+@endpush

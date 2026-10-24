@@ -370,6 +370,7 @@
         $qdRgb = implode(', ', array_map('hexdec', str_split(substr($qdTint, 1), 2)));
     @endphp
     <style>:root { --qd-tint: {{ $qdTint }}; --qd-tint-rgb: {{ $qdRgb }}; }</style>
+    <link href="{{ asset('css/qlouds-logo.css') }}?v={{ @filemtime(public_path('css/qlouds-logo.css')) }}" rel="stylesheet" type="text/css">
 </head>
 
 <body class="cb-ui qd-apple">
