@@ -388,21 +388,14 @@
                 $brandLogoSmall = asset($brand['logo_small'] ?? 'theme/layouts/assets/images/logo-sm.png');
             @endphp
 
-            <a href="{{ route('dashboard') }}" class="logo logo-dark">
-                <span class="logo-sm">
-                    <img src="{{ $brandLogoSmall }}" alt="{{ $brandName }}" style="height:32px;width:auto;object-fit:contain;">
-                </span>
-                <span class="logo-lg">
-                    <img src="{{ $brandLogo }}" alt="{{ $brandName }}" style="height:42px;width:auto;object-fit:contain;">
-                </span>
+            {{-- The Qlouds logotype; the light copy shows on dark sidebars. --}}
+            <a href="{{ route('dashboard') }}" class="logo logo-dark" aria-label="{{ $brandName }}">
+                <span class="logo-sm"><x-qlouds-logo mark size="30px" /></span>
+                <span class="logo-lg"><x-qlouds-logo size="22px" /></span>
             </a>
-            <a href="{{ route('dashboard') }}" class="logo logo-light">
-                <span class="logo-sm">
-                    <img src="{{ $brandLogoSmall }}" alt="{{ $brandName }}" style="height:32px;width:auto;object-fit:contain;">
-                </span>
-                <span class="logo-lg">
-                    <img src="{{ $brandLogoLight }}" alt="{{ $brandName }}" style="height:42px;width:auto;object-fit:contain;">
-                </span>
+            <a href="{{ route('dashboard') }}" class="logo logo-light" aria-label="{{ $brandName }}">
+                <span class="logo-sm"><x-qlouds-logo mark dark size="30px" /></span>
+                <span class="logo-lg"><x-qlouds-logo dark size="22px" /></span>
             </a>
 
             <button type="button" class="btn btn-sm p-0 fs-3xl header-item float-end btn-vertical-sm-hover" id="vertical-hover">
@@ -591,12 +584,12 @@
                 <div class="d-flex">
                     <div class="navbar-brand-box horizontal-logo">
                         <a href="{{ route('dashboard') }}" class="logo logo-dark">
-                            <span class="logo-sm"><img src="{{ asset($brand['logo_small']) }}" alt="" height="22"></span>
-                            <span class="logo-lg"><img src="{{ asset($brand['logo']) }}" alt="" height="22"></span>
+                            <span class="logo-sm"><x-qlouds-logo mark size="24px" /></span>
+                            <span class="logo-lg"><x-qlouds-logo size="18px" /></span>
                         </a>
                         <a href="{{ route('dashboard') }}" class="logo logo-light">
-                            <span class="logo-sm"><img src="{{ asset($brand['logo_small']) }}" alt="" height="22"></span>
-                            <span class="logo-lg"><img src="{{ asset($brand['logo_light']) }}" alt="" height="22"></span>
+                            <span class="logo-sm"><x-qlouds-logo mark dark size="24px" /></span>
+                            <span class="logo-lg"><x-qlouds-logo dark size="18px" /></span>
                         </a>
                     </div>
                     <button type="button" class="btn btn-sm px-3 fs-16 header-item vertical-menu-btn topnav-hamburger shadow-none" id="topnav-hamburger-icon">

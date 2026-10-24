@@ -542,13 +542,11 @@
                                     <div class="card-body p-sm-5 m-lg-4" id="loginCardBody">
                                         <!-- Logo -->
                                         <div class="logo-container">
-                                            <img src="{{ asset($brand['logo']) }}"
-                                                 alt="{{ $brand['name'] }}"
-                                                 class="brand-login-logo">
+                                            <x-qlouds-logo animate size="52px" :rest="false" />
                                         </div>
 
                                         <div class="text-center mt-2">
-                                            <h5 class="fs-2xl fw-semibold" style="animation: fadeInScale 0.5s ease;">{{ $brand['name'] }}</h5>
+                                            <h5 class="fs-2xl fw-semibold" style="animation: fadeInScale 0.5s ease;">Welcome back</h5>
                                             <p class="text-muted">Sign in to continue</p>
                                         </div>
 

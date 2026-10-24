@@ -28,7 +28,7 @@
     @include('layouts.partials.app-loader')
     <header class="guest-bar">
         <div class="guest-main py-3 d-flex align-items-center justify-content-between" style="padding-bottom:12px">
-            <a href="{{ route('apply.index') }}"><img src="{{ asset($brand['logo']) }}" alt="{{ $brand['name'] ?? 'Qlouds Workspace' }}"></a>
+            <a href="{{ route('apply.index') }}" class="text-decoration-none"><x-qlouds-logo size="24px" /></a>
             @auth
                 <a href="{{ route('academy.my') }}" class="btn btn-sm btn-soft-primary">My academy</a>
             @else
