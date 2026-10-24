@@ -16,7 +16,7 @@
                     <img src="{{ $user->avatar_url }}"
                          alt="{{ $user->name }}"
                          class="rounded-circle avatar-xs"
-                         onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}'">
+                         onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&format=png'">
                 </div>
                 <div>
                     <h6 class="mb-0">

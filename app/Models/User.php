@@ -150,7 +150,7 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         return $this->avatar_path_url
-            ?? 'https://ui-avatars.com/api/?name=' . urlencode((string) $this->name) . '&color=FFFFFF&background=' . ltrim((string) config('qudroid.primary_color', '#405189'), '#');
+            ?? 'https://ui-avatars.com/api/?name=' . urlencode((string) $this->name) . '&color=FFFFFF&format=png&background=' . ltrim((string) config('qudroid.primary_color', '#405189'), '#');
     }
 
     public function getFormattedDobAttribute(): ?string
