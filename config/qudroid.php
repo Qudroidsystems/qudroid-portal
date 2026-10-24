@@ -2,7 +2,7 @@
 
 /*
 |--------------------------------------------------------------------------
-| Qudroid Hub — organisation and branding
+| Qlouds Workspace — organisation and branding
 |--------------------------------------------------------------------------
 | One place for the names, logos and contact details the portal shows.
 | The web layout, the login page, e-mails and the mobile app
@@ -11,7 +11,7 @@
 
 return [
 
-    'name'       => env('QUDROID_NAME', 'Qudroid Hub'),
+    'name'       => env('QUDROID_NAME', 'Qlouds Workspace'),
     'company'    => env('QUDROID_COMPANY', 'Qudroid Systems'),
     'tagline'    => env('QUDROID_TAGLINE', 'One account. One workspace. Every department.'),
     'website'    => env('QUDROID_WEBSITE', 'https://qudroids.com'),
@@ -22,11 +22,10 @@ return [
     // Brand colour used by the layout accents and the mobile app theme.
     'primary_color' => env('QUDROID_PRIMARY_COLOR', '#405189'),
 
-    // Paths under public/. These are placeholder marks — drop the real
-    // Qudroid logo files in public/images/brand/ (or point these at them).
-    'logo'       => env('QUDROID_LOGO', 'images/brand/qudroid-hub-logo-dark.svg'),
-    'logo_light' => env('QUDROID_LOGO_LIGHT', 'images/brand/qudroid-hub-logo-light.svg'),
-    'logo_small' => env('QUDROID_LOGO_SMALL', 'images/brand/qudroid-hub-mark.svg'),
+    // Paths under public/: the Qlouds logo, mark and favicon in public/images/brand/.
+    'logo'       => env('QUDROID_LOGO', 'images/brand/qlouds-logo-dark.svg'),
+    'logo_light' => env('QUDROID_LOGO_LIGHT', 'images/brand/qlouds-logo-light.svg'),
+    'logo_small' => env('QUDROID_LOGO_SMALL', 'images/brand/qlouds-mark.svg'),
     'favicon'    => env('QUDROID_FAVICON', 'images/brand/favicon.svg'),
 
     // Allow people to create their own account from the login page.

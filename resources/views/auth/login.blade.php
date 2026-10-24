@@ -2,7 +2,7 @@
 <html lang="en" data-layout="vertical" data-sidebar="dark" data-sidebar-size="lg" data-preloader="disable" data-theme="default" data-topbar="light" data-bs-theme="light">
 <head>
     <meta charset="utf-8">
-    <title>Sign In | {{ $brand['name'] ?? 'Qudroid Hub' }}</title>
+    <title>Sign In | {{ $brand['name'] ?? 'Qlouds Workspace' }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta content="{{ $brand['company'] ?? 'Qudroid Systems' }} portal" name="description">
     <meta content="{{ $brand['company'] ?? 'Qudroid Systems' }}" name="author">

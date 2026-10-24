@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>{{ $pagetitle ?? 'Dashboard' }} | {{ $brand['name'] ?? 'Qudroid Hub' }}</title>
+    <title>{{ $pagetitle ?? 'Dashboard' }} | {{ $brand['name'] ?? 'Qlouds Workspace' }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta content="{{ $brand['company'] ?? 'Qudroid Systems' }} — business, learning and collaboration portal" name="description">
     <meta content="" name="author">
@@ -381,7 +381,7 @@
         <!-- LOGO -->
         <div class="navbar-brand-box">
             @php
-                $brandName      = $brand['name'] ?? config('app.name', 'Qudroid Hub');
+                $brandName      = $brand['name'] ?? config('app.name', 'Qlouds Workspace');
                 $brandLogo      = asset($brand['logo'] ?? 'theme/layouts/assets/images/logo-dark.png');
                 $brandLogoLight = asset($brand['logo_light'] ?? 'theme/layouts/assets/images/logo-light.png');
                 $brandLogoSmall = asset($brand['logo_small'] ?? 'theme/layouts/assets/images/logo-sm.png');
@@ -708,7 +708,7 @@
             <div class="row">
                 <div class="col-sm-6">
                     {{ now()->year }} © {{ $brand['company'] ?? 'Qudroid Systems' }}
-                    <span class="text-muted">· {{ $brand['name'] ?? 'Qudroid Hub' }}</span>
+                    <span class="text-muted">· {{ $brand['name'] ?? 'Qlouds Workspace' }}</span>
                 </div>
                 <div class="col-sm-6">
                     <div class="text-sm-end">

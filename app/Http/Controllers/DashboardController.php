@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 
 /**
- * Qudroid Hub home: the app launcher every user sees, plus the
+ * Qlouds Workspace home: the app launcher every user sees, plus the
  * organisation overview for people allowed to see it.
  */
 class DashboardController extends Controller

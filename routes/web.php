@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Session;
 
 /*
 |--------------------------------------------------------------------------
-| Qudroid Hub — web routes (foundation)
+| Qlouds Workspace — web routes (foundation)
 |--------------------------------------------------------------------------
 | Authentication, users, roles and permissions, profile, notifications and
 | the activity log. Each module (Academy, Projects, Connect, CRM, Finance,

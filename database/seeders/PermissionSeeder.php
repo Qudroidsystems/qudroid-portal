@@ -7,7 +7,7 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Every permission in Qudroid Hub, grouped by module (`title` is the group
+ * Every permission in Qlouds Workspace, grouped by module (`title` is the group
  * the role editor shows). Safe to run again: it adds what is missing and
  * refreshes the groups and descriptions, and never removes anything.
  *

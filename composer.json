@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "qudroid/hub",
     "type": "project",
-    "description": "Qudroid Hub \u2014 business, learning and collaboration portal for Qudroid Systems.",
+    "description": "Qlouds Workspace \u2014 business, learning and collaboration portal for Qudroid Systems.",
     "keywords": [
         "qudroid",
         "erp",

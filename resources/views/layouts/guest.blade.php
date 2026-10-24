@@ -27,7 +27,7 @@
 <body>
     <header class="guest-bar">
         <div class="guest-main py-3 d-flex align-items-center justify-content-between" style="padding-bottom:12px">
-            <a href="{{ route('apply.index') }}"><img src="{{ asset($brand['logo']) }}" alt="{{ $brand['name'] ?? 'Qudroid Hub' }}"></a>
+            <a href="{{ route('apply.index') }}"><img src="{{ asset($brand['logo']) }}" alt="{{ $brand['name'] ?? 'Qlouds Workspace' }}"></a>
             @auth
                 <a href="{{ route('academy.my') }}" class="btn btn-sm btn-soft-primary">My academy</a>
             @else

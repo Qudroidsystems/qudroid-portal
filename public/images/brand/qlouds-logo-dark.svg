@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="268" height="48" viewBox="0 0 268 48" role="img" aria-label="Qlouds Workspace">
+  <g transform="translate(2 6) scale(0.0703125)"><rect width="512" height="512" rx="116" fill="#405189"/><path d="M168 340 H344 A72 72 0 0 0 352 196 A104 104 0 0 0 158 178 A82 82 0 0 0 168 340 Z" fill="none" stroke="#fff" stroke-width="42" stroke-linejoin="round"/><g fill="#38bdf8"><circle cx="208" cy="268" r="15"/><circle cx="256" cy="268" r="15"/><circle cx="304" cy="268" r="15" fill-opacity=".55"/></g><path d="M318 340 L384 392" stroke="#38bdf8" stroke-width="42" stroke-linecap="round"/></g>
+  <text x="48" y="31" font-family="Poppins, Inter, 'Segoe UI', Arial, sans-serif" font-size="21" font-weight="700" fill="#1e293b">Qlouds<tspan fill="#405189" font-weight="600"> Workspace</tspan></text>
+</svg>

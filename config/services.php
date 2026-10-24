@@ -57,7 +57,7 @@ return [
         'live_public_key' => env('PAYSTACK_LIVE_PUBLIC_KEY'),
     ],
 
-    // Push notifications to the Qudroid Hub mobile app (Firebase Cloud Messaging).
+    // Push notifications to the Qlouds Workspace mobile app (Firebase Cloud Messaging).
     'fcm' => [
         'enabled'     => env('FCM_ENABLED', true),
         'credentials' => env('FCM_CREDENTIALS', storage_path('app/fcm-service-account.json')),

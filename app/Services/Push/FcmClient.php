@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Firebase Cloud Messaging (HTTP v1) without extra packages.
  *
- * Needs the service-account JSON of the Qudroid Hub Firebase project
+ * Needs the service-account JSON of the Qlouds Workspace Firebase project
  * (Firebase console → Project settings → Service accounts → Generate new
  * private key). Save it as storage/app/fcm-service-account.json, or point
  * FCM_CREDENTIALS in .env at it.
@@ -112,12 +112,15 @@ class FcmClient
     }
 
     /** OAuth2 access token from the service account (cached ~55 minutes). */
-    /** Android notification channels the app creates: messages, calls, meetings, approvals, tasks, general. */
+    /**
+     * Android notification channels the app creates: messages, meetings, approvals, tasks, general (and
+     * incoming_calls, which the app uses itself for ringing calls). Call notices such as missed calls go to
+     * messages so they still make a sound.
+     */
     public static function channelFor(string $category): string
     {
         return match ($category) {
-            'message', 'mention' => 'messages',
-            'call' => 'calls',
+            'message', 'mention', 'call' => 'messages',
             'meeting' => 'meetings',
             'approval', 'leave' => 'approvals',
             'task' => 'tasks',

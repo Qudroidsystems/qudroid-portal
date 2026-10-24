@@ -18,7 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Spatie\Permission\Models\Role;
 
 /**
- * Accounts for everyone who uses Qudroid Hub: staff, students, clients and
+ * Accounts for everyone who uses Qlouds Workspace: staff, students, clients and
  * partners. Profile details are edited on the profile page (ProfileController).
  */
 class UserController extends Controller

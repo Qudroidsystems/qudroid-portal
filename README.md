@@ -1,4 +1,4 @@
-# Qudroid Hub
+# Qlouds Workspace
 
 One account. One workspace. Every department.
 

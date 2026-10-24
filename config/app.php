@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Qudroid Hub'),
+    'name' => env('APP_NAME', 'Qlouds Workspace'),
 
     /*
     |--------------------------------------------------------------------------
