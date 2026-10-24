@@ -33,6 +33,7 @@
 </head>
 
 <body>
+    @include('layouts.partials.app-loader')
 
 
     <section class="auth-page-wrapper py-5 position-relative d-flex align-items-center justify-content-center min-vh-100">

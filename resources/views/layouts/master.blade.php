@@ -373,6 +373,7 @@
 </head>
 
 <body class="cb-ui qd-apple">
+    @include('layouts.partials.app-loader')
 <div id="layout-wrapper">
 
     <!-- ========== SIDEBAR ========== -->
