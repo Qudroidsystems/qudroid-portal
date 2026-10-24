@@ -38,6 +38,6 @@
     <main class="guest-main">
         @yield('content')
     </main>
-    <footer class="text-center text-muted small pb-4">&copy; {{ date('Y') }} {{ $brand['company'] ?? 'Qudroid Systems' }}</footer>
+    <footer class="text-center text-muted small pb-4">{{ now()->year }} &copy; {{ $brand['company'] ?? 'Qudroid Systems' }} &middot; {{ $brand['name'] ?? 'Qlouds Workspace' }}</footer>
 </body>
 </html>

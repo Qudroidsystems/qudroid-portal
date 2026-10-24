@@ -97,7 +97,7 @@
                         
                                         <div class="text-center">
                                             <p class="text-white opacity-75 mb-0 mt-3">
-                                                &copy; <script>document.write(new Date().getFullYear())</script> {{ $brand['company'] }}
+                                                {{ now()->year }} &copy; {{ $brand['company'] ?? 'Qudroid Systems' }} &middot; {{ $brand['name'] ?? 'Qlouds Workspace' }}
                                             </p>
                                         </div>
                                     </div>

@@ -19,8 +19,9 @@ return [
     'support_phone' => env('QUDROID_SUPPORT_PHONE'),
     'address'    => env('QUDROID_ADDRESS'),          // shown on invoices and receipts
 
-    // Brand colour used by the layout accents and the mobile app theme.
-    'primary_color' => env('QUDROID_PRIMARY_COLOR', '#405189'),
+    // Brand colour used by the layout accents and the mobile app theme: Qlouds sky blue (a deeper shade of the
+    // logo's sky so white text on it stays readable). Logo accents: orange #F97316 and green #22C55E.
+    'primary_color' => env('QUDROID_PRIMARY_COLOR', '#0284C7'),
 
     // Paths under public/: the Qlouds logo, mark and favicon in public/images/brand/.
     'logo'       => env('QUDROID_LOGO', 'images/brand/qlouds-logo-dark.svg'),

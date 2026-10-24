@@ -707,8 +707,7 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-sm-6">
-                    {{ now()->year }} © {{ $brand['company'] ?? 'Qudroid Systems' }}
-                    <span class="text-muted">· {{ $brand['name'] ?? 'Qlouds Workspace' }}</span>
+                    {{ now()->year }} &copy; {{ $brand['company'] ?? 'Qudroid Systems' }} &middot; {{ $brand['name'] ?? 'Qlouds Workspace' }}
                 </div>
                 <div class="col-sm-6">
                     <div class="text-sm-end">
