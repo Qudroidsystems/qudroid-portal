@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Website pages all see the website's settings as $cfg.
+        \Illuminate\Support\Facades\View::composer('site.*', function ($view) {
+            if (!array_key_exists('cfg', $view->getData())) $view->with('cfg', app(\App\Services\Website\Site::class)->config());
+        });
         // Pagination in the Bootstrap 5 theme (matches the Velzon UI).
         Paginator::useBootstrapFive();
 

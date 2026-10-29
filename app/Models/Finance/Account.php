@@ -15,7 +15,7 @@ class Account extends Model
     public const DEBIT_NORMAL = ['asset', 'expense'];
 
     /** Codes the automatic postings use. */
-    public const CASH = '1000', BANK = '1010', PAYSTACK = '1020', RECEIVABLE = '1100', CUSTOMER_CREDIT = '2100',
+    public const CASH = '1000', BANK = '1010', PAYSTACK = '1020', OPAY = '1030', RECEIVABLE = '1100', CUSTOMER_CREDIT = '2100',
         COURSE_FEES = '4000', SERVICES = '4100',
         TAXES_PAYABLE = '2200', PENSION_PAYABLE = '2300', NHF_PAYABLE = '2400', PAYROLL_DEDUCTIONS = '2500', SALARIES = '5000';
 
@@ -48,7 +48,7 @@ class Account extends Model
     /** Where money is paid from or into (cash and bank accounts). */
     public function scopeMoney(Builder $q): Builder
     {
-        return $q->where('type', 'asset')->whereIn('code', [self::CASH, self::BANK, self::PAYSTACK])->orderBy('code');
+        return $q->where('type', 'asset')->whereIn('code', [self::CASH, self::BANK, self::PAYSTACK, self::OPAY])->orderBy('code');
     }
 
     public function getLabelAttribute(): string

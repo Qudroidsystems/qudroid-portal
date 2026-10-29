@@ -12,6 +12,7 @@ class Payment extends Model
 {
     public const METHODS = [
         'paystack'      => 'Paystack (online)',
+        'opay'          => 'OPay (online)',
         'bank_transfer' => 'Bank transfer',
         'cash'          => 'Cash',
         'pos'           => 'POS / card terminal',

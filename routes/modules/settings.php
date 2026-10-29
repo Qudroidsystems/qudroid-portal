@@ -3,13 +3,15 @@
 use App\Http\Controllers\Settings\SettingsController;
 use Illuminate\Support\Facades\Route;
 
-// Portal-wide settings: Paystack keys and payroll tax rates. Loaded inside the signed-in group.
+// Portal-wide settings: Paystack and OPay keys and payroll tax rates. Loaded inside the signed-in group.
 Route::prefix('admin/settings')->name('portal-settings.')->group(function () {
     Route::middleware('permission:Manage settings')->group(function () {
         Route::get('/payments', [SettingsController::class, 'payments'])->name('payments');
         Route::post('/payments', [SettingsController::class, 'savePayments'])->name('payments.save');
         Route::post('/payments/test', [SettingsController::class, 'testPayments'])->name('payments.test');
         Route::post('/payments/env', [SettingsController::class, 'useEnv'])->name('payments.env');
+        Route::post('/payments/opay', [SettingsController::class, 'saveOpay'])->name('payments.opay');
+        Route::post('/payments/opay/test', [SettingsController::class, 'testOpay'])->middleware('throttle:10,1')->name('payments.opay.test');
 
         Route::get('/integrations', [SettingsController::class, 'integrations'])->name('integrations');
         Route::post('/integrations', [SettingsController::class, 'saveIntegrations'])->name('integrations.save');

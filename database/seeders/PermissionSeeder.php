@@ -51,6 +51,9 @@ class PermissionSeeder extends Seeder
             'Manage mail' => 'Create and remove Qmail addresses, set up shared inboxes and the mail server connection.',
             'Manage workflows' => 'Build, switch on and test workflow automations, and see their run history.',
         ],
+        'Website' => [
+            'Manage website' => 'Edit the public website: pages, products, our work, forms and their entries, pictures and website settings.',
+        ],
 
         // ── Modules (switched on in the launcher as each one is built) ─────
         'Academy & LMS' => [

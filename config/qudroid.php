@@ -154,6 +154,7 @@ return [
         'finance'      => ['name' => 'Finance & Invoicing', 'icon' => 'ri-money-dollar-circle-line', 'route' => 'finance.index', 'permission' => 'View finance',      'phase' => 2, 'color' => '#10b981', 'description' => 'Invoices, payments, bills, expenses and reports.'],
         'inventory'    => ['name' => 'Inventory & Assets',  'icon' => 'ri-archive-line',        'route' => 'inventory.index',    'permission' => 'View inventory',    'phase' => 5, 'color' => '#f97316', 'description' => 'Stock, procurement, suppliers and the IT asset register.'],
         'hr'           => ['name' => 'HR & Payroll',        'icon' => 'ri-team-line',           'route' => 'hr.index',           'permission' => 'View employees',    'phase' => 5, 'color' => '#ef4444', 'description' => 'Employees, leave, timesheets, payroll and payslips.'],
+        'website'      => ['name' => 'Website',             'icon' => 'ri-global-line',         'route' => 'website.index',      'permission' => 'Manage website',    'phase' => 6, 'color' => '#0071e3', 'description' => 'The public website: pages, products, our work, forms, course registration and online payment.'],
         'workflows'    => ['name' => 'Workflows',           'icon' => 'ri-flow-chart',          'route' => 'workflows.index',    'permission' => 'Manage workflows',  'phase' => 6, 'color' => '#7c3aed', 'description' => 'Automations: when something happens, notify, e-mail, post, create tasks or call webhooks.'],
     ],
 

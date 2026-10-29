@@ -26,7 +26,7 @@ class Course extends Model
     protected $fillable = [
         'programme_id', 'code', 'title', 'slug', 'summary', 'description', 'level',
         'delivery_mode', 'duration_weeks', 'fee', 'currency', 'installments_allowed',
-        'min_deposit', 'pass_grade', 'certificate_enabled', 'status', 'created_by',
+        'min_deposit', 'pass_grade', 'certificate_enabled', 'instant_enrollment', 'image', 'status', 'created_by',
     ];
 
     protected $casts = [
@@ -36,6 +36,7 @@ class Course extends Model
         'duration_weeks'       => 'integer',
         'pass_grade'           => 'integer',
         'certificate_enabled'  => 'boolean',
+        'instant_enrollment'   => 'boolean',
     ];
 
     protected $attributes = ['pass_grade' => 50, 'certificate_enabled' => true];

@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\Session;
 | is loaded automatically inside the signed-in group below.
 */
 
-Route::get('/', fn () => Auth::check() ? redirect()->route('dashboard') : redirect()->route('login'))->name('home');
+// The public website: "/" and its pages (routes/site.php)
+require __DIR__ . '/site.php';
 
 Auth::routes([
     'register' => (bool) config('qudroid.allow_registration'),
@@ -105,3 +106,6 @@ Route::middleware('auth')->group(function () {
         require $moduleRoutes;
     }
 });
+
+// Anything else may be a website page (e.g. /about), otherwise not found.
+Route::fallback([\App\Http\Controllers\Website\SiteController::class, 'page']);

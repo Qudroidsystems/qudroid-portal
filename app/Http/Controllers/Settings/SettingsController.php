@@ -28,6 +28,7 @@ class SettingsController extends Controller
             'masked' => ['test' => $this->mask($c['test_secret_key'] ?? null), 'live' => $this->mask($c['live_secret_key'] ?? null)],
             'saved' => ['test' => $this->settings->has('paystack.test_secret_key'), 'live' => $this->settings->has('paystack.live_secret_key')],
             'last' => $this->settings->lastChange(Settings::PAYSTACK),
+            'opay' => $this->opayView(),
         ]);
     }
 
@@ -77,6 +78,67 @@ class SettingsController extends Controller
         $this->settings->put(array_fill_keys(Settings::PAYSTACK, null), $request->user());
 
         return back()->with('success', 'Saved Paystack settings removed. The values in .env are used again.');
+    }
+
+    /** What the OPay card needs. */
+    protected function opayView(): array
+    {
+        $gateway = app(\App\Services\Finance\OpayGateway::class);
+        $c = $this->settings->opay();
+
+        return [
+            'c' => $c,
+            'enabled' => $gateway->enabled(),
+            'mode' => $gateway->mode(),
+            'masked' => ['test' => $this->mask($c['test_secret_key'] ?? null), 'live' => $this->mask($c['live_secret_key'] ?? null)],
+            'saved' => ['test' => $this->settings->has('opay.test_secret_key'), 'live' => $this->settings->has('opay.live_secret_key')],
+            'last' => $this->settings->lastChange(Settings::OPAY),
+        ];
+    }
+
+    public function saveOpay(Request $request)
+    {
+        $d = $request->validate([
+            'opay_mode' => ['required', 'in:sandbox,live'],
+            'opay_merchant_id' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9]+$/'],
+            'opay_test_public_key' => ['nullable', 'string', 'max:200'],
+            'opay_live_public_key' => ['nullable', 'string', 'max:200'],
+            'opay_test_secret_key' => ['nullable', 'string', 'max:200'],
+            'opay_live_secret_key' => ['nullable', 'string', 'max:200'],
+        ], ['opay_merchant_id.regex' => 'The merchant ID is letters and numbers only (it is on your OPay dashboard).'], [
+            'opay_merchant_id' => 'merchant ID',
+        ]);
+
+        $values = [
+            'opay.active' => $request->boolean('opay_active') ? '1' : '0',
+            'opay.mode' => $d['opay_mode'],
+            'opay.merchant_id' => trim((string) ($d['opay_merchant_id'] ?? '')),
+            'opay.test_public_key' => trim((string) ($d['opay_test_public_key'] ?? '')),
+            'opay.live_public_key' => trim((string) ($d['opay_live_public_key'] ?? '')),
+        ];
+        // A blank secret box keeps the saved key; "remove" clears it.
+        foreach (['test', 'live'] as $m) {
+            if ($request->boolean('clear_opay_' . $m . '_secret')) $values['opay.' . $m . '_secret_key'] = null;
+            elseif (filled($d['opay_' . $m . '_secret_key'] ?? null)) $values['opay.' . $m . '_secret_key'] = trim($d['opay_' . $m . '_secret_key']);
+        }
+        $this->settings->put($values, $request->user());
+
+        $gateway = app(\App\Services\Finance\OpayGateway::class);
+        $note = $values['opay.active'] === '1' && !$gateway->enabled()
+            ? ' OPay stays off until the merchant ID and both ' . ($gateway->mode() === 'live' ? 'live' : 'test') . ' keys are saved.' : '';
+
+        return back()->with('success', 'OPay settings saved.' . $note);
+    }
+
+    public function testOpay()
+    {
+        $gateway = app(\App\Services\Finance\OpayGateway::class);
+        $problem = $gateway->check();
+        $which = $gateway->mode() === 'live' ? 'live' : 'test';
+
+        return back()->with($problem ? 'error' : 'success', $problem
+            ? "OPay didn't accept the {$which} keys: " . $problem
+            : "OPay accepted the {$which} merchant ID and secret key.");
     }
 
     protected function mask(?string $key): ?string

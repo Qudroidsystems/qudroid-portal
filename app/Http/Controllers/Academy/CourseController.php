@@ -120,10 +120,19 @@ class CourseController extends Controller
             'status'         => ['required', Rule::in(array_keys(Course::STATUSES))],
             'pass_grade'     => ['nullable', 'integer', 'min:0', 'max:100'],
             'certificate_enabled' => ['nullable', 'boolean'],
+            'instant_enrollment' => ['nullable', 'boolean'],
+            'image_file'     => ['nullable', 'image', 'max:5120'],
+            'remove_image'   => ['nullable', 'boolean'],
             'prerequisites'  => ['nullable', 'array'],
             'prerequisites.*' => ['integer', 'exists:academy_courses,id'],
         ]);
-        unset($data['prerequisites']);
+        unset($data['prerequisites'], $data['image_file'], $data['remove_image']);
+        $data['instant_enrollment'] = $request->boolean('instant_enrollment');
+        if ($request->hasFile('image_file')) {
+            $data['image'] = $request->file('image_file')->store('website/courses', 'public');
+        } elseif ($request->boolean('remove_image')) {
+            $data['image'] = null;
+        }
         $data['code'] = strtoupper($data['code']);
         $data['currency'] = strtoupper($data['currency']);
         $data['installments_allowed'] = $request->boolean('installments_allowed');

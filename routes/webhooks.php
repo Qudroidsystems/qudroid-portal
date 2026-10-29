@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Finance\OpayWebhookController;
 use App\Http\Controllers\Finance\PaystackWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,3 +10,4 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/webhook/paystack', PaystackWebhookController::class)->middleware('throttle:120,1')->name('webhooks.paystack');
+Route::post('/webhook/opay', OpayWebhookController::class)->middleware('throttle:120,1')->name('webhooks.opay');

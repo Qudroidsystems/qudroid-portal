@@ -34,8 +34,10 @@
                             <label class="form-label">Amount</label>
                             <input name="amount" type="number" step="0.01" min="{{ $minimum }}" max="{{ $invoice->balance() }}" class="form-control mb-2" required value="{{ old('amount', $invoice->balance()) }}" @readonly($minimum === $invoice->balance())>
                             @if($minimum !== $invoice->balance())<div class="form-text mb-2">You can pay in instalments. The least you can pay now is {{ \App\Support\Money::format($minimum, $invoice->currency) }}.</div>@endif
-                            <button class="btn btn-primary w-100"><i class="ri-secure-payment-line me-1"></i>Pay with card or bank (Paystack)</button>
-                            <div class="form-text">You'll be taken to Paystack's secure page and brought back here.</div>
+                            @foreach($gateways as $key => $label)
+                                <button name="gateway" value="{{ $key }}" class="btn {{ $loop->first ? 'btn-primary' : 'btn-outline-primary' }} w-100 mb-2"><i class="ri-secure-payment-line me-1"></i>Pay with {{ $label }}</button>
+                            @endforeach
+                            <div class="form-text">You'll be taken to {{ implode(' or ', $gateways) }}'s secure page and brought back here.</div>
                         </form>
                     @else
                         <p class="mb-0">Online payment is not available yet. Please pay by bank transfer using <strong>{{ $invoice->number }}</strong> as the reference, then send your receipt to the finance office.</p>

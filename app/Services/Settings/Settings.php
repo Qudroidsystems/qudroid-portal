@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class Settings
 {
-    public const SECRET = ['paystack.test_secret_key', 'paystack.live_secret_key', 'giphy.api_key', 'mail.stalwart_token'];
+    public const SECRET = ['paystack.test_secret_key', 'paystack.live_secret_key', 'opay.test_secret_key', 'opay.live_secret_key', 'giphy.api_key', 'mail.stalwart_token'];
 
     protected const CACHE = 'portal-settings';
 
@@ -118,6 +118,22 @@ class Settings
         foreach (self::PAYSTACK as $key) if ($this->has($key)) return 'portal';
 
         return 'env';
+    }
+
+    // ── OPay ────────────────────────────────────────────────────────────
+
+    public const OPAY = ['opay.active', 'opay.mode', 'opay.merchant_id', 'opay.test_public_key', 'opay.test_secret_key', 'opay.live_public_key', 'opay.live_secret_key'];
+
+    /** config('services.opay') with saved values on top. */
+    public function opay(): array
+    {
+        $c = (array) config('services.opay', []);
+        foreach (self::OPAY as $key) {
+            if ($this->has($key)) $c[substr($key, 5)] = $this->get($key);
+        }
+        $c['active'] = $this->has('opay.active') ? $this->get('opay.active') === '1' : (bool) ($c['active'] ?? false);
+
+        return $c;
     }
 
     // ── Integrations ────────────────────────────────────────────────────

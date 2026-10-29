@@ -36,19 +36,25 @@ class BillingController extends Controller
             'invoice'  => $invoice,
             'receipts' => Payment::whereHas('allocations', fn ($q) => $q->where('invoice_id', $invoice->id))->whereIn('status', ['confirmed', 'reversed'])->latest('id')->get(),
             'minimum'  => Money::major($this->payments->minimumPayment($invoice)),
-            'online'   => $this->paystack->enabled(),
+            'online'   => (bool) $this->payments->onlineGateways(),
+            'gateways' => $this->payments->onlineGateways(),
         ]);
     }
 
     public function pay(Request $request, Invoice $invoice)
     {
         $this->own($request, $invoice->user_id);
-        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01']]);
+        $data = $request->validate([
+            'amount'  => ['required', 'numeric', 'min:0.01'],
+            'gateway' => ['nullable', 'in:paystack,opay'],
+        ]);
+        $gateway = $data['gateway'] ?? 'paystack';
 
         try {
-            $url = $this->payments->startPaystack($invoice, Money::minor($data['amount']), $request->user(), route('billing.paystack.callback'));
+            $url = $this->payments->startOnline($gateway, $invoice, Money::minor($data['amount']), $request->user(),
+                fn (Payment $p) => $gateway === 'paystack' ? route('billing.paystack.callback') : route('billing.return', $p->reference));
         } catch (\RuntimeException $e) {
-            Log::error('Paystack initialize failed', ['invoice' => $invoice->id, 'error' => $e->getMessage()]);
+            Log::error('Online payment start failed', ['gateway' => $gateway, 'invoice' => $invoice->id, 'error' => $e->getMessage()]);
             throw ValidationException::withMessages(['amount' => 'We could not reach the payment provider. Please try again shortly.']);
         }
 
@@ -58,17 +64,29 @@ class BillingController extends Controller
     /** Paystack sends the payer back here. We check with Paystack before believing anything. */
     public function callback(Request $request)
     {
-        $reference = (string) $request->query('reference', $request->query('trxref', ''));
-        $payment = Payment::where('reference', $reference)->where('method', 'paystack')->first();
+        return $this->settleAndShow($request, (string) $request->query('reference', $request->query('trxref', '')));
+    }
+
+    /** Other gateways (OPay) send the payer back here, with our reference in the address. */
+    public function returned(Request $request, string $reference)
+    {
+        return $this->settleAndShow($request, $reference);
+    }
+
+    protected function settleAndShow(Request $request, string $reference)
+    {
+        $payment = Payment::where('reference', $reference)->whereIn('method', ['paystack', 'opay'])->first();
         abort_unless($payment && $payment->user_id === $request->user()->id, 404);
+        $name = Payment::METHODS[$payment->method] ?? 'the payment provider';
+        $name = trim(str_replace('(online)', '', $name));
 
         try {
-            $payment = $this->payments->settlePaystack($reference);
+            $payment = $this->payments->settle($payment);
         } catch (\RuntimeException $e) {
-            Log::error('Paystack verify failed', ['reference' => $reference, 'error' => $e->getMessage()]);
+            Log::error('Online payment check failed', ['reference' => $reference, 'error' => $e->getMessage()]);
 
             return redirect()->route('billing.invoice', $payment->invoice_id)
-                ->with('error', 'We could not confirm your payment with Paystack yet. If you were charged it will show here shortly; there is no need to pay again.');
+                ->with('error', "We could not confirm your payment with {$name} yet. If you were charged it will show here shortly; there is no need to pay again.");
         }
 
         return match ($payment->status) {

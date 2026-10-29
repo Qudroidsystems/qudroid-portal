@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
  *    payment gets a reversing entry that swaps every debit and credit.
  *  - Automatic postings:
  *      invoice issued     Dr Accounts receivable   Cr Course fees / Services income
- *      payment confirmed  Dr Cash, Bank or Paystack Cr Accounts receivable (and Customer credit for any overpayment)
+ *      payment confirmed  Dr Cash, Bank, Paystack or OPay Cr Accounts receivable (and Customer credit for any overpayment)
  *      expense paid       Dr the expense account   Cr the account it was paid from
  */
 class LedgerService
@@ -109,7 +109,7 @@ class LedgerService
         $amount = Money::minor($payment->amount);
         if ($amount <= 0) return null;
         $allocated = Money::minor($payment->allocations()->sum('amount'));
-        $into = match ($payment->method) { 'cash' => Account::CASH, 'paystack' => Account::PAYSTACK, default => Account::BANK };
+        $into = match ($payment->method) { 'cash' => Account::CASH, 'paystack' => Account::PAYSTACK, 'opay' => Account::OPAY, default => Account::BANK };
 
         $lines = [['account' => $into, 'debit' => $payment->amount, 'memo' => $payment->method_label . ($payment->reference ? ' ' . $payment->reference : '')]];
         if ($allocated > 0) $lines[] = ['account' => Account::RECEIVABLE, 'credit' => Money::major($allocated), 'memo' => $payment->user?->name];

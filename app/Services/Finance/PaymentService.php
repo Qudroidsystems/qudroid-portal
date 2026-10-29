@@ -25,7 +25,17 @@ class PaymentService
         protected InvoiceService $invoices,
         protected EnrollmentService $enrollments,
         protected PaystackGateway $paystack,
+        protected OpayGateway $opay,
     ) {}
+
+    /** The online gateways that are switched on, key => label (Paystack first). */
+    public function onlineGateways(): array
+    {
+        return array_filter([
+            'paystack' => $this->paystack->enabled() ? 'Paystack' : null,
+            'opay'     => $this->opay->enabled() ? 'OPay' : null,
+        ]);
+    }
 
     /** A bank transfer, cash or POS payment that Finance has checked. */
     public function recordManual(Invoice $invoice, array $data, User $by): Payment
@@ -63,7 +73,16 @@ class PaymentService
     /** Create a pending online payment and return the Paystack page to send the payer to. */
     public function startPaystack(Invoice $invoice, int $amountMinor, User $payer, string $callbackUrl): string
     {
-        $this->check(!$this->paystack->enabled(), 'amount', 'Online payment is not set up yet. Please pay by bank transfer and send your receipt to the finance office.');
+        return $this->startOnline('paystack', $invoice, $amountMinor, $payer, fn () => $callbackUrl);
+    }
+
+    /**
+     * Create a pending online payment with a gateway and return the page to send the payer to.
+     * $returnUrl gets the new Payment and gives the address the gateway sends the payer back to.
+     */
+    public function startOnline(string $gateway, Invoice $invoice, int $amountMinor, User $payer, callable $returnUrl): string
+    {
+        $this->check(!array_key_exists($gateway, $this->onlineGateways()), 'amount', 'Online payment is not set up yet. Please pay by bank transfer and send your receipt to the finance office.');
         $this->check(!$invoice->isOpen(), 'amount', 'This invoice is not open for payment.');
         $this->check($amountMinor < $this->minimumPayment($invoice), 'amount', 'The least you can pay now is ' . Money::format(Money::major($this->minimumPayment($invoice)), $invoice->currency) . '.');
         $this->check($amountMinor > $invoice->balanceMinor(), 'amount', 'That is more than the balance.');
@@ -73,15 +92,78 @@ class PaymentService
             'invoice_id'  => $invoice->id,
             'amount'      => Money::major($amountMinor),
             'currency'    => $invoice->currency,
-            'method'      => 'paystack',
+            'method'      => $gateway,
             'reference'   => 'QH-' . $invoice->id . '-' . Str::upper(Str::random(10)),
             'status'      => 'pending',
             'recorded_by' => $payer->id,
         ]);
+        $back = $returnUrl($payment);
 
-        return $this->paystack->initialize($payer->email, $amountMinor, $invoice->currency, $payment->reference, $callbackUrl, [
+        if ($gateway === 'opay') {
+            return $this->opay->initialize(
+                ['email' => $payer->email, 'id' => $payer->id, 'name' => $payer->name, 'phone' => $payer->phone_number ?? null],
+                $amountMinor, $invoice->currency, $payment->reference, $back, route('webhooks.opay'), $back,
+                'Invoice ' . $invoice->number,
+            );
+        }
+
+        return $this->paystack->initialize($payer->email, $amountMinor, $invoice->currency, $payment->reference, $back, [
             'invoice' => $invoice->number, 'payment_id' => $payment->id,
         ]);
+    }
+
+    /** Check a pending online payment with whichever gateway took it. Safe to call repeatedly. */
+    public function settle(Payment $payment): ?Payment
+    {
+        return match ($payment->method) {
+            'paystack' => $this->settlePaystack($payment->reference),
+            'opay'     => $this->settleOpay($payment->reference),
+            default    => $payment,
+        };
+    }
+
+    /**
+     * Check an OPay reference with OPay and confirm the payment if it succeeded
+     * for the exact amount and currency. Safe to call repeatedly.
+     */
+    public function settleOpay(string $reference): ?Payment
+    {
+        $payment = Payment::where('reference', $reference)->where('method', 'opay')->first();
+        if (!$payment) return null;
+        if ($payment->status !== 'pending') return $payment;
+
+        $data = $this->opay->status($reference);
+        $status = strtoupper((string) ($data['status'] ?? ''));
+
+        $confirmed = DB::transaction(function () use ($payment, $data, $status) {
+            $payment = Payment::whereKey($payment->id)->lockForUpdate()->first();
+            if ($payment->status !== 'pending') return null;
+
+            $ok = $status === 'SUCCESS'
+                && (int) ($data['amount']['total'] ?? -1) === Money::minor($payment->amount)
+                && strtoupper((string) ($data['amount']['currency'] ?? '')) === $payment->currency
+                && ($data['reference'] ?? null) === $payment->reference;
+
+            $payment->gateway_response = collect($data)->only(['orderNo', 'status', 'reference', 'amount', 'vat', 'failureReason', 'createTime'])->all();
+
+            if (!$ok) {
+                // Not paid yet: keep it pending. Closed, failed or a wrong amount: failed.
+                $payment->status = in_array($status, ['INITIAL', 'PENDING', ''], true) ? 'pending' : 'failed';
+                $payment->save();
+                if ($status === 'SUCCESS') Log::warning('OPay amount/currency mismatch', ['reference' => $payment->reference]);
+
+                return null;
+            }
+
+            $payment->paid_at = now();
+            $payment->save();
+
+            return $this->confirm($payment, null);
+        });
+
+        if ($confirmed) $this->afterConfirm($confirmed, null);
+
+        return $payment->fresh();
     }
 
     /**

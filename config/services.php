@@ -57,6 +57,17 @@ return [
         'live_public_key' => env('PAYSTACK_LIVE_PUBLIC_KEY'),
     ],
 
+    // OPay Checkout. Admins usually enter these in Settings → Payments instead.
+    'opay' => [
+        'active'          => env('OPAY_ACTIVE', false),
+        'mode'            => env('OPAY_MODE', 'sandbox'),
+        'merchant_id'     => env('OPAY_MERCHANT_ID'),
+        'test_public_key' => env('OPAY_TEST_PUBLIC_KEY'),
+        'test_secret_key' => env('OPAY_TEST_SECRET_KEY'),
+        'live_public_key' => env('OPAY_LIVE_PUBLIC_KEY'),
+        'live_secret_key' => env('OPAY_LIVE_SECRET_KEY'),
+    ],
+
     // Push notifications to the Qlouds Workspace mobile app (Firebase Cloud Messaging).
     'fcm' => [
         'enabled'     => env('FCM_ENABLED', true),

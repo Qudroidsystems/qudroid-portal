@@ -14,6 +14,7 @@ Route::prefix('billing')->name('billing.')->group(function () {
     Route::get('/invoices/{invoice}/pdf', [BillingController::class, 'invoicePdf'])->name('invoice.pdf');
     Route::post('/invoices/{invoice}/pay', [BillingController::class, 'pay'])->middleware('throttle:10,1')->name('pay');
     Route::get('/paystack/callback', [BillingController::class, 'callback'])->name('paystack.callback');
+    Route::get('/return/{reference}', [BillingController::class, 'returned'])->where('reference', 'QH-[0-9]+-[A-Z0-9]{10}')->name('return');
     Route::get('/receipts/{payment}', [BillingController::class, 'receipt'])->name('receipt');
     Route::get('/receipts/{payment}/pdf', [BillingController::class, 'receiptPdf'])->name('receipt.pdf');
 });

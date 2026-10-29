@@ -1079,7 +1079,7 @@
         {title:"Who's Online",              url:'{{ route("online-staff.index") }}',                          icon:'mdi-account-clock',    category:'Security & Audit',   keywords:['online','presence','signed in']},
         @endif
         @can('Manage settings')
-        {title:'Payment settings (Paystack)', url:'{{ route("portal-settings.payments") }}',                    icon:'mdi-credit-card-settings-outline', category:'Administration', keywords:['paystack','keys','api','webhook','payments','settings']},
+        {title:'Payment settings (Paystack, OPay)', url:'{{ route("portal-settings.payments") }}',                    icon:'mdi-credit-card-settings-outline', category:'Administration', keywords:['paystack','opay','keys','api','webhook','payments','settings']},
         @endcan
         @if(auth()->user()->can('Manage settings') || auth()->user()->can('Manage payroll'))
         {title:'Payroll tax rates',         url:'{{ route("portal-settings.payroll") }}',                     icon:'mdi-percent',          category:'Administration',     keywords:['paye','tax','pension','nhf','payroll','rates','settings']},

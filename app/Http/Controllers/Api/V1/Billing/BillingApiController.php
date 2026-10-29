@@ -40,7 +40,7 @@ class BillingApiController extends ApiController
         $currency = $page->first()?->currency;
         $res = $this->paged($page, fn ($i) => $this->invoice($i));
         $body = $res->getData(true);
-        $body['meta'] += ['balance_total' => $owed, 'balance_total_label' => Money::format(Money::major($owed), $currency), 'online' => $this->paystack->enabled()];
+        $body['meta'] += ['balance_total' => $owed, 'balance_total_label' => Money::format(Money::major($owed), $currency), 'online' => (bool) $this->payments->onlineGateways(), 'gateways' => array_keys($this->payments->onlineGateways())];
 
         return response()->json($body);
     }
@@ -65,42 +65,43 @@ class BillingApiController extends ApiController
         ]);
     }
 
-    /** Start a Paystack payment. {amount?} in kobo; defaults to the whole balance. */
+    /** Start an online payment. {amount?} in kobo (defaults to the whole balance), {gateway?} paystack (default) or opay. */
     public function pay(Request $request, Invoice $invoice)
     {
         $this->own($request, $invoice->user_id);
-        $data = $request->validate(['amount' => ['nullable', 'integer', 'min:1']]);
+        $data = $request->validate(['amount' => ['nullable', 'integer', 'min:1'], 'gateway' => ['nullable', 'in:paystack,opay']]);
+        $gateway = $data['gateway'] ?? 'paystack';
         $amount = (int) ($data['amount'] ?? $invoice->balanceMinor());
         $callback = route('billing.paystack.app-return');
 
         try {
-            $url = $this->payments->startPaystack($invoice, $amount, $request->user(), $callback);
+            $url = $this->payments->startOnline($gateway, $invoice, $amount, $request->user(), fn () => $callback);
         } catch (ValidationException $e) {
-            return $this->fail(collect($e->errors())->flatten()->first(), 422, $this->paystack->enabled() ? 'invalid_amount' : 'online_payment_off');
+            return $this->fail(collect($e->errors())->flatten()->first(), 422, array_key_exists($gateway, $this->payments->onlineGateways()) ? 'invalid_amount' : 'online_payment_off');
         } catch (\RuntimeException $e) {
-            Log::error('Paystack initialize failed', ['invoice' => $invoice->id, 'error' => $e->getMessage()]);
+            Log::error('Online payment start failed', ['gateway' => $gateway, 'invoice' => $invoice->id, 'error' => $e->getMessage()]);
 
             return $this->fail('We could not reach the payment provider. Please try again shortly.', 502, 'gateway_unavailable');
         }
-        $payment = Payment::where('invoice_id', $invoice->id)->where('method', 'paystack')->where('status', 'pending')->latest('id')->first();
+        $payment = Payment::where('invoice_id', $invoice->id)->where('method', $gateway)->where('status', 'pending')->latest('id')->first();
 
-        return $this->ok(['authorization_url' => $url, 'reference' => $payment?->reference, 'callback_url' => $callback]
+        return $this->ok(['authorization_url' => $url, 'reference' => $payment?->reference, 'callback_url' => $callback, 'gateway' => $gateway]
             + $this->money('amount', Money::major($amount), $invoice->currency), null, 201);
     }
 
-    /** {reference} — ask Paystack. Safe to repeat; the webhook may have settled it already. */
+    /** {reference} — ask the gateway (Paystack or OPay). Safe to repeat; the webhook may have settled it already. */
     public function verify(Request $request)
     {
         $data = $request->validate(['reference' => ['required', 'string', 'max:100']]);
-        $payment = Payment::where('reference', $data['reference'])->where('method', 'paystack')->first();
+        $payment = Payment::where('reference', $data['reference'])->whereIn('method', ['paystack', 'opay'])->first();
         if (!$payment || $payment->user_id !== $request->user()->id) return $this->fail('Payment not found.', 404, 'not_found');
 
         try {
-            $payment = $this->payments->settlePaystack($payment->reference) ?? $payment;
+            $payment = $this->payments->settle($payment) ?? $payment;
         } catch (\RuntimeException $e) {
-            Log::error('Paystack verify failed', ['reference' => $payment->reference, 'error' => $e->getMessage()]);
+            Log::error('Online payment check failed', ['reference' => $payment->reference, 'error' => $e->getMessage()]);
 
-            return $this->ok(['status' => 'pending', 'message' => 'We could not confirm your payment with Paystack yet. If you were charged it will show here shortly; there is no need to pay again.',
+            return $this->ok(['status' => 'pending', 'message' => 'We could not confirm your payment yet. If you were charged it will show here shortly; there is no need to pay again.',
                 'payment' => $this->payment($payment), 'invoice' => $payment->invoice ? $this->invoice($payment->invoice) : null]);
         }
 
@@ -150,7 +151,7 @@ class BillingApiController extends ApiController
         ] + $this->money('total', $i->total, $i->currency) + $this->money('amount_paid', $i->amount_paid, $i->currency)
           + $this->money('balance', $i->balance(), $i->currency) + [
             'status' => $i->status, 'status_label' => $i->status_label, 'overdue' => $i->isOverdue(),
-            'can_pay' => $i->isOpen() && $i->balanceMinor() > 0 && $this->paystack->enabled(),
+            'can_pay' => $i->isOpen() && $i->balanceMinor() > 0 && (bool) $this->payments->onlineGateways(),
             'part_payment' => $i->isOpen() && $min < $i->balanceMinor(),
             'min_payment' => $min, 'min_payment_label' => Money::format(Money::major($min), $i->currency),
             'course' => $i->enrollment?->course ? ['id' => $i->enrollment->course->id, 'title' => $i->enrollment->course->title] : null,

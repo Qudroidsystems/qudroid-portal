@@ -10,7 +10,7 @@
 
     @include('partials.flash')
 
-    <form method="POST" action="{{ $editing ? route('academy.courses.update', $course) : route('academy.courses.store') }}">
+    <form method="POST" action="{{ $editing ? route('academy.courses.update', $course) : route('academy.courses.store') }}" enctype="multipart/form-data">
         @csrf @if($editing) @method('PUT') @endif
         <div class="row g-3">
             <div class="col-xl-8">
@@ -57,6 +57,15 @@
                     <div class="mb-2"><label class="form-label">Pass grade (%)</label><input name="pass_grade" type="number" min="0" max="100" class="form-control" required value="{{ old('pass_grade', $course->pass_grade ?? 50) }}">
                         <div class="form-text">The weighted grade from the course's quizzes and assignments a student needs for a certificate.</div></div>
                     <div class="form-check form-switch"><input type="hidden" name="certificate_enabled" value="0"><input class="form-check-input" type="checkbox" id="certon" name="certificate_enabled" value="1" @checked(old('certificate_enabled', $course->certificate_enabled ?? true))><label class="form-check-label" for="certon">Issue a certificate on completion</label></div>
+                </x-cb.card>
+                <x-cb.card title="On the website" icon="ri-global-line">
+                    <div class="form-check form-switch"><input type="hidden" name="instant_enrollment" value="0"><input class="form-check-input" type="checkbox" id="instant" name="instant_enrollment" value="1" @checked(old('instant_enrollment', $course->instant_enrollment))><label class="form-check-label" for="instant">Take payment at registration</label></div>
+                    <div class="form-text mb-3">On: people who register on the website are admitted straight away and go on to pay online. Off: registrations wait for you in Applications.</div>
+                    <label class="form-label">Picture</label>
+                    @if($course->image)<img src="{{ \App\Models\Website\Product::url($course->image) }}" alt="" class="img-fluid rounded mb-2 d-block">
+                        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="remove_image" value="1" id="rmimg"><label class="form-check-label" for="rmimg">Remove picture</label></div>@endif
+                    <input type="file" name="image_file" accept="image/*" class="form-control">
+                    <div class="form-text">Shown on the course's website page. Published courses with an open cohort appear on the website.</div>
                 </x-cb.card>
                 <x-cb.card title="Publishing" icon="ri-eye-line">
                     <select name="status" class="form-select mb-2">@foreach(\App\Models\Academy\Course::STATUSES as $k => $v)<option value="{{ $k }}" @selected(old('status', $course->status) === $k)>{{ $v }}</option>@endforeach</select>
