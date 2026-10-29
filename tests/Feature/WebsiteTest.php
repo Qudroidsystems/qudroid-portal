@@ -38,7 +38,7 @@ function websiteManager(): User
 }
 
 test('guests get the website at /, with starter content made on the first visit', function () {
-    $this->get('/')->assertOk()->assertSee('Qlouds Workspace')->assertSee('Sign in');
+    $this->get('/')->assertOk()->assertSee('Qlouds Workspace')->assertSee('Sign in')->assertSee('Invading spheres… improving lives.');
     expect(Page::where('slug', 'home')->exists())->toBeTrue()->and(Product::count())->toBe(4);
 
     $this->get('/products')->assertOk()->assertSee('Qmail');

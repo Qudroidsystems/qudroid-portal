@@ -26,6 +26,9 @@ use Illuminate\Validation\Rule;
  */
 class Site
 {
+    /** The Qudroid motto: the default tagline. */
+    public const MOTTO = 'Invading spheres… improving lives.';
+
     public const SOCIALS = ['x' => 'X (Twitter)', 'linkedin' => 'LinkedIn', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'youtube' => 'YouTube', 'github' => 'GitHub'];
 
     public function __construct(protected Settings $settings) {}
@@ -37,7 +40,7 @@ class Site
         return array_replace_recursive([
             'enabled' => true,
             'name' => config('qudroid.company', 'Qudroid Systems'),
-            'tagline' => 'Software, cloud and training for ambitious teams.',
+            'tagline' => self::MOTTO,
             'description' => config('qudroid.company', 'Qudroid Systems') . ' builds software products, delivers projects for clients and trains the next generation of engineers.',
             'announcement' => '',
             'announcement_url' => '',

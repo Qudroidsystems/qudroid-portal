@@ -75,7 +75,7 @@
                 </p>
             @endif
             <div class="s-foot-base">
-                <span>Copyright © {{ now()->year }} {{ $cfg['name'] }}. All rights reserved.</span>
+                <span>Copyright © {{ now()->year }} {{ $cfg['name'] }}. All rights reserved.@if($cfg['tagline']) <em class="s-motto">{{ $cfg['tagline'] }}</em>@endif</span>
                 <span class="s-socials">
                     @foreach(\App\Services\Website\Site::SOCIALS as $key => $label)
                         @if(!empty($cfg['socials'][$key]))
