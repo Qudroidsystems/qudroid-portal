@@ -18,6 +18,21 @@ class Starter
 {
     public const SERVICES_INTRO = 'Software, AI and blockchain engineering, cloud and training, from one team.';
 
+    public const HERO_TITLE = 'We engineer';
+    public const HERO_WORDS = 'software, AI, blockchain, mobile apps, the cloud';
+
+    /** How we work: the home page's steps block. */
+    public static function stepsBlock(): array
+    {
+        return ['type' => 'steps', 'eyebrow' => 'How we work', 'heading' => 'Four steps from idea to impact.',
+            'intro' => 'A clear process, with you involved at every stage.', 'theme' => 'light', 'items' => [
+                ['icon' => 'ri-search-eye-line', 'title' => 'Discover', 'text' => 'We learn your goals, users and constraints, and agree what success looks like.'],
+                ['icon' => 'ri-pencil-ruler-2-line', 'title' => 'Design', 'text' => 'Architecture, user experience and a plan you can see before we build.'],
+                ['icon' => 'ri-code-box-line', 'title' => 'Build', 'text' => 'Short cycles with working software to try every couple of weeks.'],
+                ['icon' => 'ri-rocket-line', 'title' => 'Launch and grow', 'text' => 'We ship, monitor and keep improving it with you.'],
+            ]];
+    }
+
     /** What we do: the home page's features block. */
     public static function services(): array
     {
@@ -34,12 +49,13 @@ class Starter
     public static function homeBlocks(array $c): array
     {
         return [
-            ['type' => 'hero', 'eyebrow' => $c['name'], 'title' => 'Software that moves your business forward.',
+            ['type' => 'hero', 'eyebrow' => $c['name'], 'title' => self::HERO_TITLE, 'rotating' => self::HERO_WORDS,
                 'subtitle' => $c['tagline'], 'primary_label' => 'Explore products', 'primary_url' => '/products',
                 'secondary_label' => 'Start a project', 'secondary_url' => '/contact', 'image' => '', 'theme' => 'dark'],
             ['type' => 'tiles', 'source' => 'products', 'items' => []],
             ['type' => 'features', 'eyebrow' => 'What we do', 'heading' => 'From idea to launch, and beyond.',
                 'intro' => self::SERVICES_INTRO, 'theme' => 'grey', 'items' => self::services()],
+            self::stepsBlock(),
             ['type' => 'split', 'eyebrow' => 'Qlouds Workspace', 'heading' => 'Every department. One workspace.',
                 'body' => "Chat and calls, meetings, Drive, mail, projects, CRM, finance, HR and payroll, all in one place, on the web and on your phone.",
                 'image' => '', 'image_side' => 'right', 'link_label' => 'Learn more', 'url' => '/products/qlouds-workspace', 'theme' => 'light'],

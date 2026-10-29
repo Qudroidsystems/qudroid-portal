@@ -87,15 +87,86 @@
         </div>
     </footer>
 
+    <button type="button" class="s-top" aria-label="Back to top"><i class="ri-arrow-up-line"></i></button>
     <script>
-        // Sections ease in as they scroll into view.
         (function () {
-            var els = document.querySelectorAll('.s-reveal');
-            if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('is-in'); }); return; }
-            var io = new IntersectionObserver(function (entries) {
-                entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('is-in'); io.unobserve(en.target); } });
-            }, { rootMargin: '0px 0px -8% 0px' });
-            els.forEach(function (e) { io.observe(e); });
+            var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // Sections and grids ease in as they scroll into view; numbers count up.
+            var els = document.querySelectorAll('.s-reveal, .s-stagger, [data-count]');
+            function show(e) {
+                e.classList.add('is-in');
+                if (e.hasAttribute('data-count')) count(e);
+            }
+            if (!('IntersectionObserver' in window)) { els.forEach(show); }
+            else {
+                var io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (en) { if (en.isIntersecting) { show(en.target); io.unobserve(en.target); } });
+                }, { rootMargin: '0px 0px -8% 0px' });
+                els.forEach(function (e) { io.observe(e); });
+            }
+            function count(el) {
+                var to = parseFloat(el.dataset.count), dec = (el.dataset.count.split('.')[1] || '').length;
+                if (calm || !isFinite(to)) return;
+                var t0 = null, dur = 1600;
+                function fmt(v) { var s = v.toFixed(dec); return el.dataset.commas === '1' ? Number(s).toLocaleString('en', { minimumFractionDigits: dec }) : s; }
+                function step(t) {
+                    t0 = t0 || t; var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+                    el.textContent = el.dataset.prefix + fmt(to * e) + el.dataset.suffix;
+                    if (k < 1) requestAnimationFrame(step);
+                }
+                requestAnimationFrame(step);
+            }
+
+            // Rotating words in the hero.
+            document.querySelectorAll('.s-rotate').forEach(function (box) {
+                var words = JSON.parse(box.dataset.words || '[]'), w = box.querySelector('.s-rotate-word'), i = 0;
+                if (words.length < 2 || calm) return;
+                setInterval(function () {
+                    w.classList.add('is-out');
+                    setTimeout(function () {
+                        i = (i + 1) % words.length; w.textContent = words[i];
+                        w.classList.remove('is-out'); w.classList.add('is-pre');
+                        void w.offsetWidth; w.classList.remove('is-pre');
+                    }, 350);
+                }, 2600);
+            });
+
+            // A soft light follows the pointer over service cards.
+            document.querySelectorAll('.s-feature').forEach(function (c) {
+                c.addEventListener('pointermove', function (e) {
+                    var r = c.getBoundingClientRect();
+                    c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+                });
+            });
+
+            // Quote sliders: arrows, dots, and a gentle auto-advance.
+            document.querySelectorAll('[data-slider]').forEach(function (sl) {
+                var track = sl.querySelector('.s-slides'), slides = track.children, dots = sl.querySelectorAll('[data-dot]'), timer;
+                function at() { return Math.round(track.scrollLeft / (slides[0].offsetWidth + 24)); }
+                function go(i) { i = (i + slides.length) % slides.length; track.scrollTo({ left: slides[i].offsetLeft - track.offsetLeft, behavior: 'smooth' }); }
+                function mark() { var i = at(); dots.forEach(function (d, j) { d.classList.toggle('is-on', j === i); }); }
+                sl.querySelector('[data-prev]') && sl.querySelector('[data-prev]').addEventListener('click', function () { go(at() - 1); });
+                sl.querySelector('[data-next]') && sl.querySelector('[data-next]').addEventListener('click', function () { go(at() + 1); });
+                dots.forEach(function (d) { d.addEventListener('click', function () { go(+d.dataset.dot); }); });
+                track.addEventListener('scroll', function () { window.requestAnimationFrame(mark); });
+                mark();
+                if (calm || slides.length < 2) return;
+                function auto() { timer = setInterval(function () { var i = at(); go(track.scrollLeft + track.clientWidth >= track.scrollWidth - 4 ? 0 : i + 1); }, 6000); }
+                sl.addEventListener('pointerenter', function () { clearInterval(timer); });
+                sl.addEventListener('pointerleave', auto);
+                auto();
+            });
+
+            // Back to top, with how far down the page you are.
+            var top = document.querySelector('.s-top');
+            function onScroll() {
+                var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+                top.style.setProperty('--p', max > 0 ? Math.round(h.scrollTop / max * 100) : 0);
+                top.classList.toggle('is-on', h.scrollTop > 600);
+            }
+            window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+            top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' }); });
         })();
     </script>
     @stack('scripts')

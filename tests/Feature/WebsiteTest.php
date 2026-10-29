@@ -39,7 +39,8 @@ function websiteManager(): User
 
 test('guests get the website at /, with starter content made on the first visit', function () {
     $this->get('/')->assertOk()->assertSee('Qlouds Workspace')->assertSee('Sign in')->assertSee('Invading spheres… improving lives.')
-        ->assertSee('Software engineering')->assertSee('AI engineering')->assertSee('Blockchain engineering');
+        ->assertSee('Software engineering')->assertSee('AI engineering')->assertSee('Blockchain engineering')
+        ->assertSee('We engineer')->assertSee('How we work')->assertSee('data-words', false);
     expect(Page::where('slug', 'home')->exists())->toBeTrue()->and(Product::count())->toBe(4);
 
     $this->get('/products')->assertOk()->assertSee('Qmail');
@@ -122,6 +123,21 @@ test('managers build pages from blocks; unsafe links are dropped and portal addr
     $this->actingAs($m)->delete(route('website.pages.destroy', $home))->assertStatus(422);
     auth()->logout();
     $this->get('/')->assertSee('New home');
+});
+
+test('the steps, counting numbers, moving logo strip and quote slider blocks draw', function () {
+    $m = websiteManager();
+    $blocks = [
+        ['type' => 'steps', 'heading' => 'How we work', 'items' => [['icon' => 'ri-rocket-line', 'title' => 'Launch', 'text' => 'We ship.'], ['icon' => 'javascript:x', 'title' => 'Grow']]],
+        ['type' => 'stats', 'items' => [['value' => '1,200+', 'label' => 'students'], ['value' => 'Many', 'label' => 'clients']]],
+        ['type' => 'logos', 'scroll' => true, 'items' => [['name' => 'Acme'], ['name' => 'Globex']]],
+        ['type' => 'testimonials', 'items' => [['quote' => 'Great team.', 'name' => 'Ada'], ['quote' => 'Fast.', 'name' => 'Bo']]],
+    ];
+    $this->actingAs($m)->post(route('website.pages.store'), ['title' => 'Motion', 'status' => 'published', 'blocks' => json_encode($blocks)]);
+    auth()->logout();
+    $this->get('/motion')->assertOk()->assertSee('01')->assertSee('02')->assertSee('Launch')->assertDontSee('javascript:x', false)
+        ->assertSee('data-count="1200"', false)->assertSee('data-suffix="+"', false)->assertSee('Many')
+        ->assertSee('s-marquee', false)->assertSee('data-slider', false)->assertSee('Great team.');
 });
 
 test('managers add products with pictures, and work; staff without the permission cannot', function () {

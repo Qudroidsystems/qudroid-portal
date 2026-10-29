@@ -21,6 +21,7 @@ class Blocks
             'hero' => ['label' => 'Hero', 'icon' => 'ri-layout-top-line', 'hint' => 'A big headline at the top of a page.', 'fields' => [
                 'eyebrow' => ['type' => 'text', 'label' => 'Small line above'],
                 'title' => ['type' => 'text', 'label' => 'Headline'],
+                'rotating' => ['type' => 'text', 'label' => 'Rotating words after the headline (optional, comma separated)'],
                 'subtitle' => ['type' => 'textarea', 'label' => 'Sub-headline'],
                 'primary_label' => ['type' => 'text', 'label' => 'Main button'],
                 'primary_url' => ['type' => 'url', 'label' => 'Main button link'],
@@ -88,6 +89,17 @@ class Blocks
                 'heading' => ['type' => 'text', 'label' => 'Heading'],
                 'intro' => ['type' => 'textarea', 'label' => 'Intro'],
             ]],
+            'steps' => ['label' => 'Steps', 'icon' => 'ri-route-line', 'hint' => 'How you work, as numbered steps (01, 02, 03…).', 'fields' => [
+                'eyebrow' => ['type' => 'text', 'label' => 'Small line above'],
+                'heading' => ['type' => 'text', 'label' => 'Heading'],
+                'intro' => ['type' => 'textarea', 'label' => 'Intro'],
+                'theme' => ['type' => 'select', 'label' => 'Background', 'options' => self::THEMES],
+                'items' => ['type' => 'list', 'label' => 'Steps', 'fields' => [
+                    'icon' => ['type' => 'text', 'label' => 'Icon (Remix name)'],
+                    'title' => ['type' => 'text', 'label' => 'Title'],
+                    'text' => ['type' => 'textarea', 'label' => 'Text'],
+                ]],
+            ]],
             'testimonials' => ['label' => 'Quotes', 'icon' => 'ri-double-quotes-l', 'hint' => 'What clients and students say.', 'fields' => [
                 'heading' => ['type' => 'text', 'label' => 'Heading'],
                 'items' => ['type' => 'list', 'label' => 'Quotes', 'fields' => [
@@ -98,6 +110,7 @@ class Blocks
             ]],
             'logos' => ['label' => 'Logos', 'icon' => 'ri-shield-star-line', 'hint' => 'Clients or partners.', 'fields' => [
                 'heading' => ['type' => 'text', 'label' => 'Heading'],
+                'scroll' => ['type' => 'toggle', 'label' => 'Scroll them past in a moving strip'],
                 'items' => ['type' => 'list', 'label' => 'Logos', 'fields' => [
                     'name' => ['type' => 'text', 'label' => 'Name'],
                     'image' => ['type' => 'image', 'label' => 'Logo'],

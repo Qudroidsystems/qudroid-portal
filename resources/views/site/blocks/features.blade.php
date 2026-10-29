@@ -3,7 +3,7 @@
         @if($b['eyebrow'] ?? '')<div class="s-eyebrow">{{ $b['eyebrow'] }}</div>@endif
         @if($b['heading'] ?? '')<h2 class="s-h2">{{ $b['heading'] }}</h2>@endif
         @if($b['intro'] ?? '')<p class="s-lead">{{ $b['intro'] }}</p>@endif
-        <div class="s-features">
+        <div class="s-features s-stagger">
             @foreach($b['items'] ?? [] as $f)
                 <div class="s-feature">
                     @if($f['icon'] ?? '')<i class="{{ preg_match('/^ri-[a-z0-9-]+$/', $f['icon']) ? $f['icon'] : 'ri-magic-line' }}" aria-hidden="true"></i>@endif
