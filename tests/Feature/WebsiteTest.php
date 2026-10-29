@@ -41,9 +41,10 @@ test('guests get the website at /, with starter content made on the first visit'
     $this->get('/')->assertOk()->assertSee('Qlouds Workspace')->assertSee('Sign in')->assertSee('Invading spheres… improving lives.')
         ->assertSee('Software engineering')->assertSee('AI engineering')->assertSee('Blockchain engineering')
         ->assertSee('We engineer')->assertSee('How we work')->assertSee('data-words', false);
-    expect(Page::where('slug', 'home')->exists())->toBeTrue()->and(Product::count())->toBe(4);
+    expect(Page::where('slug', 'home')->exists())->toBeTrue()->and(Product::count())->toBe(9);
 
-    $this->get('/products')->assertOk()->assertSee('Qmail');
+    $this->get('/products')->assertOk()->assertSee('Qmail')->assertSee('Homilet')->assertSee('ViteSchools')->assertSee('Univite')->assertSee('Fashion House')->assertSee('Logistics');
+    $this->get(route('site.products.show', 'homilet'))->assertOk()->assertSee('facilities');
     $this->get(route('site.products.show', 'qmail'))->assertOk()->assertSee('Qmail');
     $this->get('/about')->assertOk()->assertSee('We build software people rely on.');
     $this->get('/contact')->assertOk()->assertSee('Send message');

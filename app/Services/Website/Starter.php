@@ -102,6 +102,62 @@ class Starter
                 'summary' => 'Chat, calls, mail, approvals, bills, tasks and courses on your phone, with notifications that let you act straight away.',
                 'body' => "Approve leave from a notification, pay a bill, join a call, check in with a QR code.",
                 'features' => [], 'link_label' => 'Talk to us', 'link_url' => '/contact'],
+            ...self::industryProducts(),
+        ];
+    }
+
+    /** Products built for particular industries: property, schools, universities, fashion, logistics. */
+    public static function industryProducts(): array
+    {
+        return [
+            ['slug' => 'homilet', 'name' => 'Homilet', 'tagline' => 'Find your next home. See it before you go.', 'category' => 'Property',
+                'icon' => 'ri-home-smile-line', 'color' => '#10B981', 'featured' => true,
+                'summary' => 'A house and home renting app for tenants, landlords and agents: browse homes with photos, facilities and location, then book a viewing.',
+                'body' => "Homilet connects people looking for a home with landlords and agencies.\n\n- **Browse** houses and apartments with photos, prices and the facilities each one has.\n- **See the location** on a map, with what is nearby.\n- **Shortlist and enquire** without endless phone calls.\n- **For agents and landlords**: list properties, manage enquiries and keep track of viewings.",
+                'features' => [
+                    ['icon' => 'ri-image-2-line', 'title' => 'Photos and facilities', 'text' => 'See each home and what comes with it.'],
+                    ['icon' => 'ri-map-pin-line', 'title' => 'Location', 'text' => 'Where it is, and what is around it.'],
+                    ['icon' => 'ri-search-line', 'title' => 'Search and filters', 'text' => 'By area, price, rooms and facilities.'],
+                    ['icon' => 'ri-key-2-line', 'title' => 'For agents', 'text' => 'List homes and manage enquiries.'],
+                ], 'link_label' => 'Talk to us', 'link_url' => '/contact'],
+            ['slug' => 'viteschools', 'name' => 'ViteSchools', 'tagline' => 'Secondary school management, made simple.', 'category' => 'Education',
+                'icon' => 'ri-book-2-line', 'color' => '#F59E0B', 'featured' => true,
+                'summary' => 'School management software for secondary schools: students, classes, results, fees and communication with parents.',
+                'body' => "ViteSchools runs the day-to-day of a secondary school in one place, for administrators, teachers, students and parents.\n\n- **Students and classes**: admissions, class lists and records.\n- **Results**: scores, report cards and term results.\n- **Fees**: bills, payments and balances.\n- **Parents**: keep them informed.",
+                'features' => [
+                    ['icon' => 'ri-team-line', 'title' => 'Students and classes', 'text' => 'Admissions, records and class lists.'],
+                    ['icon' => 'ri-file-list-3-line', 'title' => 'Results', 'text' => 'Scores and report cards.'],
+                    ['icon' => 'ri-wallet-3-line', 'title' => 'School fees', 'text' => 'Bills, payments and balances.'],
+                    ['icon' => 'ri-parent-line', 'title' => 'Parents', 'text' => 'Keep families in the loop.'],
+                ], 'link_label' => 'Request a demo', 'link_url' => '/contact'],
+            ['slug' => 'univite', 'name' => 'Univite', 'tagline' => 'The university portal, end to end.', 'category' => 'Education',
+                'icon' => 'ri-government-line', 'color' => '#7C3AED', 'featured' => false,
+                'summary' => 'A university portal and school system: admissions, registration, courses, results and fees for students, lecturers and staff.',
+                'body' => "Univite is a complete portal for universities and other higher institutions.\n\n- **Admissions** and student records.\n- **Course registration** each semester.\n- **Results** and transcripts.\n- **Fees and payments** online.",
+                'features' => [
+                    ['icon' => 'ri-user-star-line', 'title' => 'Admissions', 'text' => 'From application to matriculation.'],
+                    ['icon' => 'ri-calendar-check-line', 'title' => 'Course registration', 'text' => 'Semester by semester.'],
+                    ['icon' => 'ri-bar-chart-box-line', 'title' => 'Results', 'text' => 'Grades and transcripts.'],
+                    ['icon' => 'ri-bank-card-line', 'title' => 'Fees', 'text' => 'Online payment and receipts.'],
+                ], 'link_label' => 'Request a demo', 'link_url' => '/contact'],
+            ['slug' => 'fashion-house', 'name' => 'Fashion House', 'tagline' => 'Run your fashion business from one app.', 'category' => 'Retail',
+                'icon' => 'ri-t-shirt-line', 'color' => '#EC4899', 'featured' => false,
+                'summary' => 'Software for fashion houses and tailors: customers and their measurements, orders, production and sales.',
+                'body' => "Fashion House helps designers and tailoring businesses keep every customer, order and outfit on track.\n\n- **Customers and measurements**, saved for next time.\n- **Orders** from first fitting to delivery.\n- **Sales and payments** in one place.",
+                'features' => [
+                    ['icon' => 'ri-ruler-line', 'title' => 'Measurements', 'text' => 'Saved for every customer.'],
+                    ['icon' => 'ri-scissors-line', 'title' => 'Orders', 'text' => 'Track each outfit to delivery.'],
+                    ['icon' => 'ri-shopping-bag-line', 'title' => 'Sales', 'text' => 'Payments and balances.'],
+                ], 'link_label' => 'Talk to us', 'link_url' => '/contact'],
+            ['slug' => 'logistics', 'name' => 'Logistics', 'tagline' => 'Every delivery, tracked.', 'category' => 'Logistics',
+                'icon' => 'ri-truck-line', 'color' => '#F97316', 'featured' => false,
+                'summary' => 'Logistics software for delivery and dispatch businesses: orders, riders and drivers, routes and tracking.',
+                'body' => "Manage deliveries from pickup to drop-off.\n\n- **Orders and dispatch**: assign jobs to riders and drivers.\n- **Tracking**: know where every delivery is.\n- **Customers** get updates along the way.",
+                'features' => [
+                    ['icon' => 'ri-route-line', 'title' => 'Dispatch', 'text' => 'Assign jobs to riders and drivers.'],
+                    ['icon' => 'ri-map-pin-line', 'title' => 'Tracking', 'text' => 'Where every delivery is.'],
+                    ['icon' => 'ri-store-2-line', 'title' => 'For businesses', 'text' => 'Book and follow deliveries.'],
+                ], 'link_label' => 'Talk to us', 'link_url' => '/contact'],
         ];
     }
 
