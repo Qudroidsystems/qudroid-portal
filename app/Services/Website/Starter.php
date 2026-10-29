@@ -16,6 +16,21 @@ use App\Models\Website\Work;
  */
 class Starter
 {
+    public const SERVICES_INTRO = 'Software, AI and blockchain engineering, cloud and training, from one team.';
+
+    /** What we do: the home page's features block. */
+    public static function services(): array
+    {
+        return [
+            ['icon' => 'ri-code-s-slash-line', 'title' => 'Software engineering', 'text' => 'Web platforms, portals and internal tools, designed and built around how you work.'],
+            ['icon' => 'ri-robot-line', 'title' => 'AI engineering', 'text' => 'Machine learning, AI assistants and data products that put your information to work.'],
+            ['icon' => 'ri-links-line', 'title' => 'Blockchain engineering', 'text' => 'Smart contracts, digital assets and secure, verifiable records on the blockchain.'],
+            ['icon' => 'ri-smartphone-line', 'title' => 'Mobile apps', 'text' => 'iPhone and Android apps that feel at home on each.'],
+            ['icon' => 'ri-cloud-line', 'title' => 'Cloud and DevOps', 'text' => 'Hosting, automation, monitoring and security that scale with you.'],
+            ['icon' => 'ri-book-open-line', 'title' => 'Training', 'text' => 'Hands-on courses at Qudroid Academy for teams and individuals.'],
+        ];
+    }
+
     public static function homeBlocks(array $c): array
     {
         return [
@@ -24,14 +39,7 @@ class Starter
                 'secondary_label' => 'Start a project', 'secondary_url' => '/contact', 'image' => '', 'theme' => 'dark'],
             ['type' => 'tiles', 'source' => 'products', 'items' => []],
             ['type' => 'features', 'eyebrow' => 'What we do', 'heading' => 'From idea to launch, and beyond.',
-                'intro' => 'One team for strategy, design, engineering, cloud and training.', 'theme' => 'grey', 'items' => [
-                    ['icon' => 'ri-code-s-slash-line', 'title' => 'Custom software', 'text' => 'Web platforms, portals and internal tools built around how you work.'],
-                    ['icon' => 'ri-smartphone-line', 'title' => 'Mobile apps', 'text' => 'iPhone and Android apps that feel at home on each.'],
-                    ['icon' => 'ri-cloud-line', 'title' => 'Cloud and DevOps', 'text' => 'Hosting, automation, monitoring and security that scale with you.'],
-                    ['icon' => 'ri-palette-line', 'title' => 'Product design', 'text' => 'Research, UX and interfaces people enjoy using.'],
-                    ['icon' => 'ri-database-2-line', 'title' => 'Data and AI', 'text' => 'Dashboards, reporting and practical AI features.'],
-                    ['icon' => 'ri-book-open-line', 'title' => 'Training', 'text' => 'Hands-on courses at Qudroid Academy for teams and individuals.'],
-                ]],
+                'intro' => self::SERVICES_INTRO, 'theme' => 'grey', 'items' => self::services()],
             ['type' => 'split', 'eyebrow' => 'Qlouds Workspace', 'heading' => 'Every department. One workspace.',
                 'body' => "Chat and calls, meetings, Drive, mail, projects, CRM, finance, HR and payroll, all in one place, on the web and on your phone.",
                 'image' => '', 'image_side' => 'right', 'link_label' => 'Learn more', 'url' => '/products/qlouds-workspace', 'theme' => 'light'],
