@@ -3,7 +3,7 @@
         <div class="s-wrap s-reveal">
             @if($b['heading'] ?? '')<h2 class="s-h2">{{ $b['heading'] }}</h2>@endif
             <div class="s-slider" data-slider>
-                <div class="s-slides">
+                <div class="s-slides s-stagger">
                     @foreach($b['items'] as $q)
                         <blockquote class="s-quote"><i class="ri-double-quotes-l" aria-hidden="true"></i><p>{{ $q['quote'] ?? '' }}</p><footer><b>{{ $q['name'] ?? '' }}</b>{{ $q['role'] ?? '' }}</footer></blockquote>
                     @endforeach

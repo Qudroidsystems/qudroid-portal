@@ -16,7 +16,7 @@
                 <p class="s-lead">In the meantime, tell us about your project.</p>
                 <div class="s-ctas"><a class="s-btn" href="{{ route('site.contact') }}">Start a project</a></div>
             @else
-                <div class="s-grid {{ in_array($works->count(), [2, 4]) ? 'is-two' : '' }}">@foreach($works as $w) @include('site.partials.work-card', ['w' => $w]) @endforeach</div>
+                <div class="s-stagger s-grid {{ in_array($works->count(), [2, 4]) ? 'is-two' : '' }}">@foreach($works as $w) @include('site.partials.work-card', ['w' => $w]) @endforeach</div>
             @endif
         </div>
     </section>

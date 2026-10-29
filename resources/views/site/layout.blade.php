@@ -29,6 +29,7 @@
     @stack('head')
 </head>
 <body class="site">
+    @include('layouts.partials.app-loader', ['brand' => ['name' => $cfg['name'], 'company' => $cfg['name']]])
     <a href="#main" class="s-sr">Skip to content</a>
     <nav class="s-nav" id="sNav" aria-label="Main">
         <div class="s-wrap">
@@ -96,6 +97,7 @@
             var els = document.querySelectorAll('.s-reveal, .s-stagger, [data-count]');
             function show(e) {
                 e.classList.add('is-in');
+                if (e.classList.contains('s-stagger')) setTimeout(function () { e.classList.add('is-settled'); }, 1300);
                 if (e.hasAttribute('data-count')) count(e);
             }
             if (!('IntersectionObserver' in window)) { els.forEach(show); }

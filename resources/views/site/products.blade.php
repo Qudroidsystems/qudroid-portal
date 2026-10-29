@@ -15,7 +15,7 @@
             @if($products->isEmpty())
                 <p class="s-lead">Our products will appear here soon.</p>
             @else
-                <div class="s-grid">@foreach($products as $p) @include('site.partials.product-card', ['p' => $p]) @endforeach</div>
+                <div class="s-stagger s-grid">@foreach($products as $p) @include('site.partials.product-card', ['p' => $p]) @endforeach</div>
             @endif
         </div>
     </section>

@@ -17,7 +17,7 @@
                 <div class="s-ctas"><a class="s-btn" href="{{ route('site.contact') }}">Keep me posted</a></div>
             @else
                 <h2 class="s-h2">Open for registration.</h2>
-                <div class="s-grid">@foreach($courses as $c) @include('site.partials.course-card', ['c' => $c]) @endforeach</div>
+                <div class="s-stagger s-grid">@foreach($courses as $c) @include('site.partials.course-card', ['c' => $c]) @endforeach</div>
             @endif
         </div>
     </section>

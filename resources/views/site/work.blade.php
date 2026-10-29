@@ -35,7 +35,7 @@
         <section class="s-section" data-site-theme="grey">
             <div class="s-wrap">
                 <h2 class="s-h2">More of our work.</h2>
-                <div class="s-grid is-two">@foreach($others as $o) @include('site.partials.work-card', ['w' => $o]) @endforeach</div>
+                <div class="s-stagger s-grid is-two">@foreach($others as $o) @include('site.partials.work-card', ['w' => $o]) @endforeach</div>
             </div>
         </section>
     @endif

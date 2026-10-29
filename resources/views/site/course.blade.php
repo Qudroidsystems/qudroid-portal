@@ -45,6 +45,7 @@
     <section class="s-section" data-site-theme="grey" id="register">
         <div class="s-wrap s-narrow">
             <h2 class="s-h2">Choose your class.</h2>
+            <div class="s-stagger">
             @forelse($c->cohorts as $cohort)
                 <div class="s-cohort">
                     <div>
@@ -64,6 +65,7 @@
                 <p class="s-lead">There is no class open for registration right now.</p>
                 <div class="s-ctas"><a class="s-btn" href="{{ route('site.contact') }}">Tell me when it opens</a></div>
             @endforelse
+            </div>
             @if($c->instant_enrollment && $c->cohorts->isNotEmpty())
                 <p class="s-muted" style="margin-top:16px;font-size:14px;text-align:center">Your place is confirmed when you register, and you can pay online straight away.</p>
             @endif

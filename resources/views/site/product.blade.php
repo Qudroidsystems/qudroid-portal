@@ -53,7 +53,7 @@
         <section class="s-section">
             <div class="s-wrap">
                 <h2 class="s-h2">More from us.</h2>
-                <div class="s-grid">@foreach($others as $o) @include('site.partials.product-card', ['p' => $o]) @endforeach</div>
+                <div class="s-stagger s-grid">@foreach($others as $o) @include('site.partials.product-card', ['p' => $o]) @endforeach</div>
             </div>
         </section>
     @endif
