@@ -5,4 +5,4 @@ use Illuminate\Support\Facades\Route;
 
 // The app's home screen and search across modules. Loaded inside the signed-in API group.
 Route::get('home', [HomeApiController::class, 'home'])->name('home');
-Route::get('search', [HomeApiController::class, 'search'])->middleware('throttle:60,1')->name('search');
+Route::get('search', [HomeApiController::class, 'search'])->middleware('throttle:60,1,api_v1-home.search')->name('search');

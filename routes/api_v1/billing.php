@@ -8,8 +8,8 @@ Route::prefix('billing')->name('billing.')->controller(BillingApiController::cla
     Route::get('invoices', 'invoices')->name('invoices');
     Route::get('invoices/{invoice}', 'show')->whereNumber('invoice')->name('invoices.show');
     Route::get('invoices/{invoice}/pdf', 'invoicePdf')->whereNumber('invoice')->name('invoices.pdf');
-    Route::post('invoices/{invoice}/pay', 'pay')->whereNumber('invoice')->middleware('throttle:10,1')->name('pay');
-    Route::post('payments/verify', 'verify')->middleware('throttle:30,1')->name('verify');
+    Route::post('invoices/{invoice}/pay', 'pay')->whereNumber('invoice')->middleware('throttle:10,1,api_v1-billing.pay')->name('pay');
+    Route::post('payments/verify', 'verify')->middleware('throttle:30,1,api_v1-billing.verify')->name('verify');
     Route::get('payments', 'payments')->name('payments');
     Route::get('payments/{payment}/receipt', 'receipt')->whereNumber('payment')->name('payments.receipt');
 });

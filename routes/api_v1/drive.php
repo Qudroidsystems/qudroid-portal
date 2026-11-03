@@ -13,7 +13,7 @@ Route::prefix('drive')->name('drive.')->middleware('permission:Use connect')->gr
     Route::get('trash', [DriveApiController::class, 'trash'])->name('trash');
     Route::get('people', [DriveApiController::class, 'people'])->name('people');
     Route::post('folders', [DriveApiController::class, 'storeFolder'])->name('folders.store');
-    Route::post('files', [DriveApiController::class, 'upload'])->middleware('throttle:120,1')->name('upload');
+    Route::post('files', [DriveApiController::class, 'upload'])->middleware('throttle:120,1,api_v1-drive.upload')->name('upload');
     Route::get('files/{file}', [DriveApiController::class, 'file'])->name('file');
     Route::get('files/{file}/download', [DriveApiController::class, 'download'])->name('download');
 

@@ -21,7 +21,7 @@ Route::prefix('drive')->name('drive.')->middleware('permission:Use connect')->gr
     Route::get('/projects/{project}', [DriveController::class, 'project'])->name('project');
 
     Route::post('/folders', [DriveController::class, 'storeFolder'])->name('folders.store');
-    Route::post('/upload', [DriveController::class, 'upload'])->middleware('throttle:120,1')->name('upload');
+    Route::post('/upload', [DriveController::class, 'upload'])->middleware('throttle:120,1,modules-drive.upload')->name('upload');
     Route::get('/folders/{folder}', [DriveController::class, 'folder'])->name('folder');
     Route::get('/folders/{folder}/zip', [DriveController::class, 'zip'])->name('folder.zip');
 

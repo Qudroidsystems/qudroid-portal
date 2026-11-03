@@ -16,16 +16,16 @@ Route::prefix('connect')->name('connect.')->middleware('permission:Use connect|C
     Route::delete('messages/{message}', [ConnectApiController::class, 'destroy'])->name('destroy');
     Route::get('messages/{message}/file', [ConnectApiController::class, 'file'])->name('file');
 
-    Route::get('poll', [ConnectApiController::class, 'poll'])->middleware('throttle:120,1')->name('poll');
+    Route::get('poll', [ConnectApiController::class, 'poll'])->middleware('throttle:120,1,api_v1-connect.poll')->name('poll');
     Route::get('search', [ConnectApiController::class, 'search'])->name('search');
     Route::get('saved', [ConnectApiController::class, 'saved'])->name('saved');
-    Route::get('gifs', [ConnectApiController::class, 'gifs'])->middleware('throttle:60,1')->name('gifs');
+    Route::get('gifs', [ConnectApiController::class, 'gifs'])->middleware('throttle:60,1,api_v1-connect.gifs')->name('gifs');
     Route::post('conversations', [ConnectApiController::class, 'create'])->name('create');
     Route::get('conversations/{conversation}/members', [ConnectApiController::class, 'members'])->name('members');
     Route::post('conversations/{conversation}/members', [ConnectApiController::class, 'addMembers'])->name('members.add');
     Route::delete('conversations/{conversation}/members/{user}', [ConnectApiController::class, 'removeMember'])->name('members.remove');
     Route::post('conversations/{conversation}/mute', [ConnectApiController::class, 'mute'])->name('mute');
-    Route::post('conversations/{conversation}/typing', [ConnectApiController::class, 'typing'])->middleware('throttle:60,1')->name('typing');
+    Route::post('conversations/{conversation}/typing', [ConnectApiController::class, 'typing'])->middleware('throttle:60,1,api_v1-connect.typing')->name('typing');
     Route::get('conversations/{conversation}/messages/{message}/thread', [ConnectApiController::class, 'thread'])->name('thread');
     Route::put('messages/{message}', [ConnectApiController::class, 'edit'])->name('edit');
     Route::post('messages/{message}/vote', [ConnectApiController::class, 'vote'])->name('vote');
@@ -34,15 +34,16 @@ Route::prefix('connect')->name('connect.')->middleware('permission:Use connect|C
     Route::post('messages/{message}/save', [ConnectApiController::class, 'save'])->name('save');
 });
 
-// Calls (voice, video, huddles and meeting calls).
+// Calls (voice, video, huddles and meeting calls). The once-a-second check-in and the set-up
+// messages have their own limits and stay out of the general 120-a-minute API limit.
 Route::prefix('calls')->name('calls.')->middleware('permission:Use connect|Chat as a guest')->group(function () {
     Route::get('ice-servers', [CallApiController::class, 'iceServers'])->name('ice');
-    Route::get('ringing', [CallApiController::class, 'ringing'])->middleware('throttle:60,1')->name('ringing');
-    Route::post('/', [CallApiController::class, 'start'])->middleware('throttle:20,1')->name('start');
+    Route::get('ringing', [CallApiController::class, 'ringing'])->middleware('throttle:60,1,api_v1-connect.ringing')->name('ringing');
+    Route::post('/', [CallApiController::class, 'start'])->middleware('throttle:20,1,api_v1-connect.start')->name('start');
     Route::get('{call}', [CallApiController::class, 'show'])->whereNumber('call')->name('show');
     Route::post('{call}/join', [CallApiController::class, 'join'])->whereNumber('call')->name('join');
     Route::post('{call}/leave', [CallApiController::class, 'leave'])->whereNumber('call')->name('leave');
     Route::post('{call}/decline', [CallApiController::class, 'decline'])->whereNumber('call')->name('decline');
-    Route::post('{call}/signal', [CallApiController::class, 'signal'])->whereNumber('call')->middleware('throttle:600,1')->name('signal');
-    Route::get('{call}/signals', [CallApiController::class, 'signals'])->whereNumber('call')->middleware('throttle:200,1')->name('signals');
+    Route::post('{call}/signal', [CallApiController::class, 'signal'])->whereNumber('call')->middleware('throttle:600,1,api_v1-connect.signal')->withoutMiddleware('throttle:120,1,api')->name('signal');
+    Route::get('{call}/signals', [CallApiController::class, 'signals'])->whereNumber('call')->middleware('throttle:200,1,api_v1-connect.signals')->withoutMiddleware('throttle:120,1,api')->name('signals');
 });

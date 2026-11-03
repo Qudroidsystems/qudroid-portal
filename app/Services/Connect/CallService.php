@@ -37,8 +37,12 @@ class CallService
         $servers = [];
         $stun = config('qudroid.calls.stun', []);
         if ($stun) $servers[] = ['urls' => array_values($stun)];
-        if ($url = config('qudroid.calls.turn_url')) {
-            $servers[] = ['urls' => $url, 'username' => (string) config('qudroid.calls.turn_username'), 'credential' => (string) config('qudroid.calls.turn_credential')];
+        // A TURN relay carries the sound and picture when the two networks can't reach each other
+        // directly (mobile data, office firewalls). Several addresses may be listed, comma-separated,
+        // e.g. turn:host:3478,turn:host:443?transport=tcp,turns:host:443?transport=tcp
+        $turn = array_values(array_filter(array_map('trim', explode(',', (string) config('qudroid.calls.turn_url')))));
+        if ($turn) {
+            $servers[] = ['urls' => $turn, 'username' => (string) config('qudroid.calls.turn_username'), 'credential' => (string) config('qudroid.calls.turn_credential')];
         }
 
         return $servers;
@@ -239,16 +243,20 @@ class CallService
 
     /**
      * Tidy a live call: people silent for too long have left, and a call with nobody in it has
-     * ended (a call nobody has answered keeps ringing for a minute). Returns true when it has ended.
+     * ended (a call nobody has answered keeps ringing for a minute). A direct or group call also ends
+     * once only one person is left after others had answered. Returns true when it has ended.
      */
     public function sweep(Call $call): bool
     {
         if ($call->ended_at) return true;
         CallPerson::where('call_id', $call->id)->whereNotNull('joined_at')->whereNull('left_at')
             ->where('seen_at', '<', now()->subSeconds(self::STALE_SECONDS))->update(['left_at' => now()]);
-        $anyone = CallPerson::where('call_id', $call->id)->whereNotNull('joined_at')->whereNull('left_at')->exists();
+        $inCall = CallPerson::where('call_id', $call->id)->whereNotNull('joined_at')->whereNull('left_at')->count();
         $fresh = $call->started_at->gt(now()->subSeconds(self::RING_SECONDS)) && !CallPerson::where('call_id', $call->id)->whereNotNull('joined_at')->exists();
-        if ($anyone || $fresh) return false;
+        // A direct or group call ends for everyone once the others have hung up and one person is left
+        // on their own. Huddles, channel calls and meeting calls stay open for people to drop in and out.
+        if ($inCall === 1 && $this->endsWhenAlone($call)) $inCall = 0;
+        if ($inCall > 0 || $fresh) return false;
 
         $this->end($call);
 
@@ -285,6 +293,14 @@ class CallService
         $c->update(['last_message_id' => $m->id, 'last_message_at' => $m->created_at]);
 
         return $m;
+    }
+
+    /** Calls that end when everyone else has hung up: direct and group calls that someone answered. */
+    protected function endsWhenAlone(Call $call): bool
+    {
+        $c = $call->conversation;
+
+        return !$call->is_huddle && (int) $call->peak_people >= 2 && $c && $c->type !== 'channel' && $c->meeting_id === null;
     }
 
     protected function isIn(Call $call, int $userId): bool

@@ -89,7 +89,7 @@ return [
     */
     'calls' => [
         'stun' => array_values(array_filter(explode(',', (string) env('QUDROID_STUN_URLS', 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302')))),
-        'turn_url'        => env('QUDROID_TURN_URL'),            // e.g. turn:turn.example.com:3478
+        'turn_url'        => env('QUDROID_TURN_URL'),            // e.g. turn:turn.example.com:3478,turns:turn.example.com:443?transport=tcp (comma-separated)
         'turn_username'   => env('QUDROID_TURN_USERNAME'),
         'turn_credential' => env('QUDROID_TURN_CREDENTIAL'),
         // People per call. Each browser sends to every other one, so keep this small.

@@ -61,8 +61,9 @@ test('a call rings the other person, passes set-up messages between the two, and
     // signals only go to people in the call
     $this->actingAs($this->ada)->postJson(route('connect.calls.signal', $call), ['to' => $this->cy->id, 'type' => 'offer'])->assertUnprocessable();
 
+    // Ben hangs up: the call ends for Ada too, and her next check-in says so
     $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $call))->assertOk();
-    expect($call->refresh()->ended_at)->toBeNull();
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', true);
     $this->actingAs($this->ada)->postJson(route('connect.calls.leave', $call))->assertOk();
     expect($call->refresh()->ended_at)->not->toBeNull()
         ->and(Message::where('is_system', true)->latest('id')->value('body'))->toStartWith('Call ended')
@@ -87,11 +88,15 @@ test('declining a direct call ends it; people who go quiet drop out and an empty
     expect($call->refresh()->ended_at)->toBeNull();
     $this->actingAs($this->cy)->get(route('connect.show', $group))->assertOk()->assertSee('"huddle":false', false);   // the live-call bar (drawn by the page)
 
-    // Ben's tab closed without leaving: after 30 seconds he drops out
+    // Ben's tab closed without leaving: after 30 seconds he drops out, Ada is on her own and the call ends
     CallPerson::where('user_id', $this->ben->id)->update(['seen_at' => now()->subMinute()]);
-    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonCount(1, 'people')->assertJsonPath('ended', false);
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', true);
+    $this->actingAs($this->cy)->get(route('connect.show', $group))->assertOk()->assertDontSee('call in progress');
+    expect($call->refresh()->ended_at)->not->toBeNull();
 
-    // then Ada's goes quiet too, and the next check ends the call
+    // an empty call nobody is checking in to ends too
+    $call = app(\App\Services\Connect\CallService::class)->start($group, $this->ada, 'video');
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call));
     CallPerson::where('user_id', $this->ada->id)->update(['seen_at' => now()->subMinute()]);
     $this->travel(2)->minutes();
     $this->actingAs($this->cy)->get(route('connect.show', $group))->assertOk()->assertDontSee('call in progress');
@@ -128,4 +133,71 @@ test('a huddle is a voice room in a group that rings nobody and shows who is in 
     $this->actingAs($this->ben)->getJson(route('connect.poll', $group))->assertJsonPath('call', null);
     expect(\App\Models\Connect\Message::where('conversation_id', $group->id)->where('is_system', true)->latest('id')->value('body'))->toStartWith('Huddle ended');
     $this->actingAs($this->out ?? $this->cy)->postJson(route('connect.huddle', $this->connect->direct($this->ben, $this->cy)))->assertOk();
+});
+
+test('when one person hangs up a direct or group call ends for everyone; a call with three carries on', function () {
+    $calls = app(\App\Services\Connect\CallService::class);
+    $group = $this->connect->group($this->ada, 'Team', [$this->ben->id, $this->cy->id]);
+    $call = $calls->start($group, $this->ada, 'video');
+    foreach ([$this->ada, $this->ben, $this->cy] as $u) $this->actingAs($u)->postJson(route('connect.calls.join', $call))->assertOk();
+
+    // three in: one leaving leaves two talking
+    $this->actingAs($this->cy)->postJson(route('connect.calls.leave', $call))->assertOk();
+    expect($call->refresh()->ended_at)->toBeNull();
+    // two in: the other hangs up and it is over for Ada, with a "Call ended" note in the chat
+    $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $call))->assertOk();
+    expect($call->refresh()->ended_at)->not->toBeNull()
+        ->and(Message::where('conversation_id', $group->id)->where('is_system', true)->latest('id')->value('body'))->toStartWith('Call ended');
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', true);
+
+    // the caller waiting alone for an answer is not cut off
+    $call = $calls->start($this->direct, $this->ada, 'audio');
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', false);
+    // and the caller hanging up ends it for the person who answered (the phone app gets the same answer)
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ada)->postJson(route('connect.calls.leave', $call));
+    \Laravel\Sanctum\Sanctum::actingAs($this->ben);
+    $this->getJson('/api/v1/calls/' . $call->id . '/signals')->assertJsonPath('data.ended', true);
+});
+
+test('a huddle stays open when only one person is left in it', function () {
+    $group = $this->connect->group($this->ada, 'Team', [$this->ben->id]);
+    $call = app(\App\Services\Connect\CallService::class)->huddle($group, $this->ada);
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $call));
+    expect($call->refresh()->ended_at)->toBeNull();
+});
+
+test('checking in every second during a call does not use up the limits on ringing or starting a call', function () {
+    $call = app(\App\Services\Connect\CallService::class)->start($this->direct, $this->ada, 'video');
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $call));
+    // a minute and a half of check-ins and set-up messages
+    for ($i = 0; $i < 90; $i++) $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertOk();
+    for ($i = 0; $i < 30; $i++) $this->actingAs($this->ada)->postJson(route('connect.calls.signal', $call), ['to' => $this->ben->id, 'type' => 'ice', 'payload' => '[]'])->assertOk();
+    $this->actingAs($this->ada)->getJson(route('connect.calls.ringing'))->assertOk();
+    $this->actingAs($this->ada)->postJson(route('connect.calls.start', $this->direct))->assertOk();
+    $this->actingAs($this->ada)->getJson(route('connect.poll'))->assertOk();
+});
+
+test('several TURN relay addresses can be listed', function () {
+    config(['qudroid.calls.turn_url' => 'turn:relay.example.com:3478, turns:relay.example.com:443?transport=tcp', 'qudroid.calls.turn_username' => 'u', 'qudroid.calls.turn_credential' => 'p']);
+    $servers = app(\App\Services\Connect\CallService::class)->iceServers();
+    expect(end($servers))->toBe(['urls' => ['turn:relay.example.com:3478', 'turns:relay.example.com:443?transport=tcp'], 'username' => 'u', 'credential' => 'p']);
+});
+
+test('the phone app checking in during a call does not use up its general API limit', function () {
+    $call = app(\App\Services\Connect\CallService::class)->start($this->direct, $this->ada, 'video');
+    \Laravel\Sanctum\Sanctum::actingAs($this->ada);
+    $this->postJson('/api/v1/calls/' . $call->id . '/join')->assertOk();
+    \Laravel\Sanctum\Sanctum::actingAs($this->ben);
+    $this->postJson('/api/v1/calls/' . $call->id . '/join')->assertOk();
+    \Laravel\Sanctum\Sanctum::actingAs($this->ada);
+    // two minutes of once-a-second check-ins, plus set-up messages
+    for ($i = 0; $i < 120; $i++) $this->getJson('/api/v1/calls/' . $call->id . '/signals')->assertOk();
+    for ($i = 0; $i < 20; $i++) $this->postJson('/api/v1/calls/' . $call->id . '/signal', ['to_user_id' => $this->ben->id, 'type' => 'ice', 'payload' => []])->assertOk();
+    $this->getJson('/api/v1/calls/ringing')->assertOk();
+    $this->getJson('/api/v1/auth/me')->assertOk();
 });

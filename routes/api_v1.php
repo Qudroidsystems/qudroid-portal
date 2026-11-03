@@ -47,12 +47,12 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1,api'])->group(f
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread');
     Route::get('me/status', [\App\Http\Controllers\Api\V1\StatusController::class, 'show'])->name('status.show');
-    Route::post('me/status', [\App\Http\Controllers\Api\V1\StatusController::class, 'update'])->middleware('throttle:60,1')->name('status.update');
+    Route::post('me/status', [\App\Http\Controllers\Api\V1\StatusController::class, 'update'])->middleware('throttle:60,1,api_v1.status.update')->name('status.update');
     Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::post('notifications/{id}/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::delete('notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::post('notifications/clear-read', [NotificationController::class, 'clearRead'])->name('notifications.clear-read');
-    Route::post('notifications/{id}/actions/{action}', [NotificationController::class, 'act'])->where('action', '[a-z_]{2,20}')->middleware('throttle:60,1')->name('notifications.act');
+    Route::post('notifications/{id}/actions/{action}', [NotificationController::class, 'act'])->where('action', '[a-z_]{2,20}')->middleware('throttle:60,1,api_v1.notifications.act')->name('notifications.act');
     Route::get('notifications/settings', [NotificationController::class, 'settings'])->name('notifications.settings');
     Route::put('notifications/settings', [NotificationController::class, 'updateSettings'])->name('notifications.settings.update');
     Route::delete('notifications', [NotificationController::class, 'clearRead'])->name('notifications.clear');

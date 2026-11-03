@@ -11,7 +11,7 @@ Route::prefix('admin/settings')->name('portal-settings.')->group(function () {
         Route::post('/payments/test', [SettingsController::class, 'testPayments'])->name('payments.test');
         Route::post('/payments/env', [SettingsController::class, 'useEnv'])->name('payments.env');
         Route::post('/payments/opay', [SettingsController::class, 'saveOpay'])->name('payments.opay');
-        Route::post('/payments/opay/test', [SettingsController::class, 'testOpay'])->middleware('throttle:10,1')->name('payments.opay.test');
+        Route::post('/payments/opay/test', [SettingsController::class, 'testOpay'])->middleware('throttle:10,1,modules-settings.payments.opay.test')->name('payments.opay.test');
 
         Route::get('/integrations', [SettingsController::class, 'integrations'])->name('integrations');
         Route::post('/integrations', [SettingsController::class, 'saveIntegrations'])->name('integrations.save');
@@ -23,7 +23,7 @@ Route::prefix('admin/settings')->name('portal-settings.')->group(function () {
     Route::middleware('permission:Manage settings|Manage mail')->group(function () {
         Route::get('/mail', [SettingsController::class, 'mail'])->name('mail');
         Route::post('/mail', [SettingsController::class, 'saveMail'])->name('mail.save');
-        Route::post('/mail/test', [SettingsController::class, 'testMail'])->middleware('throttle:10,1')->name('mail.test');
+        Route::post('/mail/test', [SettingsController::class, 'testMail'])->middleware('throttle:10,1,modules-settings.mail.test')->name('mail.test');
     });
     Route::middleware('permission:Manage settings|Manage payroll')->group(function () {
         Route::get('/payroll', [SettingsController::class, 'payroll'])->name('payroll');

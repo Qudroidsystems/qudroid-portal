@@ -76,12 +76,16 @@ test('a recording whose recorder leaves is kept with what was uploaded; an empty
     $id = $this->actingAs($this->ada)->postJson(route('connect.recordings.start', $this->call), ['mime' => 'audio/webm'])->json('id');
     $this->actingAs($this->ada)->post(route('connect.recordings.chunk', $id), ['seq' => 0, 'piece' => UploadedFile::fake()->createWithContent('p', 'abc')]);
     $this->actingAs($this->ada)->postJson(route('connect.calls.leave', $this->call));
-    expect(CallRecording::find($id)->status)->toBe('ready');
+    expect(CallRecording::find($id)->status)->toBe('ready')
+        ->and($this->call->fresh()->ended_at)->not->toBeNull();   // Ben was left on his own, so the call ended
 
-    // Ben records nothing, then the call ends
-    $id2 = $this->actingAs($this->ben)->postJson(route('connect.recordings.start', $this->call), ['mime' => 'audio/webm'])->json('id');
-    $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $this->call));
-    expect($this->call->fresh()->ended_at)->not->toBeNull()->and(CallRecording::find($id2)->status)->toBe('failed');
+    // a recording that got nothing before the call ended is dropped
+    $call = app(\App\Services\Connect\CallService::class)->start($this->call->conversation, $this->ada, 'audio');
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $call));
+    $id2 = $this->actingAs($this->ben)->postJson(route('connect.recordings.start', $call), ['mime' => 'audio/webm'])->json('id');
+    $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $call));
+    expect($call->fresh()->ended_at)->not->toBeNull()->and(CallRecording::find($id2)->status)->toBe('failed');
 });
 
 test('the transcript writes down each person, shows as captions, and becomes shared notes', function () {

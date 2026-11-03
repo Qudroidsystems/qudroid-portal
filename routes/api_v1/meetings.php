@@ -8,7 +8,7 @@ Route::prefix('meetings')->name('meetings.')->middleware('permission:View meetin
     Route::get('/', [MeetingApiController::class, 'index'])->name('index');
     Route::get('calendar', [MeetingApiController::class, 'calendar'])->name('calendar');
     Route::get('people', [MeetingApiController::class, 'people'])->name('people');
-    Route::post('/', [MeetingApiController::class, 'store'])->middleware('throttle:30,1')->name('store');
+    Route::post('/', [MeetingApiController::class, 'store'])->middleware('throttle:30,1,api_v1-meetings.store')->name('store');
     Route::put('{meeting}', [MeetingApiController::class, 'update'])->whereNumber('meeting')->name('update');
     Route::delete('{meeting}', [MeetingApiController::class, 'destroy'])->whereNumber('meeting')->name('destroy');
     Route::get('{meeting}', [MeetingApiController::class, 'show'])->whereNumber('meeting')->name('show');

@@ -179,9 +179,23 @@
         return [all.find(t => t.receiver.track.kind === 'audio'), all.find(t => t.receiver.track.kind === 'video')];
     }
 
+    // Set-up messages go one after another, so network candidates never overtake the offer they
+    // belong to (the other side would drop them and the call would have no sound or picture).
+    // A message the server turns away (busy, or too many at once) is tried again.
+    let outbox = Promise.resolve();
     function send(to, type, payload) {
-        return fetch(URLS.signal, { method: 'POST', headers, body: JSON.stringify({ to, type, payload: payload == null ? null : JSON.stringify(payload) }) });
+        const body = JSON.stringify({ to, type, payload: payload == null ? null : JSON.stringify(payload) });
+        const post = async () => {
+            for (let tries = 0; tries < 4; tries++) {
+                const r = await fetch(URLS.signal, { method: 'POST', headers, body }).catch(() => null);
+                if (r && (r.ok || r.status === 422 || r.status === 403)) return;
+                await new Promise(res => setTimeout(res, 600 * (tries + 1)));
+            }
+        };
+        outbox = outbox.then(post, post);
+        return outbox;
     }
+    const early = new Map();   // userId -> candidates that came before their offer
 
     function peer(id) {
         close(id);
@@ -194,14 +208,19 @@
             p.flush = setTimeout(() => { const list = p.outIce.splice(0); if (list.length) send(id, 'ice', list); }, 250);
         };
         pc.ontrack = e => {
-            p.stream.getTracks().filter(t => t.kind === e.track.kind).forEach(t => p.stream.removeTrack(t));
-            p.stream.addTrack(e.track);
+            // A fresh stream each time: some browsers ignore tracks added to a stream already playing.
+            p.stream = new MediaStream([...p.stream.getTracks().filter(t => t.kind !== e.track.kind), e.track]);
             e.track.onunmute = () => render(id);
             e.track.onmute = () => render(id);
             render(id);
         };
+        let dropped = null;
         pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'failed' && ME < id) setTimeout(() => { if (peers.get(id)?.pc === pc) call(id); }, 1500);
+            const st = pc.connectionState;
+            if (st === 'failed' && ME < id) setTimeout(() => { if (peers.get(id)?.pc === pc) call(id); }, 1500);
+            // A link that stays "disconnected" (a network switch, say) is set up again too.
+            clearTimeout(dropped);
+            if (st === 'disconnected' && ME < id) dropped = setTimeout(() => { if (peers.get(id)?.pc === pc && pc.connectionState !== 'connected') call(id); }, 6000);
             render(id);
         };
         peers.set(id, p);
@@ -227,16 +246,19 @@
             applyTracks();
             await p.pc.setLocalDescription(await p.pc.createAnswer());
             send(from, 'answer', p.pc.localDescription);
+            p.pendingIce.push(...(early.get(from) || [])); early.delete(from);
             for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {});
         } else if (s.type === 'answer') {
             const p = peers.get(from); if (!p) return;
             await p.pc.setRemoteDescription(data).catch(() => {});
             for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {});
         } else if (s.type === 'ice') {
-            const p = peers.get(from); if (!p) return;
+            const p = peers.get(from);
+            if (!p) { early.set(from, [...(early.get(from) || []), ...(data || [])]); return; }
             for (const c of data || []) p.pc.remoteDescription ? p.pc.addIceCandidate(c).catch(() => {}) : p.pendingIce.push(c);
         } else if (s.type === 'bye') {
             close(from); render(from);
+            setTimeout(check, 300);   // in a one-to-one call this ends the call here too
         }
     }
 
@@ -287,7 +309,17 @@
         const state = !p ? 'Connecting…' : ({ connecting: 'Connecting…', failed: 'Reconnecting…', disconnected: 'Reconnecting…' })[p.pc.connectionState] || '';
         el.querySelector('.state').textContent = state;
         el.querySelector('.state').classList.toggle('hidden', !state);
-        v.play?.().catch(() => {});
+        v.play?.().catch(e => { if (e && e.name === 'NotAllowedError') soundBlocked(); });
+    }
+    // Browsers may block sound until the page is clicked; one tap starts everyone's audio.
+    function soundBlocked() {
+        if ($('soundBtn')) return;
+        const b = document.createElement('button');
+        b.id = 'soundBtn'; b.className = 'btn btn-warning';
+        b.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:6';
+        b.innerHTML = '<i class="ri-volume-up-line"></i> Tap to hear the call';
+        b.onclick = () => { document.querySelectorAll('#grid video').forEach(v => v.play?.().catch(() => {})); b.remove(); };
+        document.body.appendChild(b);
     }
 
     // ── Joining, checking in, leaving ──────────────────────────────────
@@ -344,6 +376,7 @@
         inCall = false; clearInterval(timer);
         for (const id of peers.keys()) send(id, 'bye');
         [...peers.keys()].forEach(close);
+        early.clear();
         if (beacon) { const f = new FormData(); f.append('_token', token); navigator.sendBeacon(URLS.leave, f); }
         else fetch(URLS.leave, { method: 'POST', headers });
     }

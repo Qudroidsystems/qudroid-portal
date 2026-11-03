@@ -9,5 +9,5 @@ use Illuminate\Support\Facades\Route;
 | excluded in bootstrap/app.php); each handler checks the provider's signature.
 */
 
-Route::post('/webhook/paystack', PaystackWebhookController::class)->middleware('throttle:120,1')->name('webhooks.paystack');
-Route::post('/webhook/opay', OpayWebhookController::class)->middleware('throttle:120,1')->name('webhooks.opay');
+Route::post('/webhook/paystack', PaystackWebhookController::class)->middleware('throttle:120,1,webhooks.webhooks.paystack')->name('webhooks.paystack');
+Route::post('/webhook/opay', OpayWebhookController::class)->middleware('throttle:120,1,webhooks.webhooks.opay')->name('webhooks.opay');

@@ -107,8 +107,8 @@ Route::prefix('academy')->name('academy.')->group(function () {
 
         // Quizzes and assignments (access checked in LearnAssessmentController / AssessmentService)
         Route::get('/learn/{course}/assessments/{assessment}', [LearnAssessmentController::class, 'show'])->name('learn.assessment');
-        Route::post('/learn/{course}/assessments/{assessment}/start', [LearnAssessmentController::class, 'start'])->middleware('throttle:20,1')->name('learn.start');
-        Route::post('/learn/{course}/assessments/{assessment}/hand-in', [LearnAssessmentController::class, 'handIn'])->middleware('throttle:20,1')->name('learn.hand-in');
+        Route::post('/learn/{course}/assessments/{assessment}/start', [LearnAssessmentController::class, 'start'])->middleware('throttle:20,1,modules-academy.learn.start')->name('learn.start');
+        Route::post('/learn/{course}/assessments/{assessment}/hand-in', [LearnAssessmentController::class, 'handIn'])->middleware('throttle:20,1,modules-academy.learn.hand-in')->name('learn.hand-in');
         Route::get('/learn/{course}/assessments/{assessment}/my-file', [LearnAssessmentController::class, 'file'])->name('learn.my-file');
         Route::get('/learn/{course}/attempts/{attempt}', [LearnAssessmentController::class, 'attempt'])->name('learn.attempt');
         Route::post('/learn/{course}/attempts/{attempt}', [LearnAssessmentController::class, 'submit'])->name('learn.submit');

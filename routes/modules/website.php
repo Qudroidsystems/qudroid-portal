@@ -32,7 +32,7 @@ Route::prefix('website')->name('website.')->middleware('permission:Manage websit
 
     Route::get('/media', [MediaController::class, 'index'])->name('media.index');
     Route::get('/media/list', [MediaController::class, 'list'])->name('media.list');
-    Route::post('/media', [MediaController::class, 'store'])->middleware('throttle:60,1')->name('media.store');
+    Route::post('/media', [MediaController::class, 'store'])->middleware('throttle:60,1,modules-website.media.store')->name('media.store');
     Route::patch('/media/{media}', [MediaController::class, 'update'])->name('media.update');
     Route::delete('/media/{media}', [MediaController::class, 'destroy'])->name('media.destroy');
 });
