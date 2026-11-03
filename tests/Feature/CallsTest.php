@@ -237,3 +237,14 @@ test('the caller is told when the person they are calling is on another call', f
     $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $other));
     $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('busy', []);
 });
+
+test('the phone app is told too when the person it is calling is on another call', function () {
+    $calls = app(\App\Services\Connect\CallService::class);
+    $other = $calls->start($this->connect->direct($this->ben, $this->cy), $this->cy, 'audio');
+    $this->actingAs($this->cy)->postJson(route('connect.calls.join', $other));
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $other));
+    $call = $calls->start($this->direct, $this->ada, 'video');
+    \Laravel\Sanctum\Sanctum::actingAs($this->ada);
+    $this->postJson('/api/v1/calls/' . $call->id . '/join')->assertOk();
+    $this->getJson('/api/v1/calls/' . $call->id . '/signals')->assertOk()->assertJsonPath('data.busy', ['Ben Eze']);
+});
