@@ -29,6 +29,8 @@ class CallService
 {
     public const STALE_SECONDS = 30;
     public const RING_SECONDS = 60;
+    /** Seconds a person whose page closed or reloaded keeps their place, so a reload doesn't end the call. */
+    public const RELOAD_GRACE = 15;
 
     public function __construct(protected ConnectService $connect) {}
 
@@ -180,11 +182,24 @@ class CallService
             ])->values(),
             'signals' => $signals,
             'duration' => $call->durationLabel(),
+            'busy' => $this->busyElsewhere($call, $me),
         ];
     }
 
-    public function leave(Call $call, User $me): void
+    /**
+     * Leave a call. A "soft" leave comes from a page that is closing or reloading: the person
+     * keeps their place for a few seconds, so a reload rejoins the same call; if they don't come
+     * back they drop out as usual (and a one-to-one call ends).
+     */
+    public function leave(Call $call, User $me, bool $soft = false): void
     {
+        if ($soft) {
+            CallPerson::where('call_id', $call->id)->where('user_id', $me->id)->whereNull('left_at')->whereNotNull('joined_at')
+                ->update(['seen_at' => now()->subSeconds(self::STALE_SECONDS - self::RELOAD_GRACE)]);
+            \App\Services\Realtime\Realtime::poke('call.' . $call->id, 'people', ['call_id' => $call->id]);
+
+            return;
+        }
         CallPerson::where('call_id', $call->id)->where('user_id', $me->id)->whereNull('left_at')->update(['left_at' => now()]);
         DB::table('connect_call_signals')->where('call_id', $call->id)->where(fn ($q) => $q->where('to_user_id', $me->id)->orWhere('from_user_id', $me->id))->delete();
         if (!$this->sweep($call)) app(CallRecordingService::class)->closeOrphans($call);
@@ -293,6 +308,24 @@ class CallService
         $c->update(['last_message_id' => $m->id, 'last_message_at' => $m->created_at]);
 
         return $m;
+    }
+
+    /**
+     * While you wait alone in a direct or group call: the names of the people you're calling who
+     * are in another call right now, so the call page can say so instead of just ringing.
+     */
+    public function busyElsewhere(Call $call, User $me): array
+    {
+        if ($call->ended_at || $call->is_huddle || $call->conversation?->type === 'channel') return [];
+        $here = $this->present($call)->pluck('user_id');
+        if ($here->reject(fn ($id) => $id === $me->id)->isNotEmpty()) return [];
+        $others = Participant::where('conversation_id', $call->conversation_id)->whereNull('left_at')->whereNotIn('user_id', $here->push($me->id))->pluck('user_id');
+        if ($others->isEmpty()) return [];
+
+        return CallPerson::with('user')->whereIn('user_id', $others)->where('call_id', '!=', $call->id)
+            ->whereNotNull('joined_at')->whereNull('left_at')->where('seen_at', '>=', now()->subSeconds(self::STALE_SECONDS))
+            ->whereHas('call', fn ($q) => $q->whereNull('ended_at'))
+            ->get()->map(fn ($p) => $p->user?->name)->filter()->unique()->values()->all();
     }
 
     /** Calls that end when everyone else has hung up: direct and group calls that someone answered. */

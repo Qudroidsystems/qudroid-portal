@@ -59,6 +59,8 @@
         #captions div.interim { opacity: .65; }
         #captions b { color: #5eead4; font-weight: 600; margin-right: 6px; }
         body.embed #captions { bottom: 64px; }
+        #busy { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 6; background: #2a2e37; color: #fde68a; padding: 8px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); text-align: center; }
+        .tile .state.bad { color: #fecaca; background: rgba(127,29,29,.75); }
         body.embed #captions div { font-size: 13px; }
     </style>
 </head>
@@ -72,6 +74,7 @@
     </header>
 
     <main id="grid" aria-label="People in the call"></main>
+    <div id="busy" class="hidden" role="status"><i class="ri-phone-lock-line"></i> <span></span></div>
     <div id="captions" aria-live="polite"></div>
 
     <footer>
@@ -133,11 +136,15 @@
     const token = document.querySelector('meta[name=csrf-token]').content;
     const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest' };
     const $ = id => document.getElementById(id);
+    // Remembers, for this tab only, that we are in the call, so a reload rejoins it.
+    const RELOAD_KEY = 'qcall:' + @json($call->id);
+    const remember = on => { try { on ? sessionStorage.setItem(RELOAD_KEY, '1') : sessionStorage.removeItem(RELOAD_KEY); } catch (e) {} };
+    const wasIn = () => { try { return sessionStorage.getItem(RELOAD_KEY) === '1'; } catch (e) { return false; } };
 
     const peers = new Map();       // userId -> { pc, stream, pendingIce, outIce, flush }
     const people = new Map();      // userId -> { name, avatar, mic, cam, screen }
     let mic = null, cam = null, screen = null;
-    let micOn = true, camOn = KIND === 'video', inCall = false, after = 0, timer = null;
+    let micOn = true, camOn = KIND === 'video', inCall = false, after = 0, timer = null, statsTimer = null;
 
     // ── Devices ────────────────────────────────────────────────────────
     async function openDevices() {
@@ -153,7 +160,7 @@
         if (preview) preview.srcObject = new MediaStream([mic, cam].filter(Boolean));
         $('lobbyNote').textContent = mic ? (cam ? 'Your camera and microphone are ready.' : 'Your microphone is ready.') : 'No microphone found. You can still listen and watch.';
         $('btnJoin').disabled = false;
-        if (EMBED) join();   // the person already chose to join from the chat
+        if (EMBED || wasIn()) join();   // already chose to join from the chat, or the page was reloaded mid-call
     }
     const outgoingVideo = () => screen || (camOn ? cam : null);
 
@@ -196,11 +203,14 @@
         return outbox;
     }
     const early = new Map();   // userId -> candidates that came before their offer
+    const linkSince = new Map();   // userId -> when we started trying to connect to them
+    const CANT_CONNECT_MS = 20000;
 
     function peer(id) {
         close(id);
         const pc = new RTCPeerConnection({ iceServers: ICE });
-        const p = { pc, stream: new MediaStream(), pendingIce: [], outIce: [], flush: null };
+        const p = { pc, stream: new MediaStream(), pendingIce: [], outIce: [], flush: null, quality: null };
+        if (!linkSince.has(id)) linkSince.set(id, Date.now());
         pc.onicecandidate = e => {
             if (!e.candidate) return;
             p.outIce.push(e.candidate.toJSON());
@@ -217,6 +227,7 @@
         let dropped = null;
         pc.onconnectionstatechange = () => {
             const st = pc.connectionState;
+            if (st === 'connected') linkSince.delete(id);
             if (st === 'failed' && ME < id) setTimeout(() => { if (peers.get(id)?.pc === pc) call(id); }, 1500);
             // A link that stays "disconnected" (a network switch, say) is set up again too.
             clearTimeout(dropped);
@@ -267,6 +278,41 @@
         if (p) { clearTimeout(p.flush); try { p.pc.close(); } catch (e) {} peers.delete(id); }
     }
 
+    // ── Link quality ───────────────────────────────────────────────────
+    // Every few seconds: packet loss and round-trip time per person. Video we send is capped by how
+    // many people we send to and by how the link is doing, so weak mobile links stay usable.
+    async function linkQuality() {
+        for (const [id, p] of [...peers]) {
+            if (p.pc.connectionState !== 'connected') { p.quality = null; continue; }
+            const stats = await p.pc.getStats().catch(() => null);
+            if (!stats || peers.get(id) !== p) continue;
+            let rtt = null, lost = 0, got = 0;
+            stats.forEach(r => {
+                if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded' && r.currentRoundTripTime != null) rtt = r.currentRoundTripTime;
+                if (r.type === 'inbound-rtp') { lost += r.packetsLost || 0; got += r.packetsReceived || 0; }
+            });
+            const dl = Math.max(0, lost - (p.lost || 0)), dg = Math.max(0, got - (p.got || 0));
+            p.lost = lost; p.got = got;
+            const loss = dl + dg > 20 ? dl / (dl + dg) : 0;
+            p.quality = (loss > 0.08 || rtt > 0.6) ? 'poor' : (loss > 0.03 || rtt > 0.3) ? 'fair' : 'good';
+            capVideo(p);
+            render(id);
+        }
+    }
+    function capVideo(p) {
+        const v = transceivers(p.pc)[1];
+        if (!v || !v.sender.track) return;
+        const params = v.sender.getParameters();
+        if (!params.encodings || !params.encodings.length) return;
+        const n = peers.size;
+        let cap = screen ? 2500000 : n > 2 ? 500000 : n > 1 ? 800000 : 1500000;
+        if (p.quality === 'poor') cap = screen ? 600000 : 250000;
+        else if (p.quality === 'fair') cap = Math.min(cap, screen ? 1200000 : 500000);
+        if (params.encodings[0].maxBitrate === cap) return;
+        params.encodings[0].maxBitrate = cap;
+        v.sender.setParameters(params).catch(() => {});
+    }
+
     // ── Tiles ──────────────────────────────────────────────────────────
     function tile(id) {
         let t = document.querySelector('.tile[data-id="' + id + '"]');
@@ -306,9 +352,14 @@
         el.querySelector('.face img').src = info.avatar || '';
         el.querySelector('.label span').textContent = (info.name || 'Someone') + (info.screen ? ' (sharing screen)' : '');
         el.querySelector('.label i').classList.toggle('hidden', info.mic);
-        const state = !p ? 'Connecting…' : ({ connecting: 'Connecting…', failed: 'Reconnecting…', disconnected: 'Reconnecting…' })[p.pc.connectionState] || '';
+        const cs = p ? p.pc.connectionState : 'new';
+        const stuck = cs !== 'connected' && linkSince.has(id) && Date.now() - linkSince.get(id) > CANT_CONNECT_MS;
+        let state = !p ? 'Connecting…' : ({ new: 'Connecting…', connecting: 'Connecting…', failed: 'Reconnecting…', disconnected: 'Reconnecting…' })[cs] || '';
+        if (stuck) state = 'Can\'t connect. A network or firewall may be blocking calls.';
+        else if (cs === 'connected' && p.quality === 'poor') state = 'Weak connection';
         el.querySelector('.state').textContent = state;
         el.querySelector('.state').classList.toggle('hidden', !state);
+        el.querySelector('.state').classList.toggle('bad', stuck || (cs === 'connected' && p.quality === 'poor'));
         v.play?.().catch(e => { if (e && e.name === 'NotAllowedError') soundBlocked(); });
     }
     // Browsers may block sound until the page is clicked; one tap starts everyone's audio.
@@ -331,6 +382,8 @@
         $('lobby').classList.add('hidden');
         $('ended').classList.add('hidden');
         inCall = true; after = 0;
+        remember(true);
+        clearInterval(statsTimer); statsTimer = setInterval(linkQuality, 3000);
         applyTracks();
         for (const id of j.others || []) { people.set(id, people.get(id) || { name: '', mic: true }); call(id); }
         loop();
@@ -358,13 +411,28 @@
             $('people').textContent = d.people?.length || 1;
             tones(people.size);
             $('timer').textContent = d.duration || '';
+            const busy = people.size === 0 && d.busy && d.busy.length ? d.busy : null;
+            $('busy').classList.toggle('hidden', !busy);
+            if (busy) $('busy').querySelector('span').textContent = busy.join(', ') + (busy.length > 1 ? ' are' : ' is') + ' on another call';
             extras(d);
             if (d.ended) return finish('The call has ended');
             if (!d.in) return finish('You were disconnected');
         } catch (e) {
         } finally { busy = false; if (again) { again = false; setTimeout(check, 0); } }
     }
-    function loop() { clearInterval(timer); check(); timer = setInterval(check, 1000); }
+    // Check in every second while links are being set up or when instant updates (Reverb) are off;
+    // otherwise every few seconds, since Reverb brings set-up messages and people joining at once.
+    function settled() {
+        if (!window.QRealtime || !QRealtime.connected) return false;
+        for (const p of peers.values()) if (p.pc.connectionState !== 'connected') return false;
+        return people.size === peers.size;
+    }
+    function loop() {
+        clearTimeout(timer);
+        if (!inCall) return;
+        check();
+        timer = setTimeout(loop, settled() ? 4000 : 1000);
+    }
     // Instant updates: offers, answers and people joining arrive without waiting for the next second.
     if (window.QRealtime) {
         QRealtime.on('user.' + ME, 'signal', d => { if (!d || d.call_id == @json($call->id)) check(); });
@@ -373,12 +441,14 @@
 
     function hangUp(beacon) {
         if (!inCall) return;
-        inCall = false; clearInterval(timer);
+        inCall = false; clearTimeout(timer); clearInterval(statsTimer);
         for (const id of peers.keys()) send(id, 'bye');
         [...peers.keys()].forEach(close);
-        early.clear();
-        if (beacon) { const f = new FormData(); f.append('_token', token); navigator.sendBeacon(URLS.leave, f); }
-        else fetch(URLS.leave, { method: 'POST', headers });
+        early.clear(); linkSince.clear();
+        // A closing or reloading page keeps its place for a few seconds (a reload rejoins);
+        // hanging up leaves once the goodbyes have gone.
+        if (beacon) { const f = new FormData(); f.append('_token', token); f.append('soft', '1'); navigator.sendBeacon(URLS.leave, f); }
+        else outbox.then(() => fetch(URLS.leave, { method: 'POST', headers }));
     }
     // Ringback while you wait alone (up to a minute), a blip when someone joins, falling beeps at the end.
     let stopRingback = null, waitedFrom = null, lastCount = 0;
@@ -392,6 +462,8 @@
         lastCount = others;
     }
     function finish(text) {
+        remember(false);
+        $('busy').classList.add('hidden');
         stopRecording();
         listen(false);
         if (stopRingback) { stopRingback(); stopRingback = null; }

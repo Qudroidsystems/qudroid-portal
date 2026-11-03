@@ -201,3 +201,39 @@ test('the phone app checking in during a call does not use up its general API li
     $this->getJson('/api/v1/calls/ringing')->assertOk();
     $this->getJson('/api/v1/auth/me')->assertOk();
 });
+
+test('a page that reloads mid-call keeps its place for a few seconds; one that never comes back drops out', function () {
+    $call = app(\App\Services\Connect\CallService::class)->start($this->direct, $this->ada, 'video');
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $call));
+
+    // Ben's page reloads: the call carries on and he rejoins the same call
+    $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $call), ['soft' => 1])->assertOk();
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', false)->assertJsonCount(2, 'people');
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $call))->assertOk()->assertJsonPath('others', [$this->ada->id]);
+    $this->travel(20)->seconds();
+    $this->actingAs($this->ben)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', false);
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', false)->assertJsonCount(2, 'people');
+
+    // Ben's tab closes for good: a little later the call ends for Ada
+    $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $call), ['soft' => 1])->assertOk();
+    $this->travel(\App\Services\Connect\CallService::RELOAD_GRACE + 1)->seconds();
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('ended', true);
+});
+
+test('the caller is told when the person they are calling is on another call', function () {
+    $calls = app(\App\Services\Connect\CallService::class);
+    // Ben is talking to Cy
+    $other = $calls->start($this->connect->direct($this->ben, $this->cy), $this->cy, 'audio');
+    $this->actingAs($this->cy)->postJson(route('connect.calls.join', $other));
+    $this->actingAs($this->ben)->postJson(route('connect.calls.join', $other));
+
+    // Ada calls Ben and waits
+    $call = $calls->start($this->direct, $this->ada, 'video');
+    $this->actingAs($this->ada)->postJson(route('connect.calls.join', $call));
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('busy', ['Ben Eze']);
+
+    // once Ben is free, or has joined, nothing is said
+    $this->actingAs($this->ben)->postJson(route('connect.calls.leave', $other));
+    $this->actingAs($this->ada)->getJson(route('connect.calls.poll', $call))->assertJsonPath('busy', []);
+});

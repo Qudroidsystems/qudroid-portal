@@ -82,7 +82,7 @@ class CallController extends Controller
 
     public function leave(Request $request, Call $call)
     {
-        $this->calls->leave($call, $request->user());
+        $this->calls->leave($call, $request->user(), $request->boolean('soft'));
 
         return $request->expectsJson() ? response()->json(['ok' => true]) : redirect()->route('connect.show', $call->conversation_id);
     }
