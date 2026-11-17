@@ -8,9 +8,13 @@
             @if($payment->status === 'confirmed')
                 <i class="ri-checkbox-circle-fill" style="font-size:64px;color:#1db954"></i>
                 <h1 class="s-headline">Payment received.</h1>
-                <p class="s-sub">Thank you. We received {{ $money }}@if($payment->invoice?->enrollment?->course) for {{ $payment->invoice->enrollment->course->title }}@endif.</p>
-                <p class="s-lead">Receipt {{ $payment->number ?: $payment->reference }}. Sign in to see your receipts and your course.</p>
-                <div class="s-ctas"><a class="s-btn" href="{{ route('login') }}">Sign in</a></div>
+                @php($courses = $payment->invoice?->enrollments->map(fn ($e) => $e->course?->title)->filter()->implode(', '))
+                <p class="s-sub">Thank you. We received {{ $money }}@if($courses) for {{ $courses }}@endif.</p>
+                <p class="s-lead">Receipt {{ $payment->number ?: $payment->reference }}. We have e-mailed it to you. Sign in to see your receipts and your courses.</p>
+                <div class="s-ctas">
+                    @if($payment->number)<a class="s-btn" href="{{ \App\Services\Finance\ReceiptMailer::downloadUrl($payment) }}"><i class="ri-download-2-line"></i> Download receipt</a>@endif
+                    <a class="s-btn is-ghost" href="{{ route('login') }}">Sign in</a>
+                </div>
             @elseif($problem || $payment->status === 'pending')
                 <i class="ri-time-line" style="font-size:64px;color:#f5a623"></i>
                 <h1 class="s-headline">Almost there.</h1>

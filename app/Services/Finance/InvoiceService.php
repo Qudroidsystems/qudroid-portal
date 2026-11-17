@@ -39,6 +39,7 @@ class InvoiceService
                 $subtotal += $gross;
                 $discounts += $discount;
                 $rows[] = [
+                    'enrollment_id' => $l['enrollment_id'] ?? $options['enrollment_id'] ?? null,
                     'description' => mb_substr(trim($l['description']), 0, 255),
                     'quantity'    => Money::major($qtyHundredths),
                     'unit_price'  => Money::major(Money::minor($l['unit_price'])),
@@ -52,6 +53,7 @@ class InvoiceService
                 'number'         => DocumentNumber::next('invoice'),
                 'user_id'        => $billTo->id,
                 'enrollment_id'  => $options['enrollment_id'] ?? null,
+                'business_unit_id' => $options['business_unit_id'] ?? null,
                 'title'          => mb_substr($title, 0, 200),
                 'issue_date'     => today(),
                 'due_date'       => $options['due_date'] ?? null,
@@ -100,6 +102,48 @@ class InvoiceService
             'unit_price'  => $enrollment->fee_amount,
             'discount'    => $enrollment->discount_amount,
         ]], $by, ['enrollment_id' => $enrollment->id, 'due_date' => $due, 'currency' => $enrollment->currency]);
+    }
+
+    /**
+     * One invoice for several course enrollments (a student admitted to several
+     * courses at once). With a single enrollment this is forEnrollment().
+     * Enrollments already invoiced, or with nothing to pay, are left out.
+     *
+     * @param  iterable<Enrollment>  $enrollments
+     */
+    public function forEnrollments(iterable $enrollments, User $by): ?Invoice
+    {
+        $due = collect($enrollments)
+            ->filter(fn (Enrollment $e) => Money::minor($e->netFee()) > 0 && !$e->invoices()->where('status', '!=', 'void')->exists())
+            ->values();
+        if ($due->isEmpty()) {
+            return null;
+        }
+        if ($due->count() === 1) {
+            return $this->forEnrollment($due->first(), $by);
+        }
+        if ($due->pluck('currency')->unique()->count() > 1) {
+            // Different currencies can't share an invoice.
+            $due->each(fn ($e) => $this->forEnrollment($e, $by));
+
+            return null;
+        }
+
+        $first = $due->first();
+        $dates = $due->map(fn ($e) => $e->cohort->registration_closes_on ?? $e->cohort->starts_on)->filter(fn ($d) => $d && $d->gte(today()));
+        $dueDate = $dates->min() ?? today()->addDays((int) config('qudroid.finance.default_due_days', 14));
+
+        return $this->issue($first->student->user, 'Course fees: ' . $due->count() . ' courses', $due->map(fn (Enrollment $e) => [
+            'enrollment_id' => $e->id,
+            'description'   => $e->course->title . ' (' . $e->course->code . ') — ' . $e->cohort->name,
+            'quantity'      => 1,
+            'unit_price'    => $e->fee_amount,
+            'discount'      => $e->discount_amount,
+        ])->all(), $by, [
+            'due_date'         => $dueDate,
+            'currency'         => $first->currency,
+            'business_unit_id' => $first->course->business_unit_id ?? \App\Models\BusinessUnit::academyId(),
+        ]);
     }
 
     /** Cancel an unpaid invoice. A paid or part-paid one needs its payments reversed first. */

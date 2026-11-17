@@ -25,6 +25,10 @@ Route::name('site.')->middleware('throttle:240,1,site.l17')->group(function () {
 
     // Courses and registration
     Route::get('/courses', [AcademySiteController::class, 'index'])->name('academy');
+    Route::get('/courses/cart', [AcademySiteController::class, 'cart'])->name('academy.cart');
+    Route::post('/courses/cart/{cohort}', [AcademySiteController::class, 'add'])->whereNumber('cohort')->middleware('throttle:60,1,site.academy.cart')->name('academy.cart.add');
+    Route::post('/courses/cart/{cohort}/remove', [AcademySiteController::class, 'remove'])->whereNumber('cohort')->name('academy.cart.remove');
+    Route::post('/courses/cart', [AcademySiteController::class, 'checkout'])->middleware('throttle:10,10,site.academy.checkout')->name('academy.checkout');
     Route::get('/courses/registered/{reference}', [AcademySiteController::class, 'registered'])->name('academy.registered');
     Route::get('/courses/{slug}', [AcademySiteController::class, 'course'])->where('slug', '[A-Za-z0-9-]+')->name('academy.course');
     Route::get('/courses/{slug}/register/{cohort}', [AcademySiteController::class, 'register'])->whereNumber('cohort')->name('academy.register');
@@ -33,5 +37,6 @@ Route::name('site.')->middleware('throttle:240,1,site.l17')->group(function () {
     // Paying an invoice from a signed link (no sign-in), and coming back from the gateway
     Route::get('/pay/{invoice}', [PayController::class, 'show'])->whereNumber('invoice')->middleware('signed')->name('pay');
     Route::post('/pay/{invoice}', [PayController::class, 'start'])->whereNumber('invoice')->middleware(['signed', 'throttle:10,1,site.pay.start'])->name('pay.start');
+    Route::get('/receipts/{payment}', [PayController::class, 'receipt'])->whereNumber('payment')->middleware('signed')->name('receipt');
     Route::get('/pay/return/{reference}', [PayController::class, 'returned'])->where('reference', 'QH-[0-9]+-[A-Z0-9]{10}')->name('pay.return');
 });

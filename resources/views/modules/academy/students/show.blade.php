@@ -4,7 +4,7 @@
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
     @php $u = $student->user; @endphp
-    <x-cb.hero :title="$u->name" icon="ri-graduation-cap-line" :subtitle="$student->student_no . ' · ' . $u->email" :back="route('academy.students.index')" back-label="Students">
+    <x-cb.hero :title="$u->name" icon="ri-graduation-cap-line" :subtitle="($student->student_no ?: 'No admission number yet') . ' · ' . $u->email" :back="route('academy.students.index')" back-label="Students">
         <x-slot:pills>
             <span class="cb-meta-pill">{{ $student->status_label }}</span>
             @if($u->phone_number)<span class="cb-meta-pill"><i class="ri-phone-line me-1"></i>{{ $u->phone_number }}</span>@endif
@@ -38,6 +38,8 @@
                     </table></div>
                 @endif
             </x-cb.card>
+
+            @include('modules.academy.partials.fees', ['invoices' => $invoices, 'gateways' => $gateways])
 
             <x-cb.card title="Profile" icon="ri-user-3-line">
                 <dl class="row mb-0">

@@ -10,7 +10,7 @@
 @endphp
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
-    <x-cb.hero :title="$assessment->title" icon="ri-questionnaire-line" :subtitle="'Attempt ' . $attempt->attempt_no . ' · ' . $course->title" :back="route('academy.learn.assessment', [$course, $assessment])" back-label="Quiz">
+    <x-cb.hero :title="$assessment->title" :icon="$assessment->icon" :subtitle="'Attempt ' . $attempt->attempt_no . ' · ' . $course->title" :back="route('academy.learn.assessment', [$course, $assessment])" :back-label="$assessment->type_label">
         <x-slot:pills>
             @if($done)
                 <span class="cb-meta-pill">{{ $attempt->needs_review ? 'Being marked' : 'Score ' . rtrim(rtrim(number_format((float) $attempt->percent, 1), '0'), '.') . '%' }}</span>
@@ -24,7 +24,7 @@
     @include('partials.flash')
 
     @if($done && $attempt->needs_review)
-        <div class="cb-banner info"><i class="ri-time-line"></i><div>Your essay answers are with your instructor. You'll be told when they are marked.</div></div>
+        <div class="cb-banner info"><i class="ri-time-line"></i><div>Your written and code answers are with your instructor. You'll be told when they are marked.</div></div>
     @endif
 
     <form method="POST" action="{{ route('academy.learn.submit', [$course, $attempt]) }}" id="quiz-form">
@@ -48,6 +48,12 @@
                 @elseif($q->type === 'short_answer')
                     <input name="answers[{{ $q->id }}]" class="form-control" maxlength="500" value="{{ $given }}" @disabled($done) autocomplete="off">
                     @if($reveal && (float) $mark < (float) $q->points)<div class="small text-success mt-1">Accepted: {{ implode(' · ', $q->accepted_answers ?? []) }}</div>@endif
+                @elseif($q->type === 'code')
+                    @if($done)
+                        <x-code-editor :value="(string) $given" :language="$q->language ?? 'plain'" :readonly="true" height="80px" />
+                    @else
+                        <x-code-editor :name="'answers[' . $q->id . ']'" :value="(string) $given" :language="$q->language ?? 'plain'" height="220px" />
+                    @endif
                 @else
                     <textarea name="answers[{{ $q->id }}]" class="form-control" rows="6" maxlength="10000" @disabled($done)>{{ $given }}</textarea>
                 @endif
@@ -59,6 +65,16 @@
             <button class="btn btn-primary btn-lg" onclick="return confirm('Submit your answers? You can\'t change them afterwards.')"><i class="ri-send-plane-line"></i> Submit</button>
         @endunless
     </form>
+
+    @if($done)
+        <x-cb.card>
+            @include('modules.academy.partials.comments', [
+                'comments' => $attempt->comments, 'studentId' => auth()->id(), 'title' => 'Questions and comments for your instructor',
+                'action' => route('academy.learn.attempt.comment', [$course, $attempt]),
+                'questions' => $questions->values()->mapWithKeys(fn ($q, $i) => [$q->id => $i + 1]),
+            ])
+        </x-cb.card>
+    @endif
 
 </div></div></div>
 @endsection

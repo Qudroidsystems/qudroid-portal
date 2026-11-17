@@ -6,7 +6,7 @@
     <x-cb.hero :title="$invoice->number" icon="ri-file-list-3-line" :subtitle="$invoice->title" :back="route('finance.invoices.index')" back-label="Invoices">
         <x-slot:pills>
             <span class="cb-meta-pill">{{ $invoice->status_label }}</span>
-            @if($invoice->enrollment)<a href="{{ route('academy.cohorts.show', $invoice->enrollment->cohort_id) }}" class="cb-meta-pill text-reset"><i class="ri-book-open-line me-1"></i>{{ $invoice->enrollment->course->title }}</a>@endif
+            @foreach($invoice->enrollments as $en)<a href="{{ route('academy.cohorts.show', $en->cohort_id) }}" class="cb-meta-pill text-reset"><i class="ri-book-open-line me-1"></i>{{ $en->course->title }}</a>@endforeach
             @if($invoice->creator)<span class="cb-meta-pill">Issued by {{ $invoice->creator->name }}</span>@endif
         </x-slot:pills>
         <x-slot:actions><a href="{{ route('finance.invoices.pdf', $invoice) }}" class="cb-hero-btn"><i class="ri-file-pdf-2-line"></i>Download PDF</a><button type="button" onclick="window.print()" class="cb-hero-btn"><i class="ri-printer-line"></i>Print</button></x-slot:actions>

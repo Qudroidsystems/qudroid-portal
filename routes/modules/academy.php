@@ -11,6 +11,7 @@ use App\Http\Controllers\Academy\LearnAssessmentController;
 use App\Http\Controllers\Academy\LearnController;
 use App\Http\Controllers\Academy\ProgrammeController;
 use App\Http\Controllers\Academy\StudentController;
+use App\Http\Controllers\Academy\StudentFeeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -82,7 +83,19 @@ Route::prefix('academy')->name('academy.')->group(function () {
         Route::get('/{assessment}/attempts/{attempt}', [AssessmentController::class, 'attempt'])->name('attempt');
         Route::post('/{assessment}/attempts/{attempt}/grade', [AssessmentController::class, 'gradeAttempt'])->name('attempt.grade');
         Route::post('/{assessment}/submissions/{submission}/grade', [AssessmentController::class, 'gradeSubmission'])->name('submission.grade');
+        Route::post('/{assessment}/submissions/{submission}/comments', [AssessmentController::class, 'comment'])->middleware('throttle:60,1,modules-academy.assessments.comment')->name('submission.comment');
+        Route::post('/{assessment}/attempts/{attempt}/comments', [AssessmentController::class, 'commentAttempt'])->middleware('throttle:60,1,modules-academy.assessments.attempt-comment')->name('attempt.comment');
+        Route::post('/{assessment}/scores', [AssessmentController::class, 'scores'])->name('scores');
         Route::get('/{assessment}/submissions/{submission}/file', [AssessmentController::class, 'download'])->name('submission.file');
+    });
+
+    // ── Helping a student pay (course-fee invoices only) ────────────────
+    Route::middleware('permission:Manage academy|Manage finance')->name('fees.')->group(function () {
+        Route::post('/fees/{invoice}/record', [StudentFeeController::class, 'record'])->name('record');
+        Route::post('/fees/{invoice}/pay-online', [StudentFeeController::class, 'payOnline'])->middleware('throttle:10,1,modules-academy.fees.pay-online')->name('pay-online');
+        Route::get('/fees/return/{reference}', [StudentFeeController::class, 'returned'])->name('return');
+        Route::post('/fees/{invoice}/send-link', [StudentFeeController::class, 'sendLink'])->name('send-link');
+        Route::post('/fees/receipts/{payment}/email', [StudentFeeController::class, 'emailReceipt'])->name('email-receipt');
     });
 
     Route::get('/cohorts/{cohort}/gradebook', [CohortController::class, 'gradebook'])
@@ -109,6 +122,8 @@ Route::prefix('academy')->name('academy.')->group(function () {
         Route::get('/learn/{course}/assessments/{assessment}', [LearnAssessmentController::class, 'show'])->name('learn.assessment');
         Route::post('/learn/{course}/assessments/{assessment}/start', [LearnAssessmentController::class, 'start'])->middleware('throttle:20,1,modules-academy.learn.start')->name('learn.start');
         Route::post('/learn/{course}/assessments/{assessment}/hand-in', [LearnAssessmentController::class, 'handIn'])->middleware('throttle:20,1,modules-academy.learn.hand-in')->name('learn.hand-in');
+        Route::post('/learn/{course}/assessments/{assessment}/comments', [LearnAssessmentController::class, 'comment'])->middleware('throttle:30,1,modules-academy.learn.comment')->name('learn.comment');
+        Route::post('/learn/{course}/attempts/{attempt}/comments', [LearnAssessmentController::class, 'commentAttempt'])->middleware('throttle:30,1,modules-academy.learn.attempt-comment')->name('learn.attempt.comment');
         Route::get('/learn/{course}/assessments/{assessment}/my-file', [LearnAssessmentController::class, 'file'])->name('learn.my-file');
         Route::get('/learn/{course}/attempts/{attempt}', [LearnAssessmentController::class, 'attempt'])->name('learn.attempt');
         Route::post('/learn/{course}/attempts/{attempt}', [LearnAssessmentController::class, 'submit'])->name('learn.submit');

@@ -92,6 +92,15 @@ return [
         'turn_url'        => env('QUDROID_TURN_URL'),            // e.g. turn:turn.example.com:3478,turns:turn.example.com:443?transport=tcp (comma-separated)
         'turn_username'   => env('QUDROID_TURN_USERNAME'),
         'turn_credential' => env('QUDROID_TURN_CREDENTIAL'),
+        // Or let the portal make short-lived TURN logins itself (one of these):
+        //  - your own coturn with "use-auth-secret": the same secret as its static-auth-secret
+        'turn_secret'     => env('QUDROID_TURN_SECRET'),
+        //  - Metered.ca: your app's domain (e.g. qudroid.metered.live) and its API key
+        'metered_domain'  => env('QUDROID_METERED_DOMAIN'),
+        'metered_api_key' => env('QUDROID_METERED_API_KEY'),
+        //  - Cloudflare Realtime TURN: the TURN key id and its API token
+        'cloudflare_turn_key_id' => env('QUDROID_CLOUDFLARE_TURN_KEY_ID'),
+        'cloudflare_turn_token'  => env('QUDROID_CLOUDFLARE_TURN_TOKEN'),
         // People per call. Each browser sends to every other one, so keep this small.
         'max_people'      => (int) env('QUDROID_CALL_MAX_PEOPLE', 8),
         // Recordings are uploaded in pieces while the call runs; this caps one recording.

@@ -384,3 +384,18 @@ body.site {
 .s-tile:nth-child(2n).s-reveal { transition-delay: .12s; }
 @media (prefers-reduced-motion: reduce) { .s-stagger > *, .s-tile.s-reveal { transform: none !important; } }
 .s-stagger.is-settled > * { transition-delay: 0s !important; }
+
+/* Course cart */
+.s-cart-count { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 5px; margin-left: 2px; border-radius: 9px; background: var(--s-blue); color: #fff; font-size: 11px; font-weight: 600; line-height: 1; vertical-align: 1px; }
+.s-cart { max-width: 760px; margin: 0 auto; text-align: left; }
+.s-cart-line { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: #fff; border: 1px solid var(--s-line); border-radius: 14px; padding: 16px 18px; margin-top: 10px; }
+.s-cart-line b { font-size: 17px; display: block; }
+.s-cart-line small { display: block; color: var(--s-ink-2); font-size: 14px; }
+.s-cart-line form { margin: 0; }
+.s-cart-x { background: none; border: 0; color: var(--s-ink-2); font-size: 20px; padding: 4px 6px; cursor: pointer; border-radius: 8px; }
+.s-cart-x:hover { color: #a3000b; background: #fdecec; }
+.s-cart-end { display: flex; align-items: center; gap: 16px; }
+.s-cohort .s-in-cart { color: #0b6b2b; font-size: 14px; font-weight: 600; }
+.s-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; background: #1d1d1f; color: #fff; border-radius: 14px; padding: 12px 16px 12px 20px; display: flex; gap: 14px; align-items: center; font-size: 15px; box-shadow: 0 10px 30px rgba(0,0,0,.25); max-width: calc(100% - 32px); }
+.s-toast a { color: #2997ff; font-weight: 600; white-space: nowrap; }
+@media (max-width: 640px) { .s-cart-line { flex-wrap: wrap; } }

@@ -40,6 +40,10 @@
                 @endforeach
             </ul>
             <div class="s-nav-end">
+                @php($cartCount = count((array) session('course_cart', [])))
+                @if($cartCount)
+                    <a href="{{ route('site.academy.cart') }}" title="Your courses" aria-label="Your courses: {{ $cartCount }}"><i class="ri-shopping-bag-line"></i><span class="s-cart-count">{{ $cartCount }}</span></a>
+                @endif
                 @auth
                     <a href="{{ route('dashboard') }}" title="Open the portal"><i class="ri-apps-2-line"></i> Portal</a>
                 @else
@@ -56,6 +60,10 @@
     <main id="main">
         @yield('content')
     </main>
+    @if(session('cart_added'))
+        <div class="s-toast" role="status">{{ session('cart_added') }} <a href="{{ route('site.academy.cart') }}">View cart</a></div>
+        <script>setTimeout(function(){var t=document.querySelector('.s-toast');if(t)t.remove();},6000);</script>
+    @endif
 
     <footer class="s-footer">
         <div class="s-wrap">

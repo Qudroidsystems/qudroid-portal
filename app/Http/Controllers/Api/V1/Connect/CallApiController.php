@@ -116,6 +116,8 @@ class CallApiController extends ApiController
         return [
             'id' => $call->id, 'kind' => $call->kind, 'video' => $call->kind === 'video', 'huddle' => (bool) $call->is_huddle,
             'conversation_id' => $c->id, 'meeting_id' => $c->meeting_id, 'title' => $c->titleFor($me), 'group' => !$c->isDirect(),
+            // Direct and group calls end once everyone else has hung up; huddles, channel and meeting calls stay open.
+            'ends_when_alone' => !$call->is_huddle && $c->type !== 'channel' && $c->meeting_id === null,
             'from' => $call->starter ? ['id' => $call->starter->id, 'name' => $call->starter->name, 'avatar' => $call->starter->avatar_url] : null,
             'live' => $call->ended_at === null, 'started_at' => $call->started_at->toIso8601String(), 'ended_at' => $call->ended_at?->toIso8601String(),
             'duration' => $call->durationLabel(),

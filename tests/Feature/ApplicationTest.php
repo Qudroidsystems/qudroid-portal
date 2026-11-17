@@ -56,7 +56,7 @@ test('a new person applies, gets an account and a password e-mail, and staff are
         ->and($application->has_laptop)->toBeTrue();
     Notification::assertSentTo($user, ResetPassword::class);
 
-    expect($this->admin->notifications()->where('data', 'like', '%New application%')->exists())->toBeTrue();
+    expect($this->admin->notifications()->where('data', 'like', '%New admission request%')->exists())->toBeTrue();
 
     // The thank-you page shows only in the browser that applied.
     $this->get(route('apply.done', $application->reference))->assertOk()->assertSee($application->reference);
@@ -100,7 +100,7 @@ test('admitting enrolls the applicant on the chosen cohort and issues the invoic
     $application = Application::first();
 
     $this->actingAs($this->admin)->get(route('academy.applications.index'))->assertOk()->assertSee('Ada Obi');
-    $this->actingAs($this->admin)->get(route('academy.applications.show', $application))->assertOk()->assertSee('Admit and enroll');
+    $this->actingAs($this->admin)->get(route('academy.applications.show', $application))->assertOk()->assertSee('Accept and admit');
     $this->actingAs($this->admin)->get(route('academy.index'))->assertOk()->assertSee($application->reference);
 
     $this->actingAs($this->admin)->post(route('academy.applications.admit', $application))->assertSessionHas('success');

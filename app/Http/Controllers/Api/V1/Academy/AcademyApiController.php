@@ -37,8 +37,10 @@ class AcademyApiController extends ApiController
         $list = $student ? $student->enrollments()->with('course', 'cohort', 'certificate')->whereNotIn('status', ['cancelled'])->latest('id')->get() : collect();
 
         return $this->ok($list->map(fn ($e) => $this->enrollment($e))->values(), null, 200, [
-            'applications' => $student ? $student->applications()->with('course', 'cohort')->latest('id')->get()->map(fn ($a) => [
-                'id' => $a->id, 'reference' => $a->reference, 'status' => $a->status, 'course' => $a->course?->title, 'cohort' => $a->cohort?->name,
+            'student_no' => $student?->student_no,
+            'applications' => $student ? $student->applications()->with('course', 'cohort', 'choices.course', 'choices.cohort')->latest('id')->get()->map(fn ($a) => [
+                'id' => $a->id, 'reference' => $a->reference, 'status' => $a->status, 'course' => $a->courses_label, 'cohort' => $a->cohort?->name,
+                'courses' => $a->choices->map(fn ($c) => ['course' => $c->course?->title, 'cohort' => $c->cohort?->name, 'status' => $c->status])->values(),
             ])->values() : [],
         ]);
     }
@@ -117,28 +119,38 @@ class AcademyApiController extends ApiController
         [$enrollment, $deny] = $this->assessmentContext($request, $assessment);
         if ($deny) return $deny;
         $attempts = $assessment->attempts()->where('enrollment_id', $enrollment->id)->orderByDesc('attempt_no')->get();
-        $submission = $assessment->submissions()->where('enrollment_id', $enrollment->id)->first();
+        $submission = $assessment->submissions()->with('comments.user')->where('enrollment_id', $enrollment->id)->first();
 
         $reason = null;
         if (!$enrollment->canLearn() || $enrollment->status !== 'active') $reason = $enrollment->status === 'completed' ? 'This course is finished.' : 'Your course access opens once your payment is confirmed.';
         elseif ($assessment->isPastDue()) $reason = 'This closed on ' . $assessment->due_at->format('j M Y, g:ia') . '.';
         elseif ($assessment->isQuiz() && $assessment->max_attempts > 0 && $attempts->whereNotNull('submitted_at')->count() >= $assessment->max_attempts && !$attempts->firstWhere('submitted_at', null)) $reason = 'You have used all your attempts.';
-        elseif (!$assessment->isQuiz() && $submission?->status === 'graded') $reason = 'This assignment has been graded.';
+        elseif ($assessment->isManual()) $reason = 'This is marked in class. Your score shows here once your instructor enters it.';
+        elseif (!$assessment->isQuiz() && $submission?->status === 'graded') $reason = 'This has been graded.';
 
         return $this->ok($this->assessmentRow($assessment, $enrollment, $this->assessments->results($enrollment)[$assessment->id] ?? null) + [
             'instructions_html' => $assessment->instructionsHtml(),
             'time_limit_minutes' => $assessment->time_limit_minutes, 'attempts_allowed' => $assessment->max_attempts ?: null,
             'questions_count' => $assessment->isQuiz() ? $assessment->questions()->count() : null,
             'pass_mark' => $assessment->pass_mark, 'weight' => (float) $assessment->weight,
+            'answer_format' => $assessment->isAssignment() ? $assessment->answer_format : null,
+            'wants_text' => $assessment->wantsText(), 'wants_code' => $assessment->wantsCode(), 'accepts_file' => $assessment->acceptsFile(),
+            'code_language' => $assessment->wantsCode() ? $assessment->code_language : null,
+            'code_language_label' => $assessment->wantsCode() ? $assessment->language_label : null,
+            'starter_code' => $assessment->wantsCode() ? $assessment->starter_code : null,
             'attempts' => $attempts->map(fn ($a) => $this->attemptRow($a))->values(),
             'submission' => $submission ? [
+                'id' => $submission->id,
                 'status' => $submission->status, 'status_label' => $submission->status_label, 'body' => $submission->body, 'file_name' => $submission->file_name,
+                'code' => $submission->code, 'code_language' => $submission->code_language,
+                'comments' => $submission->comments->map(fn ($c) => $this->commentRow($c, $enrollment))->values(),
                 'submitted_at' => $submission->submitted_at?->toIso8601String(), 'late' => $submission->isLate(),
                 'score' => $submission->score !== null ? (float) $submission->score : null, 'max_score' => (float) $assessment->max_score,
                 'percent' => $submission->percent !== null ? (float) $submission->percent : null, 'feedback' => $submission->feedback,
             ] : null,
             'can_start' => $reason === null && $assessment->isQuiz(),
-            'can_hand_in' => $reason === null && !$assessment->isQuiz(),
+            'can_hand_in' => $reason === null && $assessment->isAssignment(),
+            'can_comment' => $submission !== null && $enrollment->canLearn() && $enrollment->status === 'active',
             'reason_if_not' => $reason,
         ]);
     }
@@ -171,7 +183,7 @@ class AcademyApiController extends ApiController
         if ($attempt->isSubmitted()) return $this->fail('This attempt has already been submitted.', 409, 'submitted');
         $request->validate(['answers' => ['required', 'array']]);
         $ids = $attempt->assessment->questions()->pluck('id')->map(fn ($id) => (string) $id)->all();
-        $given = collect($request->input('answers'))->only($ids)->map(fn ($v) => is_string($v) ? mb_substr($v, 0, 10000) : $v)->all();
+        $given = collect($request->input('answers'))->only($ids)->map(fn ($v) => is_string($v) ? mb_substr($v, 0, 50000) : $v)->all();
         $attempt->update(['answers' => array_replace((array) $attempt->answers, $given)]);
 
         return $this->ok(['saved_at' => now()->toIso8601String(), 'seconds_left' => $attempt->secondsLeft()]);
@@ -198,18 +210,39 @@ class AcademyApiController extends ApiController
     {
         [$enrollment, $deny] = $this->assessmentContext($request, $assessment);
         if ($deny) return $deny;
-        $request->validate([
-            'body' => ['nullable', 'string', 'max:50000'],
-            'file' => ['nullable', 'file', 'mimes:' . ContentController::FILE_TYPES . ',html,css,js,json,py,php,java,dart,kt,swift,md', 'max:' . (int) config('qudroid.academy.max_upload_kb', 51200)],
-        ]);
+        $request->validate(\App\Http\Controllers\Academy\LearnAssessmentController::handInRules());
         try {
-            $s = $this->assessments->handIn($assessment, $enrollment, $request->input('body'), $request->file('file'));
+            $s = $this->assessments->handIn($assessment, $enrollment, $request->input('body'), $request->file('file'), $request->input('code'));
         } catch (ValidationException $e) {
             return $this->fail(collect($e->errors())->flatten()->first(), 422, 'cannot_hand_in');
         }
 
         return $this->ok(['status' => $s->status, 'status_label' => $s->status_label, 'submitted_at' => $s->submitted_at?->toIso8601String(), 'late' => $s->isLate()],
             'Handed in. Your instructor has been told.', 201);
+    }
+
+    /** The student's comment or question on their work; optionally about a line of their code. */
+    public function comment(Request $request, Assessment $assessment)
+    {
+        [$enrollment, $deny] = $this->assessmentContext($request, $assessment);
+        if ($deny) return $deny;
+        $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'line' => ['nullable', 'integer', 'min:1']]);
+        $submission = $assessment->submissions()->where('enrollment_id', $enrollment->id)->first();
+        if (!$submission) return $this->fail('Hand in your work first.', 422, 'nothing_handed_in');
+        if (!$enrollment->canLearn() || $enrollment->status !== 'active') return $this->fail('This course is closed.', 403, 'forbidden');
+        try {
+            $c = $this->assessments->comment($submission, $request->user(), $data['body'], $data['line'] ?? null);
+        } catch (ValidationException $e) {
+            return $this->fail(collect($e->errors())->flatten()->first(), 422, 'cannot_comment');
+        }
+
+        return $this->ok($this->commentRow($c->load('user'), $enrollment), 'Sent to your instructor.', 201);
+    }
+
+    protected function commentRow(\App\Models\Academy\AssessmentComment $c, Enrollment $e): array
+    {
+        return ['id' => $c->id, 'body' => $c->body, 'line' => $c->line, 'author' => $c->user?->name, 'avatar' => $c->user?->avatar_url,
+            'from_student' => $c->user_id === $e->student->user_id, 'created_at' => $c->created_at?->toIso8601String()];
     }
 
     public function certificates(Request $request)
@@ -281,7 +314,7 @@ class AcademyApiController extends ApiController
             $status = $s ? ['submitted' => 'submitted', 'returned' => 'returned', 'graded' => 'graded'][$s->status] ?? $s->status : ($a->isPastDue() ? 'missed' : 'open');
         }
 
-        return ['id' => $a->id, 'title' => $a->title, 'kind' => $a->type, 'kind_label' => $a->type_label, 'due_at' => $a->due_at?->toIso8601String(),
+        return ['id' => $a->id, 'title' => $a->title, 'kind' => $a->type, 'kind_label' => $a->type_label, 'category' => $a->kind_key, 'due_at' => $a->due_at?->toIso8601String(),
             'status' => $status, 'percent' => $percent, 'passed' => $percent === null ? null : $percent >= (float) ($a->pass_mark ?? 0),
             'web_url' => route('academy.learn.assessment', [$a->course_id, $a])];
     }
@@ -305,6 +338,7 @@ class AcademyApiController extends ApiController
             'ends_at' => $t->deadline()?->toIso8601String(), 'seconds_left' => $t->secondsLeft(),
             'questions' => $questions->map(fn ($q) => [
                 'id' => $q->id, 'kind' => $q->type, 'text' => $q->question, 'points' => (float) $q->points,
+                'language' => $q->type === 'code' ? ($q->language ?? 'plain') : null,
                 'options' => $q->isChoice() ? collect((array) $q->options)->map(fn ($text, $i) => ['id' => $i, 'text' => (string) $text])->values() : [],
             ])->values(),
             'answers' => (object) ((array) $t->answers)];
@@ -319,6 +353,7 @@ class AcademyApiController extends ApiController
         return $this->attemptRow($t) + ['attempt_id' => $t->id, 'timed_out' => (bool) $t->timed_out,
             'questions' => $a->questions()->get()->map(fn ($q) => [
                 'id' => $q->id, 'kind' => $q->type, 'text' => $q->question, 'points' => (float) $q->points,
+                'language' => $q->type === 'code' ? ($q->language ?? 'plain') : null,
                 'options' => $q->isChoice() ? collect((array) $q->options)->map(fn ($text, $i) => ['id' => $i, 'text' => (string) $text])->values() : [],
                 'your_answer' => ((array) $t->answers)[$q->id] ?? null,
                 'mark' => array_key_exists($q->id, $marks) && $marks[$q->id] !== null ? (float) $marks[$q->id] : null,

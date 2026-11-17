@@ -11,7 +11,7 @@ class InvoiceItem extends Model
 
     protected $table = 'finance_invoice_items';
 
-    protected $fillable = ['invoice_id', 'description', 'quantity', 'unit_price', 'discount', 'amount', 'position'];
+    protected $fillable = ['invoice_id', 'enrollment_id', 'description', 'quantity', 'unit_price', 'discount', 'amount', 'position'];
 
     protected $casts = [
         'quantity'   => 'decimal:2',
@@ -19,6 +19,12 @@ class InvoiceItem extends Model
         'discount'   => 'decimal:2',
         'amount'     => 'decimal:2',
     ];
+
+    /** The course enrollment this line charges for, if any. */
+    public function enrollment(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Academy\Enrollment::class);
+    }
 
     public function invoice(): BelongsTo
     {

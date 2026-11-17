@@ -23,7 +23,7 @@ class PayController extends Controller
     public function show(Request $request, Invoice $invoice)
     {
         abort_if($invoice->status === 'void', 404);
-        $invoice->load('items', 'user', 'enrollment.course', 'enrollment.cohort');
+        $invoice->load('items', 'user', 'enrollments.course', 'enrollments.cohort');
 
         return view('site.pay', [
             'invoice' => $invoice,
@@ -52,13 +52,19 @@ class PayController extends Controller
         return redirect()->away($url);
     }
 
+    /** A receipt PDF from a signed link (in the receipt e-mail and on the "paid" page). */
+    public function receipt(Request $request, Payment $payment, \App\Services\Finance\DocumentPdf $pdf)
+    {
+        return $pdf->receipt($payment, $request->boolean('view'));
+    }
+
     /** The gateway sends the payer back here. We ask the gateway before showing anything as paid. */
     public function returned(string $reference)
     {
-        $payment = Payment::with('invoice.enrollment.course')->where('reference', $reference)->whereIn('method', ['paystack', 'opay'])->firstOrFail();
+        $payment = Payment::with('invoice.enrollments.course')->where('reference', $reference)->whereIn('method', ['paystack', 'opay'])->firstOrFail();
         $problem = null;
         try {
-            $payment = $this->payments->settle($payment)?->load('invoice.enrollment.course') ?? $payment;
+            $payment = $this->payments->settle($payment)?->load('invoice.enrollments.course') ?? $payment;
         } catch (\RuntimeException $e) {
             Log::error('Website payment check failed', ['reference' => $reference, 'error' => $e->getMessage()]);
             $problem = true;

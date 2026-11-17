@@ -226,7 +226,8 @@ describe('registering for a course on the website', function () {
     test('courses taking registrations are listed with their classes', function () {
         $this->get('/courses')->assertOk()->assertSee('Web Foundations');
         $this->get(route('site.academy.course', $this->course->slug))->assertOk()->assertSee('December class')->assertSee('150,000');
-        $this->get(route('site.academy.register', [$this->course->slug, $this->cohort]))->assertOk()->assertSee('Full name');
+        $this->get(route('site.academy.register', [$this->course->slug, $this->cohort]))->assertRedirect(route('site.academy.cart'));
+        $this->get(route('site.academy.cart'))->assertOk()->assertSee('Web Foundations')->assertSee('Full name');
     });
 
     test('without instant registration the application waits for review', function () {

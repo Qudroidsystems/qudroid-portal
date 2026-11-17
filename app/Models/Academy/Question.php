@@ -5,7 +5,7 @@ namespace App\Models\Academy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** One quiz question. Everything except essays is marked automatically. */
+/** One quiz question. Everything except essays and code is marked automatically. */
 class Question extends Model
 {
     public const TYPES = [
@@ -14,11 +14,12 @@ class Question extends Model
         'boolean'      => 'True or false',
         'short_answer' => 'Short typed answer',
         'essay'        => 'Essay (marked by a teacher)',
+        'code'         => 'Code (marked by a teacher)',
     ];
 
     protected $table = 'academy_questions';
 
-    protected $fillable = ['assessment_id', 'type', 'question', 'options', 'correct', 'accepted_answers', 'explanation', 'points', 'position'];
+    protected $fillable = ['assessment_id', 'type', 'language', 'question', 'options', 'correct', 'accepted_answers', 'explanation', 'points', 'position'];
 
     protected $casts = ['options' => 'array', 'correct' => 'array', 'accepted_answers' => 'array', 'points' => 'decimal:2'];
 
@@ -34,7 +35,7 @@ class Question extends Model
 
     public function isManual(): bool
     {
-        return $this->type === 'essay';
+        return in_array($this->type, ['essay', 'code'], true);
     }
 
     /**

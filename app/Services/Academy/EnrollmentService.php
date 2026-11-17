@@ -30,7 +30,8 @@ class EnrollmentService
     public function __construct(protected InvoiceService $invoices) {}
 
     /**
-     * @param  array{discount_amount?:float|string|null, waive_prerequisites?:bool, notes?:string|null}  $options
+     * @param  array{discount_amount?:float|string|null, waive_prerequisites?:bool, notes?:string|null, invoice?:bool}  $options
+     *         invoice: false when the caller issues one invoice for several enrollments (InvoiceService::forEnrollments).
      */
     public function enroll(Student $student, Cohort $cohort, User $by, array $options = []): Enrollment
     {
@@ -96,7 +97,7 @@ class EnrollmentService
 
             if ((float) $enrollment->netFee() <= 0) {
                 $this->activate($enrollment, null, 'No fee to pay');
-            } else {
+            } elseif ($options['invoice'] ?? true) {
                 $this->invoices->forEnrollment($enrollment, $by);
             }
 
@@ -183,7 +184,11 @@ class EnrollmentService
             $enrollment->update(['status' => $status, 'ended_at' => now(), 'access_granted' => false, 'notes' => $notes ?: null]);
 
             // An unpaid course-fee invoice goes with it. Paid ones stay for Finance (refunds).
+            // A shared invoice (several courses) goes only once none of its courses is still open.
             foreach ($enrollment->invoices()->where('status', 'issued')->where('amount_paid', 0)->get() as $invoice) {
+                if ($invoice->enrollments()->whereKeyNot($enrollment->id)->whereIn('academy_enrollments.status', Enrollment::HOLDS_SEAT)->exists()) {
+                    continue;
+                }
                 $this->invoices->void($invoice, $by, 'Enrollment ' . $status);
             }
         });

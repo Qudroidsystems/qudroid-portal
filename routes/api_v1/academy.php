@@ -13,6 +13,7 @@ Route::prefix('academy')->name('academy.')->controller(AcademyApiController::cla
     Route::get('assessments/{assessment}', 'assessment')->whereNumber('assessment')->name('assessments.show');
     Route::post('assessments/{assessment}/attempts', 'start')->whereNumber('assessment')->middleware('throttle:20,1,api_v1-academy.assessments.start')->name('assessments.start');
     Route::post('assessments/{assessment}/hand-in', 'handIn')->whereNumber('assessment')->middleware('throttle:20,1,api_v1-academy.assessments.hand-in')->name('assessments.hand-in');
+    Route::post('assessments/{assessment}/comments', 'comment')->whereNumber('assessment')->middleware('throttle:30,1,api_v1-academy.assessments.comment')->name('assessments.comment');
     Route::get('attempts/{attempt}', 'attempt')->whereNumber('attempt')->name('attempts.show');
     Route::put('attempts/{attempt}', 'save')->whereNumber('attempt')->middleware('throttle:120,1,api_v1-academy.attempts.save')->name('attempts.save');
     Route::post('attempts/{attempt}/submit', 'submit')->whereNumber('attempt')->middleware('throttle:20,1,api_v1-academy.attempts.submit')->name('attempts.submit');

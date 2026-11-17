@@ -15,7 +15,7 @@
         <div class="hp-field" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
 
         @if($student)
-            <div class="alert alert-info">Applying as <strong>{{ $student->user->name }}</strong> ({{ $student->student_no }}).</div>
+            <div class="alert alert-info">Applying as <strong>{{ $student->user->name }}</strong> @if($student->student_no)({{ $student->student_no }})@endif.</div>
         @else
             <h6 class="mb-3">About you</h6>
             <div class="row g-3 mb-4">

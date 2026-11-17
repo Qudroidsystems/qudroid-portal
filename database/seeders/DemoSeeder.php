@@ -476,7 +476,7 @@ class DemoSeeder extends Seeder
         $start = $this->today->copy()->subWeeks(5);
         for ($i = 1; $i <= 12; $i++) {
             $user = $this->u['student' . $i];
-            $student = Student::create(['user_id' => $user->id, 'student_no' => Student::nextNumber(), 'status' => 'admitted', 'education_level' => ['OND', 'HND', 'BSc', 'SSCE'][$i % 4],
+            $student = Student::create(['user_id' => $user->id, 'status' => 'admitted', 'education_level' => ['OND', 'HND', 'BSc', 'SSCE'][$i % 4],
                 'institution' => ['UNILAG', 'Yaba College of Technology', 'OAU Ife', 'ABU Zaria', 'UNN'][$i % 5], 'referral_source' => ['Instagram', 'A friend', 'Google', 'Twitter'][$i % 4],
                 'admitted_at' => $start, 'admitted_by' => $this->u['academy']->id]);
             $cohort = $i <= 9 ? $running : $open;

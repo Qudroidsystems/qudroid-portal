@@ -18,9 +18,9 @@ class ApplicationController extends Controller
         $status = $request->query('status', 'submitted');
         $q = trim((string) $request->query('q'));
 
-        $applications = Application::with('student.user', 'course', 'cohort')
+        $applications = Application::with('student.user', 'course', 'cohort', 'choices.course')
             ->when(array_key_exists($status, Application::STATUSES), fn ($w) => $w->where('status', $status))
-            ->when($request->integer('course_id'), fn ($w, $id) => $w->where('course_id', $id))
+            ->when($request->integer('course_id'), fn ($w, $id) => $w->whereHas('choices', fn ($c) => $c->where('course_id', $id)))
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('reference', 'like', "%{$q}%")
                 ->orWhereHas('student.user', fn ($u) => $u->where('name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%")->orWhere('phone_number', 'like', "%{$q}%"))))
             ->orderBy($status === 'submitted' ? 'created_at' : 'updated_at', $status === 'submitted' ? 'asc' : 'desc')
@@ -36,24 +36,32 @@ class ApplicationController extends Controller
 
     public function show(Application $application)
     {
-        $application->load('student.user', 'student.enrollments.course', 'course', 'cohort', 'reviewer', 'enrollment');
+        $application->load('student.user', 'student.enrollments.course', 'course', 'cohort', 'reviewer', 'enrollment', 'choices.course', 'choices.cohort', 'choices.enrollment', 'invoice.allocations.payment');
 
         return view('modules.academy.applications.show', [
             'application' => $application,
-            'others'      => $application->student->applications()->with('course')->whereKeyNot($application->id)->get(),
+            'others'      => $application->student->applications()->with('course', 'choices.course')->whereKeyNot($application->id)->get(),
+            'gateways'    => app(\App\Services\Finance\PaymentService::class)->onlineGateways(),
         ]);
     }
 
     public function admit(Request $request, Application $application)
     {
-        $data = $request->validate(['decision_note' => ['nullable', 'string', 'max:500']]);
-        [$application, $problem] = $this->applications->admit($application, $request->user(), $data['decision_note'] ?? null);
+        $data = $request->validate([
+            'decision_note' => ['nullable', 'string', 'max:500'],
+            'choices'       => ['nullable', 'array'],
+            'choices.*'     => ['integer'],
+        ]);
+        [$application, $problem] = $this->applications->admit($application, $request->user(), $data['decision_note'] ?? null,
+            $request->has('choices') ? $data['choices'] : null);
 
         $back = redirect()->route('academy.applications.show', $application);
+        $name = $application->student->user->name;
+        $no = $application->student->student_no;
 
         return $problem
-            ? $back->with('error', "Admitted, but not enrolled on {$application->cohort->name}: {$problem} Enroll them on another cohort from their student record.")
-            : $back->with('success', "{$application->student->user->name} is admitted and enrolled on {$application->cohort->name}.");
+            ? $back->with('error', "{$name} is admitted ({$no}), but some classes could not be booked. {$problem} Enroll them on another class from their student record.")
+            : $back->with('success', "{$name} is admitted with admission number {$no} and enrolled. The invoice and a link to pay have been e-mailed.");
     }
 
     public function decline(Request $request, Application $application)

@@ -15,18 +15,24 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-/** Teachers: build quizzes and assignments, see results, and mark them. */
+/** Teachers: build quizzes, tests, exams, assignments, projects, coding exercises and in-class assessments; see results; mark them. */
 class AssessmentController extends Controller
 {
     public function __construct(protected AssessmentService $assessments) {}
 
     public function create(Request $request, Course $course)
     {
-        $type = $request->query('type') === 'assignment' ? 'assignment' : 'quiz';
+        $kind = $request->query('kind', $request->query('type', 'quiz'));
+        $kind = array_key_exists($kind, Assessment::KINDS) ? $kind : 'quiz';
+        $type = Assessment::typeOfKind($kind);
 
         return view('modules.academy.assessments.form', [
             'course'     => $course,
-            'assessment' => new Assessment(['type' => $type, 'pass_mark' => 50, 'max_score' => 100, 'max_attempts' => $type === 'quiz' ? 1 : 0, 'show_answers' => true, 'weight' => 0]),
+            'assessment' => new Assessment([
+                'type' => $type, 'kind' => $kind, 'pass_mark' => 50, 'max_score' => 100, 'max_attempts' => $type === 'quiz' ? 1 : 0,
+                'show_answers' => $kind === 'quiz', 'shuffle' => in_array($kind, ['test', 'exam'], true), 'weight' => 0,
+                'answer_format' => $kind === 'coding' ? 'code' : 'text', 'code_language' => $kind === 'coding' ? 'javascript' : null, 'allow_file' => true,
+            ]),
         ]);
     }
 
@@ -40,7 +46,7 @@ class AssessmentController extends Controller
         $this->assessments->recomputeCourse($course->id);
 
         return redirect()->route('academy.assessments.edit', [$course, $assessment])
-            ->with('success', $assessment->isQuiz() ? 'Quiz created. Now add its questions.' : 'Assignment created.');
+            ->with('success', $assessment->isQuiz() ? $assessment->type_label . ' created. Now add its questions.' : $assessment->type_label . ' created.');
     }
 
     public function edit(Course $course, Assessment $assessment)
@@ -125,8 +131,40 @@ class AssessmentController extends Controller
             'assessment'  => $assessment,
             'enrollments' => $enrollments,
             'attempts'    => $assessment->attempts()->whereNotNull('submitted_at')->orderByDesc('id')->get()->groupBy('enrollment_id'),
-            'submissions' => $assessment->submissions()->get()->keyBy('enrollment_id'),
+            'submissions' => $assessment->submissions()->with('comments.user')->get()->keyBy('enrollment_id'),
         ]);
+    }
+
+    /** Scores for work marked in class, for everyone at once. */
+    public function scores(Request $request, Course $course, Assessment $assessment)
+    {
+        $this->belongs($course, $assessment);
+        abort_unless($assessment->isManual(), 404);
+        $request->validate(['scores' => ['required', 'array'], 'scores.*.score' => ['nullable'], 'scores.*.feedback' => ['nullable', 'string', 'max:2000']]);
+        $n = $this->assessments->recordScores($assessment, (array) $request->input('scores'), $request->user());
+
+        return back()->with('success', $n ? $n . ' ' . \Illuminate\Support\Str::plural('score', $n) . ' saved. Students have been told.' : 'Nothing changed.');
+    }
+
+    /** A teacher's comment on a student's work (optionally on a line of code). */
+    public function comment(Request $request, Course $course, Assessment $assessment, Submission $submission)
+    {
+        $this->belongs($course, $assessment);
+        abort_unless($submission->assessment_id === $assessment->id, 404);
+        $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'line' => ['nullable', 'integer', 'min:1']]);
+        $this->assessments->comment($submission, $request->user(), $data['body'], $data['line'] ?? null);
+
+        return redirect()->to(route('academy.assessments.results', [$course, $assessment]) . '#sub-' . $submission->id)->with('success', 'Comment sent.')->with('open_sub', $submission->id);
+    }
+
+    public function commentAttempt(Request $request, Course $course, Assessment $assessment, Attempt $attempt)
+    {
+        $this->belongs($course, $assessment);
+        abort_unless($attempt->assessment_id === $assessment->id, 404);
+        $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'line' => ['nullable', 'integer', 'min:1'], 'question_id' => ['nullable', 'integer']]);
+        $this->assessments->comment($attempt, $request->user(), $data['body'], $data['line'] ?? null, $data['question_id'] ?? null);
+
+        return back()->with('success', 'Comment sent.');
     }
 
     public function attempt(Course $course, Assessment $assessment, Attempt $attempt)
@@ -135,7 +173,7 @@ class AssessmentController extends Controller
         abort_unless($attempt->assessment_id === $assessment->id, 404);
 
         return view('modules.academy.assessments.attempt', [
-            'course' => $course, 'assessment' => $assessment, 'attempt' => $attempt->load('enrollment.student.user'),
+            'course' => $course, 'assessment' => $assessment, 'attempt' => $attempt->load('enrollment.student.user', 'comments.user'),
             'questions' => $assessment->questions()->get(),
         ]);
     }
@@ -177,9 +215,19 @@ class AssessmentController extends Controller
 
     protected function validated(Request $request, ?Assessment $assessment = null): array
     {
+        // Older forms (and the API) send "type" instead of "kind".
+        if (!$assessment && !$request->filled('kind') && $request->filled('type')) {
+            $request->merge(['kind' => $request->input('type') === 'manual' ? 'other' : $request->input('type')]);
+        }
+        $kinds = $assessment
+            ? array_keys(array_filter(Assessment::KINDS, fn ($k) => $k[1] === $assessment->type))   // the kind can change within its type
+            : array_keys(Assessment::KINDS);
         $data = $request->validate([
-            'type'               => [$assessment ? 'prohibited' : 'required', Rule::in(array_keys(Assessment::TYPES))],
+            'kind'               => [$assessment ? 'nullable' : 'required', Rule::in($kinds)],
             'title'              => ['required', 'string', 'max:200'],
+            'answer_format'      => ['nullable', Rule::in(array_keys(Assessment::ANSWER_FORMATS))],
+            'code_language'      => ['nullable', Rule::in(array_keys(Assessment::LANGUAGES))],
+            'starter_code'       => ['nullable', 'string', 'max:50000'],
             'instructions'       => ['nullable', 'string', 'max:50000'],
             'weight'             => ['required', 'numeric', 'min:0', 'max:100'],
             'pass_mark'          => ['required', 'integer', 'min:0', 'max:100'],
@@ -189,7 +237,15 @@ class AssessmentController extends Controller
             'due_at'             => ['nullable', 'date'],
         ]);
 
-        $quiz = ($assessment?->type ?? $data['type']) === 'quiz';
+        $data['kind'] = $data['kind'] ?? $assessment?->kind_key;
+        $type = $assessment?->type ?? Assessment::typeOfKind($data['kind']);
+        if (!$assessment) $data['type'] = $type;
+        $quiz = $type === 'quiz';
+        $assignment = $type === 'assignment';
+        $data['answer_format'] = $assignment ? ($data['answer_format'] ?? 'text') : 'text';
+        $data['code_language'] = $assignment && in_array($data['answer_format'], ['code', 'text_code'], true) ? ($data['code_language'] ?? 'plain') : null;
+        $data['starter_code'] = $data['code_language'] ? ($data['starter_code'] ?? null) : null;
+        $data['allow_file'] = $assignment && ($data['answer_format'] === 'file' || $request->boolean('allow_file'));
         $data['max_score'] = $quiz ? 100 : ($data['max_score'] ?? 100);
         $data['max_attempts'] = $quiz ? (int) ($data['max_attempts'] ?? 1) : 0;
         $data['time_limit_minutes'] = $quiz ? ($data['time_limit_minutes'] ?? null) : null;
@@ -213,11 +269,12 @@ class AssessmentController extends Controller
             'correct'     => ['nullable', 'array'],
             'correct.*'   => ['integer', 'min:0', 'max:7'],
             'accepted'    => [$type === 'short_answer' ? 'required' : 'nullable', 'string', 'max:2000'],
+            'language'    => ['nullable', Rule::in(array_keys(Assessment::LANGUAGES))],
             'explanation' => ['nullable', 'string', 'max:5000'],
         ], ['accepted.required' => 'List at least one accepted answer.']);
 
         $out = ['type' => $type, 'question' => $data['question'], 'points' => $data['points'], 'explanation' => $data['explanation'] ?? null,
-            'options' => null, 'correct' => null, 'accepted_answers' => null];
+            'options' => null, 'correct' => null, 'accepted_answers' => null, 'language' => $type === 'code' ? ($data['language'] ?? 'plain') : null];
 
         if (in_array($type, ['single', 'multiple', 'boolean'], true)) {
             // Keep the option numbers the teacher ticked, dropping blank options.

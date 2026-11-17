@@ -27,7 +27,7 @@ class BillingApiController extends ApiController
     public function invoices(Request $request)
     {
         $user = $request->user();
-        $q = Invoice::where('user_id', $user->id)->where('status', '!=', 'void')->with('enrollment.course');
+        $q = Invoice::where('user_id', $user->id)->where('status', '!=', 'void')->with('enrollments.course');
         match ($request->get('status', 'all')) {
             'open' => $q->open(),
             'paid' => $q->where('status', 'paid'),
@@ -49,7 +49,7 @@ class BillingApiController extends ApiController
     {
         $this->own($request, $invoice->user_id);
         abort_if($invoice->status === 'void', 404);
-        $invoice->load('items', 'enrollment.course');
+        $invoice->load('items', 'enrollments.course');
 
         $payments = Payment::whereHas('allocations', fn ($q) => $q->where('invoice_id', $invoice->id))
             ->orWhere(fn ($q) => $q->where('invoice_id', $invoice->id)->where('user_id', $invoice->user_id)->where('status', 'pending'))
@@ -154,7 +154,8 @@ class BillingApiController extends ApiController
             'can_pay' => $i->isOpen() && $i->balanceMinor() > 0 && (bool) $this->payments->onlineGateways(),
             'part_payment' => $i->isOpen() && $min < $i->balanceMinor(),
             'min_payment' => $min, 'min_payment_label' => Money::format(Money::major($min), $i->currency),
-            'course' => $i->enrollment?->course ? ['id' => $i->enrollment->course->id, 'title' => $i->enrollment->course->title] : null,
+            'course' => ($c = $i->enrollments->first()?->course) ? ['id' => $c->id, 'title' => $c->title] : null,
+            'courses' => $i->enrollments->map(fn ($e) => ['id' => $e->course?->id, 'title' => $e->course?->title])->filter(fn ($c) => $c['id'])->values(),
             'pdf_url' => route('api.v1.billing.invoices.pdf', $i),
             'web_url' => route('billing.invoice', $i),
         ];

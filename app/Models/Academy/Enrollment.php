@@ -69,9 +69,10 @@ class Enrollment extends Model
         return $this->belongsTo(User::class, 'enrolled_by');
     }
 
-    public function invoices(): HasMany
+    /** The invoices that charge for this enrollment (its own, or one shared with other courses). */
+    public function invoices(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->hasMany(Invoice::class, 'enrollment_id');
+        return $this->belongsToMany(Invoice::class, 'finance_invoice_items', 'enrollment_id', 'invoice_id');
     }
 
     public function progress(): HasMany

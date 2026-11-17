@@ -37,6 +37,19 @@ class Student extends Model
 
     protected $casts = ['admitted_at' => 'datetime'];
 
+    /** Statuses that carry an admission number. */
+    public const NUMBERED = ['admitted', 'active', 'suspended', 'completed', 'withdrawn'];
+
+    protected static function booted(): void
+    {
+        // The admission number is given when someone is admitted, not when they apply.
+        static::saving(function (Student $student) {
+            if (blank($student->student_no) && in_array($student->status, self::NUMBERED, true)) {
+                $student->student_no = self::nextNumber();
+            }
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -62,12 +75,18 @@ class Student extends Model
         return in_array($this->status, self::CAN_ENROLL, true);
     }
 
+    /** The admission number, or a note that there isn't one yet. */
+    public function getNumberLabelAttribute(): string
+    {
+        return $this->student_no ?: 'Not admitted yet';
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return self::STATUSES[$this->status] ?? ucfirst((string) $this->status);
     }
 
-    /** Next student number, e.g. QCA/2026/0007. Call inside the transaction that saves the student. */
+    /** Next admission number, e.g. QCA/2026/0007. Given automatically when a student is saved as admitted. */
     public static function nextNumber(): string
     {
         $prefix = config('qudroid.academy.student_no_prefix', 'QCA') . '/' . now()->year . '/';

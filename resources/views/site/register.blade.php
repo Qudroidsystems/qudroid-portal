@@ -17,7 +17,7 @@
                 <div class="s-hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
 
                 @if($student)
-                    <div class="s-alert is-info" style="margin:0 0 24px">Registering as <b>{{ $student->user->name }}</b> ({{ $student->student_no }}).</div>
+                    <div class="s-alert is-info" style="margin:0 0 24px">Registering as <b>{{ $student->user->name }}</b> @if($student->student_no)({{ $student->student_no }})@endif.</div>
                 @else
                     <h3 class="s-h3" style="margin-bottom:16px">About you</h3>
                     <div class="s-field"><label for="r-name">Full name</label><input id="r-name" class="s-input" name="name" value="{{ old('name') }}" required maxlength="150" autocomplete="name"></div>

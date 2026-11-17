@@ -39,15 +39,74 @@ class CallService
         $servers = [];
         $stun = config('qudroid.calls.stun', []);
         if ($stun) $servers[] = ['urls' => array_values($stun)];
+
         // A TURN relay carries the sound and picture when the two networks can't reach each other
-        // directly (mobile data, office firewalls). Several addresses may be listed, comma-separated,
-        // e.g. turn:host:3478,turn:host:443?transport=tcp,turns:host:443?transport=tcp
-        $turn = array_values(array_filter(array_map('trim', explode(',', (string) config('qudroid.calls.turn_url')))));
-        if ($turn) {
-            $servers[] = ['urls' => $turn, 'username' => (string) config('qudroid.calls.turn_username'), 'credential' => (string) config('qudroid.calls.turn_credential')];
+        // directly (mobile data, office firewalls). Without one, calls between phones on mobile data
+        // usually connect but have no sound or picture.
+        return array_merge($servers, $this->turnServers());
+    }
+
+    /**
+     * TURN servers, from whichever is set up: Cloudflare or Metered (logins fetched from them and
+     * kept for a few hours), a coturn shared secret (logins made here), or a fixed login.
+     * Several addresses may be listed, comma-separated, e.g.
+     * turn:host:3478,turn:host:443?transport=tcp,turns:host:443?transport=tcp
+     */
+    public function turnServers(): array
+    {
+        $cfg = config('qudroid.calls');
+        $urls = array_values(array_filter(array_map('trim', explode(',', (string) ($cfg['turn_url'] ?? '')))));
+
+        if (!empty($cfg['cloudflare_turn_key_id']) && !empty($cfg['cloudflare_turn_token'])) {
+            $got = $this->fetchTurn('cloudflare', function () use ($cfg) {
+                $r = \Illuminate\Support\Facades\Http::timeout(6)->withToken($cfg['cloudflare_turn_token'])
+                    ->post('https://rtc.live.cloudflare.com/v1/turn/keys/' . $cfg['cloudflare_turn_key_id'] . '/credentials/generate-ice-servers', ['ttl' => 86400]);
+                $list = $r->successful() ? ($r->json('iceServers') ?? []) : [];
+
+                return array_values(array_filter((array) $list, fn ($s) => is_array($s) && !empty($s['username'])));
+            });
+            if ($got) return $got;
         }
 
-        return $servers;
+        if (!empty($cfg['metered_domain']) && !empty($cfg['metered_api_key'])) {
+            $got = $this->fetchTurn('metered', function () use ($cfg) {
+                $domain = preg_replace('#^https?://#', '', rtrim((string) $cfg['metered_domain'], '/'));
+                $r = \Illuminate\Support\Facades\Http::timeout(6)->get('https://' . $domain . '/api/v1/turn/credentials', ['apiKey' => $cfg['metered_api_key']]);
+                $list = $r->successful() ? $r->json() : [];
+
+                return array_values(array_filter((array) $list, fn ($s) => is_array($s) && !empty($s['urls']) && str_contains(json_encode($s['urls']), 'turn')));
+            });
+            if ($got) return $got;
+        }
+
+        if (!$urls) return [];
+
+        if (!empty($cfg['turn_secret'])) {
+            // coturn "use-auth-secret": the login is "expiry:who", the password an HMAC of it.
+            $username = (now()->addDay()->timestamp) . ':' . (auth()->id() ?? 'guest');
+            $credential = base64_encode(hash_hmac('sha1', $username, (string) $cfg['turn_secret'], true));
+
+            return [['urls' => $urls, 'username' => $username, 'credential' => $credential]];
+        }
+
+        return [['urls' => $urls, 'username' => (string) ($cfg['turn_username'] ?? ''), 'credential' => (string) ($cfg['turn_credential'] ?? '')]];
+    }
+
+    /** Ask a TURN provider for logins, keeping them for a few hours; a failure is retried after a minute. */
+    protected function fetchTurn(string $provider, callable $fetch): array
+    {
+        $key = 'calls.turn.' . $provider;
+        $cached = \Illuminate\Support\Facades\Cache::get($key);
+        if (is_array($cached)) return $cached;
+        try {
+            $list = $fetch();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('TURN logins could not be fetched', ['provider' => $provider, 'error' => $e->getMessage()]);
+            $list = [];
+        }
+        \Illuminate\Support\Facades\Cache::put($key, $list, $list ? now()->addHours(6) : now()->addMinute());
+
+        return $list;
     }
 
     public function live(Conversation $c): ?Call

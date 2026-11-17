@@ -62,17 +62,17 @@ class StudentController extends Controller
 
             return Student::create($this->profile($data) + [
                 'user_id'     => $user->id,
-                'student_no'  => Student::nextNumber(),
-                'status'      => $data['status'],
+                'status'      => $data['status'],   // an admitted student gets their admission number on save
                 'admitted_at' => $data['status'] === 'applicant' ? null : now(),
                 'admitted_by' => $data['status'] === 'applicant' ? null : $request->user()->id,
             ]);
         });
 
-        PortalNotifier::toUsers([$student->user_id], 'Welcome to ' . config('qudroid.name'), 'Your student number is ' . $student->student_no . '.', route('academy.my'), 'course');
+        PortalNotifier::toUsers([$student->user_id], 'Welcome to ' . config('qudroid.name'),
+            $student->student_no ? 'Your admission number is ' . $student->student_no . '.' : 'Your student account is ready.', route('academy.my'), 'course');
 
         return redirect()->route('academy.students.show', $student)
-            ->with('success', "Student {$student->student_no} created.")
+            ->with('success', 'Student ' . ($student->student_no ?? $student->user->name) . ' created.')
             ->with('temp_password', $data['password'] ? null : $password);
     }
 
@@ -84,6 +84,9 @@ class StudentController extends Controller
             'student'     => $student,
             'enrollments' => $student->enrollments()->with('course', 'cohort', 'accessGrantedBy', 'enrolledBy', 'invoices')->get(),
             'cohorts'     => Cohort::with('course')->whereIn('status', Cohort::ENROLLABLE)->orderBy('starts_on')->get(),
+            'invoices'    => \App\Models\Finance\Invoice::where('user_id', $student->user_id)->where('status', '!=', 'void')->courseFees()
+                ->with('items', 'user', 'allocations.payment')->latest('id')->get(),
+            'gateways'    => app(\App\Services\Finance\PaymentService::class)->onlineGateways(),
         ]);
     }
 
@@ -122,7 +125,7 @@ class StudentController extends Controller
         $student->update($changes);
 
         if ($changes['status'] === 'admitted' && isset($changes['admitted_at'])) {
-            PortalNotifier::toUsers([$student->user_id], 'You have been admitted', 'Welcome to the academy. Your student number is ' . $student->student_no . '.', route('academy.my'), 'course');
+            PortalNotifier::toUsers([$student->user_id], 'You have been admitted', 'Welcome to the academy. Your admission number is ' . $student->student_no . '.', route('academy.my'), 'course');
         }
 
         return back()->with('success', 'Status changed to ' . $student->status_label . '.');

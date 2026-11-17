@@ -14,7 +14,7 @@ class Submission extends Model
     protected $table = 'academy_submissions';
 
     protected $fillable = [
-        'assessment_id', 'enrollment_id', 'body', 'file_path', 'file_name', 'status', 'score', 'percent',
+        'assessment_id', 'enrollment_id', 'body', 'code', 'code_language', 'file_path', 'file_name', 'status', 'score', 'percent',
         'feedback', 'submitted_at', 'graded_by', 'graded_at',
     ];
 
@@ -24,6 +24,11 @@ class Submission extends Model
         'submitted_at' => 'datetime',
         'graded_at'    => 'datetime',
     ];
+
+    public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AssessmentComment::class)->orderBy('id');
+    }
 
     public function assessment(): BelongsTo
     {

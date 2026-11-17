@@ -91,7 +91,7 @@ class LedgerService
     public function invoiceIssued(Invoice $invoice, ?User $by): ?JournalEntry
     {
         if (Money::minor($invoice->total) <= 0) return null;
-        $income = $invoice->enrollment_id ? Account::COURSE_FEES : Account::SERVICES;
+        $income = $invoice->isCourseFee() ? Account::COURSE_FEES : Account::SERVICES;
 
         return $this->post("Invoice {$invoice->number}: {$invoice->title}", [
             ['account' => Account::RECEIVABLE, 'debit' => $invoice->total, 'memo' => $invoice->user?->name],

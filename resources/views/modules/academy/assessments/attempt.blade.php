@@ -7,7 +7,7 @@
     <x-cb.hero :title="$attempt->enrollment->student->user->name" icon="ri-questionnaire-line" :subtitle="$assessment->title . ' · attempt ' . $attempt->attempt_no" :back="route('academy.assessments.results', [$course, $assessment])" back-label="Results">
         <x-slot:pills>
             <span class="cb-meta-pill">Submitted {{ $attempt->submitted_at?->format('j M Y, g:ia') ?? 'not yet' }}</span>
-            <span class="cb-meta-pill">{{ $attempt->needs_review ? 'Essays to mark' : 'Score ' . rtrim(rtrim(number_format((float) $attempt->percent, 1), '0'), '.') . '%' }}</span>
+            <span class="cb-meta-pill">{{ $attempt->needs_review ? 'Answers to mark' : 'Score ' . rtrim(rtrim(number_format((float) $attempt->percent, 1), '0'), '.') . '%' }}</span>
             @if($attempt->timed_out)<span class="cb-meta-pill">Ran out of time</span>@endif
         </x-slot:pills>
     </x-cb.hero>
@@ -27,6 +27,8 @@
                                 @php $picked = in_array($i, array_map('intval', (array) $given)); $right = in_array($i, $q->correct ?? []); @endphp
                                 <div class="{{ $right ? 'text-success' : ($picked ? 'text-danger' : '') }}"><i class="{{ $picked ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line' }}"></i> {{ $o }}@if($right) <small>(correct)</small>@endif</div>
                             @endforeach
+                        @elseif($q->type === 'code')
+                            @if($given !== null)<x-code-editor :value="(string) $given" :language="$q->language ?? 'plain'" :readonly="true" height="80px" />@else<div class="p-2 bg-light rounded">(no answer)</div>@endif
                         @else
                             <div class="p-2 bg-light rounded" style="white-space: pre-wrap">{{ $given ?? '(no answer)' }}</div>
                             @if($q->type === 'short_answer')<div class="small text-muted mt-1">Accepted: {{ implode(' · ', $q->accepted_answers ?? []) }}</div>@endif
@@ -41,6 +43,16 @@
         @endforeach
         @if($attempt->isSubmitted())<button class="btn btn-primary">Save marks</button>@endif
     </form>
+
+    @if($attempt->isSubmitted())
+        <x-cb.card class="mt-3">
+            @include('modules.academy.partials.comments', [
+                'comments' => $attempt->comments, 'studentId' => $attempt->enrollment->student->user_id, 'title' => 'Comments to the student',
+                'action' => route('academy.assessments.attempt.comment', [$course, $assessment, $attempt]),
+                'questions' => $questions->values()->mapWithKeys(fn ($q, $i) => [$q->id => $i + 1]),
+            ])
+        </x-cb.card>
+    @endif
 
 </div></div></div>
 @endsection

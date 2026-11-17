@@ -66,10 +66,20 @@
             @endif
         </div>
         <div class="col-xl-4">
-            <x-cb.card title="Quizzes and assignments" icon="ri-questionnaire-line" :count="$assessments->count()" :flush="true">
+            <x-cb.card title="Assessments" icon="ri-questionnaire-line" :count="$assessments->count()" :flush="true">
                 <x-slot:tools>
-                    <a href="{{ route('academy.assessments.create', [$course, 'type' => 'quiz']) }}" class="btn btn-sm btn-soft-primary"><i class="ri-add-line"></i> Quiz</a>
-                    <a href="{{ route('academy.assessments.create', [$course, 'type' => 'assignment']) }}" class="btn btn-sm btn-soft-primary"><i class="ri-add-line"></i> Assignment</a>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-soft-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false"><i class="ri-add-line"></i> Add</button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            @php $groups = ['quiz' => 'Questions (marked automatically)', 'assignment' => 'Students hand in work', 'manual' => 'Marked in class']; @endphp
+                            @foreach($groups as $type => $label)
+                                <li><h6 class="dropdown-header">{{ $label }}</h6></li>
+                                @foreach(\App\Models\Academy\Assessment::KINDS as $kind => [$kl, $kt, $ki])
+                                    @if($kt === $type)<li><a class="dropdown-item" href="{{ route('academy.assessments.create', [$course, 'kind' => $kind]) }}"><i class="{{ $ki }} me-2"></i>{{ $kl }}</a></li>@endif
+                                @endforeach
+                            @endforeach
+                        </ul>
+                    </div>
                 </x-slot:tools>
                 @if($assessments->isEmpty())
                     <div class="p-3 small text-muted">None yet. Their weighted results make up the student's grade; the pass grade ({{ $course->pass_grade }}%) is set on the course.</div>

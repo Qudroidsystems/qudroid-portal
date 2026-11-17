@@ -28,6 +28,11 @@
         <textarea name="accepted" class="form-control form-control-sm" rows="2" placeholder="Accepted answers, one per line (capitals and extra spaces are ignored)">{{ implode("\n", $question->accepted_answers ?? []) }}</textarea>
     </div>
     <div data-for="essay" class="small text-muted mb-2">Students type a long answer; a teacher marks it from the results page.</div>
+    <div data-for="code" class="mb-2">
+        <div class="input-group input-group-sm"><span class="input-group-text">Language</span>
+            <select name="language" class="form-select form-select-sm">@foreach(\App\Models\Academy\Assessment::LANGUAGES as $k => [$v])<option value="{{ $k }}" @selected(($question->language ?? 'javascript') === $k)>{{ $v }}</option>@endforeach</select></div>
+        <div class="small text-muted mt-1">Students write code in a code editor; a teacher marks it from the results page and can comment on single lines.</div>
+    </div>
 
     <input name="explanation" class="form-control form-control-sm mb-2" value="{{ $question->explanation }}" placeholder="Explanation shown after submitting (optional)" maxlength="5000">
     <button class="btn btn-sm btn-primary">{{ $method === 'PUT' ? 'Save question' : 'Add question' }}</button>

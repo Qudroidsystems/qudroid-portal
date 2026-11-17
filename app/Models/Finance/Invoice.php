@@ -49,6 +49,20 @@ class Invoice extends Model
         return $this->belongsTo(Enrollment::class);
     }
 
+    /**
+     * The course enrollments this invoice charges for: one for a course-fee
+     * invoice, several when a student was admitted to several courses at once.
+     */
+    public function enrollments(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Enrollment::class, 'finance_invoice_items', 'invoice_id', 'enrollment_id');
+    }
+
+    public function isCourseFee(): bool
+    {
+        return (bool) $this->enrollment_id || $this->items()->whereNotNull('enrollment_id')->exists();
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceItem::class)->orderBy('position');
@@ -67,6 +81,12 @@ class Invoice extends Model
     public function voider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'voided_by');
+    }
+
+    /** Course-fee invoices: those that charge for one or more enrollments. */
+    public function scopeCourseFees(Builder $q): Builder
+    {
+        return $q->where(fn ($w) => $w->whereNotNull('enrollment_id')->orWhereHas('items', fn ($i) => $i->whereNotNull('enrollment_id')));
     }
 
     public function scopeOpen(Builder $q): Builder

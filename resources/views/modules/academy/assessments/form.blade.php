@@ -1,10 +1,13 @@
 @extends('layouts.master')
 
 @section('content')
-@php $editing = $assessment->exists; $quiz = $assessment->type === 'quiz'; $taken = $taken ?? false; @endphp
+@php
+    $editing = $assessment->exists; $quiz = $assessment->type === 'quiz'; $manual = $assessment->type === 'manual'; $taken = $taken ?? false;
+    $kindsHere = array_filter(\App\Models\Academy\Assessment::KINDS, fn ($k) => $k[1] === $assessment->type);
+@endphp
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
-    <x-cb.hero :title="$editing ? $assessment->title : 'New ' . strtolower($assessment->type_label)" :icon="$assessment->icon" :subtitle="$course->title" :back="route('academy.content.index', $course)" back-label="Content">
+    <x-cb.hero :title="$editing ? $assessment->title : 'New ' . \Illuminate\Support\Str::lower($assessment->type_label)" :icon="$assessment->icon" :subtitle="$course->title" :back="route('academy.content.index', $course)" back-label="Content">
         @if($editing)
             <x-slot:pills>
                 <span class="cb-meta-pill">{{ $assessment->type_label }}</span>
@@ -20,10 +23,26 @@
     <div class="row g-3">
         <div class="col-xl-{{ $editing && $quiz ? '5' : '8' }}">
             <form method="POST" action="{{ $editing ? route('academy.assessments.update', [$course, $assessment]) : route('academy.assessments.store', $course) }}">
-                @csrf @if($editing) @method('PUT') @else <input type="hidden" name="type" value="{{ $assessment->type }}"> @endif
+                @csrf @if($editing) @method('PUT') @endif
                 <x-cb.card title="Details" icon="ri-settings-3-line">
-                    <div class="mb-3"><label class="form-label">Title</label><input name="title" class="form-control" required maxlength="200" value="{{ old('title', $assessment->title) }}" placeholder="{{ $quiz ? 'e.g. Week 1 quiz: HTML basics' : 'e.g. Build a personal web page' }}"></div>
-                    <div class="mb-3"><label class="form-label">Instructions</label><textarea name="instructions" class="form-control" rows="{{ $quiz ? 3 : 6 }}" placeholder="Markdown works here">{{ old('instructions', $assessment->instructions) }}</textarea></div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-8"><label class="form-label">Title</label><input name="title" class="form-control" required maxlength="200" value="{{ old('title', $assessment->title) }}" placeholder="{{ $quiz ? 'e.g. Week 1 test: HTML basics' : ($manual ? 'e.g. Lab 3: building a form' : 'e.g. Build a personal web page') }}"></div>
+                        <div class="col-sm-4"><label class="form-label">Kind</label>
+                            <select name="kind" class="form-select">@foreach($kindsHere as $k => [$kl])<option value="{{ $k }}" @selected(old('kind', $assessment->kind_key) === $k)>{{ $kl }}</option>@endforeach</select></div>
+                    </div>
+                    @if($manual)<div class="cb-banner info mb-3"><i class="ri-information-line"></i><div>Done in class: students don't hand anything in. Enter each student's score from the Results page; it counts towards their grade like any other assessment.</div></div>@endif
+                    <div class="mb-3"><label class="form-label">Instructions</label><textarea name="instructions" class="form-control" rows="{{ $quiz || $manual ? 3 : 6 }}" placeholder="Markdown works here">{{ old('instructions', $assessment->instructions) }}</textarea></div>
+                    @if($assessment->type === 'assignment')
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6"><label class="form-label">Students hand in</label>
+                                <select name="answer_format" class="form-select" data-answer-format>@foreach(\App\Models\Academy\Assessment::ANSWER_FORMATS as $k => $v)<option value="{{ $k }}" @selected(old('answer_format', $assessment->answer_format) === $k)>{{ $v }}</option>@endforeach</select></div>
+                            <div class="col-sm-6" data-code-only><label class="form-label">Programming language</label>
+                                <select name="code_language" class="form-select">@foreach(\App\Models\Academy\Assessment::LANGUAGES as $k => [$v])<option value="{{ $k }}" @selected(old('code_language', $assessment->code_language ?? 'javascript') === $k)>{{ $v }}</option>@endforeach</select></div>
+                            <div class="col-12" data-code-only><label class="form-label">Starter code <span class="text-muted">(optional: students start from this)</span></label>
+                                <x-code-editor name="starter_code" :value="old('starter_code', $assessment->starter_code)" :language="old('code_language', $assessment->code_language ?? 'javascript')" height="160px" /></div>
+                            <div class="col-12" data-not-file><div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="allow_file" value="1" id="allowfile" @checked(old('allow_file', $assessment->allow_file))><label class="form-check-label" for="allowfile">Students may also attach a file (e.g. a zip of their project)</label></div></div>
+                        </div>
+                    @endif
                     <div class="row g-3">
                         <div class="col-sm-6"><label class="form-label">Weight in the final grade</label><input name="weight" type="number" step="0.5" min="0" max="100" class="form-control" required value="{{ old('weight', $assessment->weight + 0) }}"><div class="form-text">e.g. 20 for 20%. 0 = practice, doesn't count (unless nothing has a weight).</div></div>
                         <div class="col-sm-6"><label class="form-label">Pass mark (%)</label><input name="pass_mark" type="number" min="0" max="100" class="form-control" required value="{{ old('pass_mark', $assessment->pass_mark) }}"></div>
@@ -33,13 +52,13 @@
                         @else
                             <div class="col-sm-6"><label class="form-label">Marked out of</label><input name="max_score" type="number" step="0.5" min="1" max="1000" class="form-control" value="{{ old('max_score', $assessment->max_score + 0) }}"></div>
                         @endif
-                        <div class="col-sm-6"><label class="form-label">{{ $quiz ? 'Closes' : 'Due' }} <span class="text-muted">(optional)</span></label><input name="due_at" type="datetime-local" class="form-control" value="{{ old('due_at', $assessment->due_at?->format('Y-m-d\TH:i')) }}">@unless($quiz)<div class="form-text">Late work is still accepted, and marked late.</div>@endunless</div>
+                        <div class="col-sm-6"><label class="form-label">{{ $quiz ? 'Closes' : ($manual ? 'Date' : 'Due') }} <span class="text-muted">(optional)</span></label><input name="due_at" type="datetime-local" class="form-control" value="{{ old('due_at', $assessment->due_at?->format('Y-m-d\TH:i')) }}">@if($assessment->type === 'assignment')<div class="form-text">Late work is still accepted, and marked late.</div>@endif</div>
                     </div>
                     @if($quiz)
                         <div class="form-check form-switch mt-3"><input class="form-check-input" type="checkbox" name="shuffle" value="1" id="shuffle" @checked(old('shuffle', $assessment->shuffle))><label class="form-check-label" for="shuffle">Shuffle the questions for each attempt</label></div>
                         <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="show_answers" value="1" id="show" @checked(old('show_answers', $assessment->show_answers))><label class="form-check-label" for="show">Show correct answers after submitting</label></div>
                     @endif
-                    <div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" name="is_published" value="1" id="pub" @checked(old('is_published', $assessment->is_published)) @disabled($quiz && !$editing)><label class="form-check-label" for="pub">Published (students on the course can see it)</label>
+                    <div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" name="is_published" value="1" id="pub" @checked(old('is_published', $assessment->is_published ?? false)) @disabled($quiz && !$editing)><label class="form-check-label" for="pub">Published (students on the course can see it)</label>
                         @if($quiz && !$editing)<div class="form-text">Add questions first, then publish.</div>@endif</div>
                     <div class="d-flex gap-2 mt-3">
                         <button class="btn btn-primary">{{ $editing ? 'Save' : 'Create' }}</button>
@@ -87,6 +106,30 @@
 
 @push('scripts')
 <script>
+// Assignments: show the code settings only when students hand in code.
+document.querySelectorAll('[data-answer-format]').forEach(function (sel) {
+    function sync() {
+        var code = sel.value === 'code' || sel.value === 'text_code';
+        document.querySelectorAll('[data-code-only]').forEach(function (el) { el.style.display = code ? '' : 'none'; });
+        document.querySelectorAll('[data-not-file]').forEach(function (el) { el.style.display = sel.value === 'file' ? 'none' : ''; });
+        if (code && window.qdCodeEditors) setTimeout(window.qdCodeEditors, 0);
+    }
+    sel.addEventListener('change', sync);
+    sync();
+});
+// The starter-code editor follows the language chosen.
+(function () {
+    var lang = document.querySelector('select[name=code_language]');
+    if (!lang) return;
+    var modes = @json(collect(\App\Models\Academy\Assessment::LANGUAGES)->map(fn ($l) => $l));
+    lang.addEventListener('change', function () {
+        var box = document.querySelector('[data-code-editor]'); var m = modes[lang.value];
+        if (!box || !m) return;
+        box.dataset.mode = m[1];
+        var label = box.querySelector('.qd-code-bar span'); if (label) label.innerHTML = '<i class="ri-code-s-slash-line"></i> ' + m[0];
+        if (box.cm) box.cm.setOption('mode', m[1]);
+    });
+})();
 // Show only the answer fields that fit the chosen question type.
 document.querySelectorAll('[data-question-form]').forEach(function (form) {
     var type = form.querySelector('[name=type]');
@@ -95,7 +138,7 @@ document.querySelectorAll('[data-question-form]').forEach(function (form) {
         form.querySelectorAll('[data-for]').forEach(function (el) {
             var on = el.dataset.for.split(' ').indexOf(t) >= 0;
             el.style.display = on ? '' : 'none';
-            el.querySelectorAll('input, textarea').forEach(function (i) { i.disabled = !on; });
+            el.querySelectorAll('input, textarea, select').forEach(function (i) { i.disabled = !on; });
         });
         form.querySelectorAll('[data-correct]').forEach(function (el) { el.type = t === 'multiple' ? 'checkbox' : 'radio'; });
     }

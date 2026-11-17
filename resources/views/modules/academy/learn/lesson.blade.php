@@ -81,7 +81,7 @@
                 </div>
             </x-cb.card>
             @if($assessments->isNotEmpty() && ($learning || $teacher))
-                <x-cb.card title="Quizzes and assignments" icon="ri-questionnaire-line" :flush="true">
+                <x-cb.card title="Assessments" icon="ri-questionnaire-line" :flush="true">
                     <div class="list-group list-group-flush">
                         @foreach($assessments as $a)
                             <a href="{{ route('academy.learn.assessment', [$course, $a]) }}" class="list-group-item list-group-item-action d-flex gap-2 align-items-center">

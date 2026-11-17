@@ -80,7 +80,7 @@ class PaymentService
      * Create a pending online payment with a gateway and return the page to send the payer to.
      * $returnUrl gets the new Payment and gives the address the gateway sends the payer back to.
      */
-    public function startOnline(string $gateway, Invoice $invoice, int $amountMinor, User $payer, callable $returnUrl): string
+    public function startOnline(string $gateway, Invoice $invoice, int $amountMinor, User $payer, callable $returnUrl, ?User $by = null): string
     {
         $this->check(!array_key_exists($gateway, $this->onlineGateways()), 'amount', 'Online payment is not set up yet. Please pay by bank transfer and send your receipt to the finance office.');
         $this->check(!$invoice->isOpen(), 'amount', 'This invoice is not open for payment.');
@@ -95,7 +95,7 @@ class PaymentService
             'method'      => $gateway,
             'reference'   => 'QH-' . $invoice->id . '-' . Str::upper(Str::random(10)),
             'status'      => 'pending',
-            'recorded_by' => $payer->id,
+            'recorded_by' => ($by ?? $payer)->id,   // staff paying on someone's behalf
         ]);
         $back = $returnUrl($payment);
 
@@ -223,8 +223,10 @@ class PaymentService
             app(LedgerService::class)->paymentReversed($payment, $by);
             foreach ($payment->allocations()->with('invoice')->get() as $allocation) {
                 $invoice = $this->invoices->refresh($allocation->invoice);
-                if ($invoice->enrollment && !$this->thresholdMet($invoice)) {
-                    $this->enrollments->paymentReversed($invoice->enrollment, 'Payment ' . $payment->number . ' reversed: ' . trim($reason));
+                if (!$this->thresholdMet($invoice)) {
+                    foreach ($invoice->enrollments as $enrollment) {
+                        $this->enrollments->paymentReversed($enrollment, 'Payment ' . $payment->number . ' reversed: ' . trim($reason));
+                    }
                 }
             }
         });
@@ -236,27 +238,44 @@ class PaymentService
     public function minimumPayment(Invoice $invoice): int
     {
         $balance = $invoice->balanceMinor();
-        $course = $invoice->enrollment?->course;
-        if (!$course || !$course->installments_allowed) {
+        if (!$this->allowsInstalments($invoice)) {
             return $balance;
         }
         if (Money::minor($invoice->amount_paid) > 0) {
             return min($balance, 100); // later instalments: any amount
         }
 
-        return min($balance, max(100, Money::minor($course->min_deposit)));
+        return min($balance, max(100, $this->accessThreshold($invoice)));
     }
 
     /** Whether enough of a course-fee invoice is paid to open course access. */
     public function thresholdMet(Invoice $invoice): bool
     {
-        $paid = Money::minor($invoice->amount_paid);
-        $course = $invoice->enrollment?->course;
-        if ($course && $course->installments_allowed) {
-            return $paid >= max(1, min(Money::minor($invoice->total), Money::minor($course->min_deposit)));
+        return Money::minor($invoice->amount_paid) >= max(1, $this->accessThreshold($invoice));
+    }
+
+    /**
+     * What must be paid before course access opens, in minor units: the whole
+     * line for each course, or its deposit when the course allows instalments.
+     */
+    public function accessThreshold(Invoice $invoice): int
+    {
+        $items = $invoice->items()->with('enrollment.course')->get();
+        if ($items->whereNotNull('enrollment_id')->isEmpty()) {
+            return Money::minor($invoice->total);
         }
 
-        return $paid >= Money::minor($invoice->total);
+        return $items->sum(function ($item) {
+            $amount = Money::minor($item->amount);
+            $course = $item->enrollment?->course;
+
+            return $course && $course->installments_allowed ? min($amount, Money::minor($course->min_deposit)) : $amount;
+        });
+    }
+
+    protected function allowsInstalments(Invoice $invoice): bool
+    {
+        return $invoice->enrollments()->whereHas('course', fn ($q) => $q->where('installments_allowed', true))->exists();
     }
 
     protected function confirm(Payment $payment, ?User $by): Payment
@@ -288,12 +307,17 @@ class PaymentService
             'We received ' . Money::format($payment->amount, $payment->currency) . '. Receipt ' . $payment->number . '.',
             route('billing.receipt', $payment), 'payment');
 
-        foreach ($payment->allocations()->with('invoice.enrollment')->get() as $allocation) {
+        foreach ($payment->allocations()->with('invoice')->get() as $allocation) {
             $invoice = $allocation->invoice;
-            if ($invoice->enrollment && $this->thresholdMet($invoice)) {
-                $this->enrollments->paymentConfirmed($invoice->enrollment, $by, $payment->number);
+            if ($this->thresholdMet($invoice)) {
+                foreach ($invoice->enrollments as $enrollment) {
+                    $this->enrollments->paymentConfirmed($enrollment, $by, $payment->number);
+                }
             }
         }
+
+        // The receipt goes to the payer by e-mail, with the PDF attached.
+        app(\App\Services\Finance\ReceiptMailer::class)->send($payment);
     }
 
     protected function check(bool $failed, string $field, string $message): void

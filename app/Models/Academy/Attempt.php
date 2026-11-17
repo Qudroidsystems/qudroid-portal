@@ -32,6 +32,11 @@ class Attempt extends Model
         'graded_at'    => 'datetime',
     ];
 
+    public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AssessmentComment::class)->orderBy('id');
+    }
+
     public function assessment(): BelongsTo
     {
         return $this->belongsTo(Assessment::class);

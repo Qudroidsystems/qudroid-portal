@@ -27,7 +27,7 @@ class LearnAssessmentController extends Controller
             'enrollment' => $enrollment,
             'teacher'    => $teacher,
             'attempts'   => $enrollment ? $assessment->attempts()->where('enrollment_id', $enrollment->id)->orderByDesc('attempt_no')->get() : collect(),
-            'submission' => $enrollment ? $assessment->submissions()->where('enrollment_id', $enrollment->id)->first() : null,
+            'submission' => $enrollment ? $assessment->submissions()->with('comments.user')->where('enrollment_id', $enrollment->id)->first() : null,
             'questionCount' => $assessment->questions()->count(),
         ]);
     }
@@ -50,6 +50,8 @@ class LearnAssessmentController extends Controller
             $questions = $questions->shuffle($attempt->id); // same order every time this attempt is opened
         }
 
+        $attempt->load('comments.user');
+
         return view('modules.academy.learn.attempt', compact('course', 'assessment', 'attempt', 'questions'));
     }
 
@@ -65,13 +67,41 @@ class LearnAssessmentController extends Controller
     public function handIn(Request $request, Course $course, Assessment $assessment)
     {
         [$enrollment] = $this->context($request, $course, $assessment, true);
-        $request->validate([
-            'body' => ['nullable', 'string', 'max:50000'],
-            'file' => ['nullable', 'file', 'mimes:' . ContentController::FILE_TYPES . ',html,css,js,json,py,php,java,dart,kt,swift,md', 'max:' . (int) config('qudroid.academy.max_upload_kb', 51200)],
-        ]);
-        $this->assessments->handIn($assessment, $enrollment, $request->input('body'), $request->file('file'));
+        $request->validate(self::handInRules());
+        $this->assessments->handIn($assessment, $enrollment, $request->input('body'), $request->file('file'), $request->input('code'));
 
         return back()->with('success', 'Handed in. Your instructor has been told.');
+    }
+
+    public static function handInRules(): array
+    {
+        return [
+            'body' => ['nullable', 'string', 'max:50000'],
+            'code' => ['nullable', 'string', 'max:200000'],
+            'file' => ['nullable', 'file', 'mimes:' . ContentController::FILE_TYPES . ',html,css,js,ts,json,py,php,java,dart,kt,swift,md,txt,sql,c,cpp,cs,go,rb,sol,ipynb', 'max:' . (int) config('qudroid.academy.max_upload_kb', 51200)],
+        ];
+    }
+
+    /** The student's comment (or question) on their own work. */
+    public function comment(Request $request, Course $course, Assessment $assessment)
+    {
+        [$enrollment] = $this->context($request, $course, $assessment, true);
+        $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'line' => ['nullable', 'integer', 'min:1']]);
+        $submission = Submission::where('assessment_id', $assessment->id)->where('enrollment_id', $enrollment->id)->first();
+        abort_unless($submission, 404, 'Hand in your work first.');
+        $this->assessments->comment($submission, $request->user(), $data['body'], $data['line'] ?? null);
+
+        return redirect()->to(route('academy.learn.assessment', [$course, $assessment]) . '#comments')->with('success', 'Comment sent to your instructor.');
+    }
+
+    public function commentAttempt(Request $request, Course $course, Attempt $attempt)
+    {
+        $this->mine($request, $course, $attempt);
+        abort_unless($attempt->isSubmitted(), 404);
+        $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'question_id' => ['nullable', 'integer']]);
+        $this->assessments->comment($attempt, $request->user(), $data['body'], null, $data['question_id'] ?? null);
+
+        return back()->with('success', 'Comment sent to your instructor.');
     }
 
     public function file(Request $request, Course $course, Assessment $assessment)

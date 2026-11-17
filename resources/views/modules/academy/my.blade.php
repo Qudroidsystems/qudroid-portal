@@ -3,7 +3,7 @@
 @section('content')
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
-    <x-cb.hero title="My academy" icon="ri-graduation-cap-line" :subtitle="$student ? 'Student number ' . $student->student_no : 'Your courses and the cohorts you teach.'">
+    <x-cb.hero title="My academy" icon="ri-graduation-cap-line" :subtitle="$student ? ($student->student_no ? 'Admission number ' . $student->student_no : 'Your admission number comes when you are admitted.') : 'Your courses and the cohorts you teach.'">
         @if($student)
             <x-slot:pills><span class="cb-meta-pill"><i class="ri-user-3-line me-1"></i>{{ $student->status_label }}</span></x-slot:pills>
         @endif
@@ -58,12 +58,12 @@
     @if($applications->isNotEmpty())
         <x-cb.card title="My applications" icon="ri-file-list-3-line" :count="$applications->count()" :flush="true">
             <div class="table-responsive"><table class="cb-table stack">
-                <thead><tr><th>Reference</th><th>Course</th><th>Status</th><th></th></tr></thead>
+                <thead><tr><th>Reference</th><th>Courses</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                 @foreach($applications as $a)
                     <tr>
                         <td data-label="Reference">{{ $a->reference }}<div class="small text-muted">{{ $a->created_at->format('j M Y') }}</div></td>
-                        <td data-label="Course">{{ $a->course->title }}<div class="small text-muted">{{ $a->cohort->name }}</div></td>
+                        <td data-label="Courses">@forelse($a->choices as $ch)<div>{{ $ch->course?->title }} <span class="small text-muted">· {{ $ch->cohort?->name }}@if($a->status === 'admitted' && $ch->status === 'declined') · not offered @endif</span></div>@empty{{ $a->course->title }}<div class="small text-muted">{{ $a->cohort->name }}</div>@endforelse</td>
                         <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $a->status, 'label' => $a->status_label])
                             @if($a->status === 'declined' && $a->decision_note)<div class="small text-muted">{{ $a->decision_note }}</div>@endif</td>
                         <td class="text-end">@if($a->status === 'submitted')

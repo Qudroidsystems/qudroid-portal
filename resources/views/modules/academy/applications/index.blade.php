@@ -30,12 +30,19 @@
             <div class="empty-state"><i class="ri-inbox-line"></i><h6>No applications</h6><p>Share the <a href="{{ route('apply.index') }}" target="_blank">Apply page</a> to receive applications.</p></div>
         @else
             <div class="table-responsive"><table class="cb-table stack">
-                <thead><tr><th>Applicant</th><th>Course</th><th>Experience</th><th>Received</th><th>Status</th></tr></thead>
+                <thead><tr><th>Applicant</th><th>Courses</th><th>Experience</th><th>Received</th><th>Status</th></tr></thead>
                 <tbody>
                 @foreach($applications as $a)
                     <tr>
                         <td data-label="Applicant"><a href="{{ route('academy.applications.show', $a) }}" class="text-reset"><span class="fw-semibold">{{ $a->student->user->name }}</span><span class="d-block small text-muted">{{ $a->reference }} · {{ $a->student->user->email }}</span></a></td>
-                        <td data-label="Course">{{ $a->course->title }}<div class="small text-muted">{{ $a->cohort->name }}</div></td>
+                        <td data-label="Courses">
+                            @forelse($a->choices as $ch)
+                                <div>{{ $ch->course?->title }}@if($a->status === 'admitted' && $ch->status === 'declined') <span class="small text-muted">(not offered)</span>@endif</div>
+                            @empty
+                                {{ $a->course->title }}<div class="small text-muted">{{ $a->cohort->name }}</div>
+                            @endforelse
+                            @if($a->choices->count() > 1)<span class="badge bg-primary-subtle text-primary">{{ $a->choices->count() }} courses</span>@endif
+                        </td>
                         <td data-label="Experience">{{ \App\Models\Academy\Application::EXPERIENCE[$a->experience_level] ?? '—' }}@if($a->has_laptop === false)<div class="small text-warning">No laptop</div>@endif</td>
                         <td data-label="Received">{{ $a->created_at->format('j M Y') }}<div class="small text-muted">{{ $a->created_at->diffForHumans() }}</div></td>
                         <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $a->status, 'label' => $a->status_label])</td>

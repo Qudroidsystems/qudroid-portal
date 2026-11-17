@@ -44,11 +44,24 @@
                         <p class="text-muted mb-0">You have used all {{ $assessment->max_attempts }} {{ \Illuminate\Support\Str::plural('attempt', $assessment->max_attempts) }}.</p>
                     @else
                         <form method="POST" action="{{ route('academy.learn.start', [$course, $assessment]) }}">@csrf
-                            <button class="btn btn-primary btn-lg"><i class="ri-play-line"></i> {{ $used ? 'Try again' : 'Start the quiz' }}</button>
+                            <button class="btn btn-primary btn-lg"><i class="ri-play-line"></i> {{ $used ? 'Try again' : 'Start the ' . \Illuminate\Support\Str::lower($assessment->type_label) }}</button>
                             <span class="text-muted ms-2">@if($left !== null){{ $left }} {{ \Illuminate\Support\Str::plural('attempt', $left) }} left @else Unlimited attempts @endif @if($assessment->time_limit_minutes)· the timer starts when you begin @endif</span>
                         </form>
                     @endif
                 </x-cb.card>
+            @elseif($assessment->isManual())
+                <x-cb.card title="Your score" icon="ri-medal-line">
+                    @if($submission && $submission->status === 'graded')
+                        <p class="fs-5 mb-2"><strong>{{ $submission->score + 0 }} / {{ $assessment->max_score + 0 }}</strong> ({{ $pct($submission->percent) }})
+                            <span class="ms-1 small {{ $submission->percent >= $assessment->pass_mark ? 'text-success' : 'text-danger' }}">{{ $submission->percent >= $assessment->pass_mark ? 'Passed' : 'Not passed' }}</span></p>
+                        @if($submission->feedback)<div class="cb-banner info mb-0"><i class="ri-chat-quote-line"></i><div><strong>Feedback:</strong> {!! nl2br(e($submission->feedback)) !!}</div></div>@endif
+                    @else
+                        <p class="text-muted mb-0">{{ $enrollment ? 'This is marked in class. Your score shows here once your instructor enters it.' : 'You are viewing this as a teacher. Enter scores from the Results page.' }}</p>
+                    @endif
+                </x-cb.card>
+                @if($submission && $enrollment)
+                    <x-cb.card>@include('modules.academy.partials.comments', ['comments' => $submission->comments, 'studentId' => auth()->id(), 'title' => 'Questions for your instructor', 'action' => route('academy.learn.comment', [$course, $assessment])])</x-cb.card>
+                @endif
             @else
                 @if($submission)
                     <x-cb.card title="Your work" icon="ri-file-text-line">
@@ -57,14 +70,29 @@
                         @if($submission->status === 'graded')<p class="fs-5 mb-2">Grade: <strong>{{ $submission->score + 0 }} / {{ $assessment->max_score + 0 }}</strong> ({{ $pct($submission->percent) }})</p>@endif
                         @if($submission->feedback)<div class="cb-banner info"><i class="ri-chat-quote-line"></i><div><strong>Feedback:</strong> {!! nl2br(e($submission->feedback)) !!}</div></div>@endif
                         @if($submission->body)<div class="p-3 bg-light rounded mb-2" style="white-space: pre-wrap">{{ $submission->body }}</div>@endif
+                        @if($submission->code !== null)<div class="mb-2"><x-code-editor :value="$submission->code" :language="$submission->code_language ?? $assessment->code_language ?? 'plain'" :readonly="true" height="80px" :commented="$submission->comments->pluck('line')->filter()->all()" /></div>@endif
                         @if($submission->file_path)<a href="{{ route('academy.learn.my-file', [$course, $assessment]) }}"><i class="ri-attachment-2"></i> {{ $submission->file_name }}</a>@endif
+                        @if($enrollment)
+                            <hr>
+                            @include('modules.academy.partials.comments', ['comments' => $submission->comments, 'studentId' => auth()->id(), 'title' => 'Comments with your instructor', 'action' => route('academy.learn.comment', [$course, $assessment]), 'lineInputId' => $submission->code !== null ? 'my-line' : null])
+                        @endif
                     </x-cb.card>
                 @endif
                 @if($enrollment && $working && (!$submission || $submission->status !== 'graded'))
                     <x-cb.card :title="$submission ? 'Hand in again' : 'Hand in your work'" icon="ri-upload-2-line">
                         <form method="POST" action="{{ route('academy.learn.hand-in', [$course, $assessment]) }}" enctype="multipart/form-data">@csrf
-                            <textarea name="body" class="form-control mb-2" rows="6" placeholder="Your answer, or a link to your work (e.g. GitHub)">{{ old('body', $submission?->body) }}</textarea>
-                            <input type="file" name="file" class="form-control mb-2">
+                            @if($assessment->wantsText())
+                                <label class="form-label">{{ $assessment->wantsCode() ? 'Your explanation' : 'Your answer' }}</label>
+                                <textarea name="body" class="form-control mb-3" rows="{{ $assessment->wantsCode() ? 3 : 6 }}" placeholder="{{ $assessment->wantsCode() ? 'Explain your approach (optional)' : 'Your answer, or a link to your work (e.g. GitHub)' }}">{{ old('body', $submission?->body) }}</textarea>
+                            @endif
+                            @if($assessment->wantsCode())
+                                <label class="form-label">Your code</label>
+                                <div class="mb-3"><x-code-editor name="code" :value="old('code', $submission?->code ?? $assessment->starter_code)" :language="$assessment->code_language ?? 'plain'" height="320px" /></div>
+                            @endif
+                            @if($assessment->acceptsFile())
+                                <label class="form-label">{{ $assessment->answer_format === 'file' ? 'Your file' : 'Attach a file (optional)' }}</label>
+                                <input type="file" name="file" class="form-control mb-2" @required($assessment->answer_format === 'file' && !$submission?->file_path)>
+                            @endif
                             <div class="form-text mb-2">@if($submission?->file_path)A new file replaces {{ $submission->file_name }}. @endif You can hand in again until it is graded.</div>
                             <button class="btn btn-primary"><i class="ri-send-plane-line"></i> Hand in</button>
                         </form>

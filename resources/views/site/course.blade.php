@@ -2,6 +2,7 @@
 @section('title', $c->title)
 @section('description', (string) $c->summary)
 @php($money = fn ($v) => \App\Services\Website\Content::money($v, $c->currency))
+@php($inCart = array_map('intval', (array) session('course_cart', [])))
 
 @section('content')
     <div class="s-subnav">
@@ -56,9 +57,17 @@
                             · {{ \App\Models\Academy\Course::MODES[$cohort->effectiveMode()] ?? ucfirst($cohort->effectiveMode()) }}
                         </small>
                     </div>
-                    <div style="display:flex;align-items:center;gap:16px">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                         <span class="s-price" style="font-size:21px">{{ $money($cohort->effectiveFee()) }}</span>
-                        <a class="s-btn is-small" href="{{ route('site.academy.register', [$c->slug, $cohort]) }}">Register</a>
+                        @if(in_array($cohort->id, $inCart, true))
+                            <span class="s-in-cart"><i class="ri-check-line"></i> In your cart</span>
+                            <a class="s-btn is-small" href="{{ route('site.academy.cart') }}">Register</a>
+                        @else
+                            <form method="POST" action="{{ route('site.academy.cart.add', $cohort) }}" style="margin:0;display:flex;gap:8px" data-no-loader>@csrf
+                                <button class="s-btn is-small is-ghost"><i class="ri-shopping-bag-line"></i> Add to cart</button>
+                                <button class="s-btn is-small" name="checkout" value="1">Register</button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @empty
@@ -68,6 +77,8 @@
             </div>
             @if($c->instant_enrollment && $c->cohorts->isNotEmpty())
                 <p class="s-muted" style="margin-top:16px;font-size:14px;text-align:center">Your place is confirmed when you register, and you can pay online straight away.</p>
+            @elseif($c->cohorts->isNotEmpty())
+                <p class="s-muted" style="margin-top:16px;font-size:14px;text-align:center">Add more than one course to your cart and register for them together.</p>
             @endif
         </div>
     </section>
