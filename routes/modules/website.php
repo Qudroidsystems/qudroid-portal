@@ -5,6 +5,8 @@ use App\Http\Controllers\Website\Admin\MediaController;
 use App\Http\Controllers\Website\Admin\PageController;
 use App\Http\Controllers\Website\Admin\ProductController;
 use App\Http\Controllers\Website\Admin\WebsiteController;
+use App\Http\Controllers\Website\Admin\StudentProfileController;
+use App\Http\Controllers\Website\Admin\TestimonialController;
 use App\Http\Controllers\Website\Admin\WorkController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +25,20 @@ Route::prefix('website')->name('website.')->middleware('permission:Manage websit
     Route::resource('pages', PageController::class)->except('show')->parameters(['pages' => 'page:id']);
     Route::resource('products', ProductController::class)->except('show')->parameters(['products' => 'product:id']);
     Route::resource('works', WorkController::class)->except('show')->parameters(['works' => 'work:id']);
+
+    // Students on the website and testimonials
+    Route::get('/students', [StudentProfileController::class, 'index'])->name('students.index');
+    Route::post('/students', [StudentProfileController::class, 'store'])->name('students.store');
+    Route::get('/students/{profile:id}/edit', [StudentProfileController::class, 'edit'])->name('students.edit');
+    Route::put('/students/{profile:id}', [StudentProfileController::class, 'update'])->name('students.update');
+    Route::post('/students/{profile:id}/review', [StudentProfileController::class, 'review'])->name('students.review');
+    Route::delete('/students/{profile:id}', [StudentProfileController::class, 'destroy'])->name('students.destroy');
+    Route::post('/students/{profile:id}/projects', [StudentProfileController::class, 'storeProject'])->name('students.projects.store');
+    Route::put('/students/{profile:id}/projects/{project}', [StudentProfileController::class, 'updateProject'])->name('students.projects.update');
+    Route::delete('/students/{profile:id}/projects/{project}', [StudentProfileController::class, 'destroyProject'])->name('students.projects.destroy');
+    Route::post('/testimonials/link', [TestimonialController::class, 'link'])->name('testimonials.link');
+    Route::post('/testimonials/{testimonial}/review', [TestimonialController::class, 'review'])->name('testimonials.review');
+    Route::resource('testimonials', TestimonialController::class)->except('show');
 
     Route::resource('forms', FormController::class)->except('show')->parameters(['forms' => 'form:id']);
     Route::get('/forms/{form:id}/entries', [FormController::class, 'entries'])->name('forms.entries');

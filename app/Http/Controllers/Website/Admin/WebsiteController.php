@@ -57,7 +57,7 @@ class WebsiteController extends Controller
 
         $values = [
             'enabled' => $request->boolean('enabled'),
-            'nav' => collect(['products', 'work', 'academy', 'contact'])->mapWithKeys(fn ($k) => [$k => (bool) ($data['nav'][$k] ?? false)])->all(),
+            'nav' => collect(['products', 'work', 'academy', 'students', 'testimonials', 'contact'])->mapWithKeys(fn ($k) => [$k => (bool) ($data['nav'][$k] ?? false)])->all(),
             'socials' => collect(Site::SOCIALS)->keys()->mapWithKeys(fn ($k) => [$k => (string) ($data['socials'][$k] ?? '')])->all(),
             'announcement_url' => \App\Services\Website\Blocks::link($data['announcement_url'] ?? ''),
         ];

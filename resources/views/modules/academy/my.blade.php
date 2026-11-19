@@ -8,6 +8,7 @@
             <x-slot:pills><span class="cb-meta-pill"><i class="ri-user-3-line me-1"></i>{{ $student->status_label }}</span></x-slot:pills>
         @endif
         <x-slot:actions>
+            @if($student)<a href="{{ route('academy.my.profile') }}" class="cb-hero-btn"><i class="ri-user-star-line"></i>My public profile</a>@endif
             @if($student)<a href="{{ route('apply.index') }}" class="cb-hero-btn"><i class="ri-file-add-line"></i>Apply for a course</a>@endif
             <a href="{{ route('academy.courses.index') }}" class="cb-hero-btn"><i class="ri-book-2-line"></i>Browse courses</a>
         </x-slot:actions>

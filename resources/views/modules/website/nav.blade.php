@@ -9,6 +9,8 @@
             <li class="nav-item"><a href="{{ route('website.pages.index') }}" class="nav-link {{ request()->routeIs('website.pages.*') ? 'active' : '' }}">Pages</a></li>
             <li class="nav-item"><a href="{{ route('website.products.index') }}" class="nav-link {{ request()->routeIs('website.products.*') ? 'active' : '' }}">Products</a></li>
             <li class="nav-item"><a href="{{ route('website.works.index') }}" class="nav-link {{ request()->routeIs('website.works.*') ? 'active' : '' }}">Our work</a></li>
+            <li class="nav-item"><a href="{{ route('website.students.index') }}" class="nav-link {{ request()->routeIs('website.students.*') ? 'active' : '' }}">Students</a></li>
+            <li class="nav-item"><a href="{{ route('website.testimonials.index') }}" class="nav-link {{ request()->routeIs('website.testimonials.*') ? 'active' : '' }}">Testimonials</a></li>
             <li class="nav-item"><a href="{{ route('website.forms.index') }}" class="nav-link {{ request()->routeIs('website.forms.*') ? 'active' : '' }}">Forms and entries</a></li>
             <li class="nav-item"><a href="{{ route('website.media.index') }}" class="nav-link {{ request()->routeIs('website.media.*') ? 'active' : '' }}">Pictures</a></li>
             <li class="nav-item"><a href="{{ route('website.settings') }}" class="nav-link {{ request()->routeIs('website.settings') ? 'active' : '' }}">Settings</a></li>

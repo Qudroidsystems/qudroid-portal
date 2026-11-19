@@ -109,6 +109,12 @@ Route::prefix('academy')->name('academy.')->group(function () {
         Route::get('/', [AcademyController::class, 'index'])->name('index');
         Route::get('/my', [AcademyController::class, 'my'])->name('my');
         Route::get('/my/attendance/{enrollment}', [AcademyController::class, 'attendance'])->name('my.attendance');
+        Route::get('/my/profile', [\App\Http\Controllers\Academy\MyProfileController::class, 'show'])->name('my.profile');
+        Route::post('/my/profile', [\App\Http\Controllers\Academy\MyProfileController::class, 'update'])->name('my.profile.update');
+        Route::post('/my/profile/projects', [\App\Http\Controllers\Academy\MyProfileController::class, 'storeProject'])->name('my.profile.projects.store');
+        Route::put('/my/profile/projects/{project}', [\App\Http\Controllers\Academy\MyProfileController::class, 'updateProject'])->name('my.profile.projects.update');
+        Route::delete('/my/profile/projects/{project}', [\App\Http\Controllers\Academy\MyProfileController::class, 'destroyProject'])->name('my.profile.projects.destroy');
+        Route::post('/my/testimonial', [\App\Http\Controllers\Academy\MyProfileController::class, 'storeTestimonial'])->middleware('throttle:5,10,modules-academy.my.testimonial')->name('my.testimonial');
         Route::post('/my/applications/{application}/withdraw', [ApplicationController::class, 'withdraw'])->name('applications.withdraw');
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
         Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');

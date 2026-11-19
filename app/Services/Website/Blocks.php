@@ -100,8 +100,15 @@ class Blocks
                     'text' => ['type' => 'textarea', 'label' => 'Text'],
                 ]],
             ]],
-            'testimonials' => ['label' => 'Quotes', 'icon' => 'ri-double-quotes-l', 'hint' => 'What clients and students say.', 'fields' => [
+            'students' => ['label' => 'Our students', 'icon' => 'ri-user-star-line', 'hint' => 'Student profiles from Website → Students (only those published).', 'fields' => [
                 'heading' => ['type' => 'text', 'label' => 'Heading'],
+                'intro' => ['type' => 'textarea', 'label' => 'Intro'],
+                'featured_only' => ['type' => 'toggle', 'label' => 'Featured students only'],
+                'theme' => ['type' => 'select', 'label' => 'Background', 'options' => self::THEMES],
+            ]],
+            'testimonials' => ['label' => 'Quotes', 'icon' => 'ri-double-quotes-l', 'hint' => 'What clients and students say. Type them in, or fill from Website → Testimonials.', 'fields' => [
+                'heading' => ['type' => 'text', 'label' => 'Heading'],
+                'source' => ['type' => 'select', 'label' => 'Fill from', 'options' => ['manual' => 'The quotes below', 'all' => 'Published testimonials', 'students' => 'Student testimonials', 'clients' => 'Client testimonials']],
                 'items' => ['type' => 'list', 'label' => 'Quotes', 'fields' => [
                     'quote' => ['type' => 'textarea', 'label' => 'Quote'],
                     'name' => ['type' => 'text', 'label' => 'Name'],

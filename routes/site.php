@@ -23,6 +23,14 @@ Route::name('site.')->middleware('throttle:240,1,site.l17')->group(function () {
     Route::get('/forms/{form}', [SiteController::class, 'form'])->name('forms.show');
     Route::post('/forms/{form}', [SiteController::class, 'submit'])->middleware('throttle:6,1,site.forms.submit')->name('forms.submit');
 
+    // Our students and what people say
+    Route::get('/students', [\App\Http\Controllers\Website\ShowcaseController::class, 'students'])->name('students');
+    Route::get('/students/{profile:slug}', [\App\Http\Controllers\Website\ShowcaseController::class, 'student'])->name('students.show');
+    Route::get('/testimonials', [\App\Http\Controllers\Website\ShowcaseController::class, 'testimonials'])->name('testimonials');
+    Route::get('/testimonials/share', [\App\Http\Controllers\Website\ShowcaseController::class, 'share'])->middleware('signed')->name('testimonials.share');
+    Route::post('/testimonials/share', [\App\Http\Controllers\Website\ShowcaseController::class, 'submitShare'])->middleware(['signed', 'throttle:5,10,site.testimonials.share'])->name('testimonials.share.store');
+    Route::get('/testimonials/{kind}', [\App\Http\Controllers\Website\ShowcaseController::class, 'testimonials'])->whereIn('kind', ['students', 'clients'])->name('testimonials.kind');
+
     // Courses and registration
     Route::get('/courses', [AcademySiteController::class, 'index'])->name('academy');
     Route::get('/courses/cart', [AcademySiteController::class, 'cart'])->name('academy.cart');

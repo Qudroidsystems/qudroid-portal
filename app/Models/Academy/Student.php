@@ -50,6 +50,12 @@ class Student extends Model
         });
     }
 
+    /** Their page on the website (only public once they agree and staff publish it). */
+    public function profile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Website\StudentProfile::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

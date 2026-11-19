@@ -2,6 +2,8 @@
 
 namespace App\Services\Website;
 
+use App\Models\Website\StudentProfile;
+use App\Models\Website\Testimonial;
 use App\Models\Academy\Course;
 use App\Models\Crm\Contact;
 use App\Models\Crm\Deal;
@@ -49,7 +51,7 @@ class Site
             'address' => '',
             'footer_note' => '',
             'socials' => array_fill_keys(array_keys(self::SOCIALS), ''),
-            'nav' => ['products' => true, 'work' => true, 'academy' => true, 'contact' => true],
+            'nav' => ['products' => true, 'work' => true, 'academy' => true, 'students' => true, 'testimonials' => true, 'contact' => true],
         ], $saved);
     }
 
@@ -76,6 +78,8 @@ class Site
         if ($c['nav']['products'] ?? true) $links[] = ['label' => 'Products', 'url' => route('site.products'), 'active' => 'site.products*'];
         if ($c['nav']['work'] ?? true) $links[] = ['label' => 'Work', 'url' => route('site.works'), 'active' => 'site.works*'];
         if ($c['nav']['academy'] ?? true) $links[] = ['label' => 'Academy', 'url' => route('site.academy'), 'active' => 'site.academy*'];
+        if (($c['nav']['students'] ?? true) && StudentProfile::published()->exists()) $links[] = ['label' => 'Students', 'url' => route('site.students'), 'active' => 'site.students*'];
+        if (($c['nav']['testimonials'] ?? true) && Testimonial::published()->exists()) $links[] = ['label' => 'Stories', 'url' => route('site.testimonials'), 'active' => 'site.testimonials*'];
         foreach (Page::published()->where('in_nav', true)->where('slug', '!=', 'home')->ordered()->get() as $p) {
             $links[] = ['label' => $p->title, 'url' => $p->url(), 'active' => null, 'slug' => $p->slug];
         }
@@ -93,8 +97,8 @@ class Site
 
         return array_filter([
             'Products' => array_merge($products, [['label' => 'All products', 'url' => route('site.products')]]),
-            'Academy' => array_merge($courses, [['label' => 'All courses', 'url' => route('site.academy')]]),
-            'Company' => array_merge($pages, [['label' => 'Our work', 'url' => route('site.works')], ['label' => 'Contact us', 'url' => route('site.contact')]]),
+            'Academy' => array_merge($courses, [['label' => 'All courses', 'url' => route('site.academy')], ['label' => 'Our students', 'url' => route('site.students')], ['label' => 'Student stories', 'url' => route('site.testimonials.kind', 'students')]]),
+            'Company' => array_merge($pages, [['label' => 'Our work', 'url' => route('site.works')], ['label' => 'What clients say', 'url' => route('site.testimonials.kind', 'clients')], ['label' => 'Contact us', 'url' => route('site.contact')]]),
             'Account' => [['label' => 'Sign in', 'url' => route('login')], ['label' => 'Pay a bill', 'url' => route('billing.index')]],
         ]);
     }

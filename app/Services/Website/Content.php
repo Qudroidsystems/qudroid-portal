@@ -24,6 +24,21 @@ class Content
         return Work::published()->when($featuredOnly, fn ($q) => $q->where('featured', true))->ordered()->get();
     }
 
+    /** Published student profiles for a Students block (featured first). */
+    public static function students(bool $featuredOnly = false, int $limit = 8): Collection
+    {
+        return \App\Models\Website\StudentProfile::published()->when($featuredOnly, fn ($q) => $q->where('featured', true))->ordered()
+            ->with(['student.user', 'student.enrollments' => fn ($e) => $e->whereIn('status', ['active', 'completed'])->with('course', 'cohort')])
+            ->withCount('projects')->limit($limit)->get();
+    }
+
+    /** Published testimonials as block quotes: 'all', 'students' or 'clients'. */
+    public static function quotes(string $from, int $limit = 8): array
+    {
+        return \App\Models\Website\Testimonial::published()->when($from !== 'all', fn ($q) => $q->where('kind', rtrim($from, 's')))->ordered()->with('course')->limit($limit)->get()
+            ->map(fn ($t) => ['quote' => $t->quote, 'name' => $t->name, 'role' => $t->byline(), 'photo' => $t->photoUrl(), 'rating' => $t->rating])->all();
+    }
+
     /** Published courses, open ones first, each with its cohorts that are taking registrations. */
     public static function courses(): Collection
     {
