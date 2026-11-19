@@ -23,6 +23,10 @@ class CheckinApiController extends Controller
             'id' => $e->id, 'kind' => $e->kind, 'kind_label' => $e->kindLabel(), 'title' => $e->title, 'location' => $e->location ?: $e->place?->name,
             'starts_at' => $e->starts_at?->toIso8601String(), 'ends_at' => $e->ends_at?->toIso8601String(), 'when' => $e->whenLabel(),
             'status' => $e->status, 'open_now' => $e->isOpenNow(), 'require_location' => (bool) $e->require_location,
+            'opens_at' => $e->starts_at ? $e->opensAt()->toIso8601String() : null,
+            // How the person may check themselves in: the door/class QR, and GPS ("I'm here") on site.
+            'allow_qr' => (bool) $e->allow_screen, 'allow_gps' => (bool) $e->allow_gps && $e->hasLocation(),
+            'place' => $e->hasLocation() ? ['name' => $e->place?->name ?: $e->location, 'lat' => $e->lat, 'lng' => $e->lng, 'radius_m' => (int) $e->radius_m] : null,
         ];
     }
 
@@ -39,15 +43,58 @@ class CheckinApiController extends Controller
     public function me(Request $request)
     {
         $me = $request->user();
+        $this->openTodaysClasses($me);
         $today = Event::with('place')->where('status', '!=', 'cancelled')->where('starts_at', '<=', now()->addHours(12))
             ->where(fn ($q) => $q->where('ends_at', '>=', now())->orWhere(fn ($w) => $w->whereNull('ends_at')->where('starts_at', '>=', now()->subHours(12))))
             ->orderBy('starts_at')->limit(60)->get();
 
         return $this->ok([
             'badge' => ['payload' => CheckinService::badgePayload($me), 'svg' => Qr::svg(CheckinService::badgePayload($me), 320)],
-            'today' => $today->filter(fn ($e) => $this->checkin->refusal($e, $me) === null)->map(fn ($e) => $this->eventJson($e))->values(),
+            'today' => $today->filter(fn ($e) => $this->checkin->refusal($e, $me) === null)->map(fn ($e) => $this->eventJson($e) + ['mine' => $this->mine($e, $me)])->values(),
             'running' => $today->filter(fn ($e) => $this->checkin->canRun($me, $e))->map(fn ($e) => $this->eventJson($e))->values(),
         ]);
+    }
+
+    /** A student's classes today get their check-in now, so they show up before the reminder. */
+    protected function openTodaysClasses(\App\Models\User $me): void
+    {
+        $student = \App\Models\Academy\Student::where('user_id', $me->id)->first();
+        if (!$student) return;
+        $cohortIds = $student->enrollments()->whereIn('status', ['active', 'pending'])->pluck('cohort_id');
+        \App\Models\Academy\ClassSession::with('cohort')->whereIn('cohort_id', $cohortIds)->whereDate('date', today())->where('status', '!=', 'cancelled')
+            ->whereHas('cohort', fn ($c) => $c->where('checkin_mode', '!=', 'off'))->get()
+            ->each(fn ($s) => $this->checkin->forClassSession($s));
+    }
+
+    /** The person's own check-in for an event, if they have one. */
+    protected function mine(Event $e, \App\Models\User $me): ?array
+    {
+        $r = $e->records()->where('user_id', $me->id)->first();
+        if ($r) return ['status' => $r->status, 'method' => $r->method, 'checked_in_at' => $r->checked_in_at?->toIso8601String()];
+        if ($e->kind === 'class' && $e->subject) {
+            $en = $this->checkin->enrollmentFor($e, $me);
+            $a = $en ? \App\Models\Academy\Attendance::where('class_session_id', $e->subject_id)->where('enrollment_id', $en->id)->first() : null;
+            if ($a) return ['status' => $a->status, 'method' => 'manual', 'checked_in_at' => null];
+        }
+
+        return null;
+    }
+
+    /** "I'm here": check in by GPS when on site. The app sends the phone's location and how precise it is. */
+    public function here(Request $request, Event $event)
+    {
+        $d = $request->validate(['lat' => ['required', 'numeric', 'between:-90,90'], 'lng' => ['required', 'numeric', 'between:-180,180'],
+            'accuracy' => ['nullable', 'numeric', 'min:0'], 'mocked' => ['nullable', 'boolean']]);
+        if ($request->boolean('mocked')) return $this->fail('Your phone is using a fake location. Turn it off to check in.', 422, 'location');
+        try {
+            $r = $this->checkin->checkIn($event->load('place'), $request->user(), null, 'gps', null, ['lat' => $d['lat'], 'lng' => $d['lng'], 'accuracy' => $d['accuracy'] ?? null]);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+
+            return $this->fail(collect($errors)->flatten()->first(), 422, array_key_exists('location', $errors) ? 'location' : 'refused');
+        }
+
+        return $this->ok(['state' => $r['state'], 'record' => $this->recordJson($r['record']->load('event.place')), 'event' => $this->eventJson($event)], $r['message']);
     }
 
     public function history(Request $request)

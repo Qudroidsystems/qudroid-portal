@@ -9,10 +9,13 @@
             @if($cohort->schedule)<span class="cb-meta-pill"><i class="ri-time-line me-1"></i>{{ $cohort->schedule }}</span>@endif
             <span class="cb-meta-pill">{{ $sessions->where('status', 'held')->count() }} of {{ $sessions->where('status', '!=', 'cancelled')->count() }} registers taken</span>
             @if($cohort->instructor)<span class="cb-meta-pill"><i class="ri-user-star-line me-1"></i>{{ $cohort->instructor->name }}</span>@endif
+            <span class="cb-meta-pill"><i class="ri-map-pin-user-line me-1"></i>{{ $cohort->place?->name ?? 'No campus' }} · {{ ['either' => 'GPS or QR', 'gps' => 'GPS', 'qr' => 'QR', 'off' => 'Register only'][$cohort->checkin_mode ?? 'either'] }} check-in</span>
         </x-slot:pills>
-        @can('Manage academy')
-            <x-slot:actions><a href="{{ route('academy.cohorts.show', $cohort) }}" class="cb-hero-btn"><i class="ri-team-line"></i>Cohort</a></x-slot:actions>
-        @endcan
+        <x-slot:actions>
+            <a href="{{ route('attendance.cohort.export', $cohort) }}" class="cb-hero-btn"><i class="ri-download-2-line"></i>Download CSV</a>
+            <a href="{{ route('attendance.report', ['cohort_id' => $cohort->id]) }}" class="cb-hero-btn"><i class="ri-bar-chart-grouped-line"></i>Report</a>
+            @can('Manage academy')<a href="{{ route('academy.cohorts.edit', $cohort) }}" class="cb-hero-btn"><i class="ri-settings-3-line"></i>Check-in settings</a>@endcan
+        </x-slot:actions>
     </x-cb.hero>
 
     @include('partials.flash')

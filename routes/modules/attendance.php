@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('attendance')->name('attendance.')
     ->middleware('permission:View attendance|Manage attendance|Manage academy')->group(function () {
         Route::get('/', [AttendanceController::class, 'index'])->name('index');
+        Route::get('/report', [AttendanceController::class, 'report'])->name('report');
+        Route::post('/report/nudge', [AttendanceController::class, 'nudge'])->middleware('throttle:10,1,modules-attendance.nudge')->name('nudge');
+        Route::get('/cohorts/{cohort}/export', [AttendanceController::class, 'export'])->name('cohort.export');
+        Route::post('/sessions/{session}/remind', [AttendanceController::class, 'remind'])->middleware('throttle:10,1,modules-attendance.remind')->name('sessions.remind');
         Route::get('/cohorts/{cohort}', [AttendanceController::class, 'cohort'])->name('cohort');
         Route::post('/cohorts/{cohort}/sessions', [AttendanceController::class, 'store'])->name('sessions.store');
         Route::post('/cohorts/{cohort}/schedule', [AttendanceController::class, 'schedule'])->name('sessions.schedule');

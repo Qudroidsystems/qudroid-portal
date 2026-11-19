@@ -236,5 +236,5 @@ test('pages show enrollments once there are some', function () {
     $this->actingAs($this->admin)->get(route('academy.students.show', $student))->assertOk()->assertSee('Web Foundations');
     $this->actingAs($this->admin)->get(route('academy.enrollments.index', ['access' => 'locked']))->assertOk()->assertSee($student->user->name);
     $this->actingAs($this->admin)->get(route('academy.index'))->assertOk()->assertSee('Cohort 1');
-    $this->actingAs($this->admin)->get(route('academy.my'))->assertOk()->assertSee('Cohorts I teach');
+    $this->actingAs($this->admin)->get(route('academy.my'))->assertOk()->assertSee('Classes I teach');
 });

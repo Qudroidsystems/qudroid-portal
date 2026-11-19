@@ -14,9 +14,26 @@ class ClassSession extends Model
 
     protected $table = 'academy_class_sessions';
 
-    protected $fillable = ['cohort_id', 'date', 'starts_at', 'ends_at', 'topic', 'status', 'cancel_reason', 'register_taken_at', 'register_taken_by'];
+    protected $fillable = ['cohort_id', 'date', 'starts_at', 'ends_at', 'topic', 'status', 'cancel_reason', 'register_taken_at', 'register_taken_by', 'reminded_at', 'checkin_closed_at'];
 
-    protected $casts = ['date' => 'date', 'register_taken_at' => 'datetime'];
+    protected $casts = ['date' => 'date', 'register_taken_at' => 'datetime', 'reminded_at' => 'datetime', 'checkin_closed_at' => 'datetime'];
+
+    /** When the session starts, as a date and time. */
+    public function startsAt(): \Illuminate\Support\Carbon
+    {
+        return \Illuminate\Support\Carbon::parse($this->date->toDateString() . ' ' . ($this->starts_at ? substr((string) $this->starts_at, 0, 5) : '09:00'));
+    }
+
+    public function endsAt(): \Illuminate\Support\Carbon
+    {
+        return $this->ends_at ? \Illuminate\Support\Carbon::parse($this->date->toDateString() . ' ' . substr((string) $this->ends_at, 0, 5)) : $this->startsAt()->addHours(3);
+    }
+
+    /** The check-in for this session, if one has been opened. */
+    public function checkinEvent(): \Illuminate\Database\Eloquent\Relations\MorphOne
+    {
+        return $this->morphOne(\App\Models\Checkin\Event::class, 'subject');
+    }
 
     public function cohort(): BelongsTo
     {

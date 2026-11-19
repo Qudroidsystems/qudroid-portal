@@ -11,7 +11,7 @@
             @if($teacher && !$lesson->is_published)<span class="cb-meta-pill"><i class="ri-eye-off-line me-1"></i>Draft — students can't see this</span>@endif
             @if(!$learning && $lesson->is_preview && !$teacher)<span class="cb-meta-pill">Free preview</span>@endif
         </x-slot:pills>
-        @if($teacher && auth()->user()->canany(['Manage academy', 'Manage course content']))
+        @if($teacher)
             <x-slot:actions><a href="{{ route('academy.content.lessons.edit', [$course, $lesson]) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit lesson</a></x-slot:actions>
         @endif
     </x-cb.hero>

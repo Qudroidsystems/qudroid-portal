@@ -10,6 +10,7 @@ use App\Models\Academy\Enrollment;
 use App\Models\Academy\Question;
 use App\Models\Academy\Submission;
 use App\Services\Academy\AssessmentService;
+use App\Services\Academy\LearningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -122,7 +123,10 @@ class AssessmentController extends Controller
     public function results(Course $course, Assessment $assessment)
     {
         $this->belongs($course, $assessment);
+        // Instructors see the students of their own classes; academy staff see everyone.
+        $cohorts = app(LearningService::class)->taughtCohortIds(request()->user(), $course);
         $enrollments = Enrollment::with('student.user', 'cohort')->where('course_id', $course->id)
+            ->when($cohorts !== null, fn ($q) => $q->whereIn('cohort_id', $cohorts))
             ->whereIn('status', ['active', 'completed'])->where('access_granted', true)->get()
             ->sortBy(fn ($e) => [$e->cohort->name, $e->student->user->name])->values();
 
@@ -141,7 +145,13 @@ class AssessmentController extends Controller
         $this->belongs($course, $assessment);
         abort_unless($assessment->isManual(), 404);
         $request->validate(['scores' => ['required', 'array'], 'scores.*.score' => ['nullable'], 'scores.*.feedback' => ['nullable', 'string', 'max:2000']]);
-        $n = $this->assessments->recordScores($assessment, (array) $request->input('scores'), $request->user());
+        $scores = (array) $request->input('scores');
+        $cohorts = app(LearningService::class)->taughtCohortIds($request->user(), $course);
+        if ($cohorts !== null) {
+            $mine = Enrollment::where('course_id', $course->id)->whereIn('cohort_id', $cohorts)->whereKey(array_keys($scores))->pluck('id')->all();
+            $scores = array_intersect_key($scores, array_flip($mine));
+        }
+        $n = $this->assessments->recordScores($assessment, $scores, $request->user());
 
         return back()->with('success', $n ? $n . ' ' . \Illuminate\Support\Str::plural('score', $n) . ' saved. Students have been told.' : 'Nothing changed.');
     }
@@ -151,6 +161,7 @@ class AssessmentController extends Controller
     {
         $this->belongs($course, $assessment);
         abort_unless($submission->assessment_id === $assessment->id, 404);
+        $this->mayMark($submission);
         $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'line' => ['nullable', 'integer', 'min:1']]);
         $this->assessments->comment($submission, $request->user(), $data['body'], $data['line'] ?? null);
 
@@ -161,6 +172,7 @@ class AssessmentController extends Controller
     {
         $this->belongs($course, $assessment);
         abort_unless($attempt->assessment_id === $assessment->id, 404);
+        $this->mayMark($attempt);
         $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'line' => ['nullable', 'integer', 'min:1'], 'question_id' => ['nullable', 'integer']]);
         $this->assessments->comment($attempt, $request->user(), $data['body'], $data['line'] ?? null, $data['question_id'] ?? null);
 
@@ -171,6 +183,7 @@ class AssessmentController extends Controller
     {
         $this->belongs($course, $assessment);
         abort_unless($attempt->assessment_id === $assessment->id, 404);
+        $this->mayMark($attempt);
 
         return view('modules.academy.assessments.attempt', [
             'course' => $course, 'assessment' => $assessment, 'attempt' => $attempt->load('enrollment.student.user', 'comments.user'),
@@ -182,6 +195,7 @@ class AssessmentController extends Controller
     {
         $this->belongs($course, $assessment);
         abort_unless($attempt->assessment_id === $assessment->id, 404);
+        $this->mayMark($attempt);
         $this->assessments->gradeAttempt($attempt, (array) $request->input('marks', []), $request->user());
 
         return redirect()->route('academy.assessments.results', [$course, $assessment])->with('success', 'Marked.');
@@ -191,6 +205,7 @@ class AssessmentController extends Controller
     {
         $this->belongs($course, $assessment);
         abort_unless($submission->assessment_id === $assessment->id, 404);
+        $this->mayMark($submission);
         $data = $request->validate(['score' => ['nullable', 'numeric'], 'feedback' => ['nullable', 'string', 'max:5000']]);
         $this->assessments->gradeSubmission($submission, $request->user(), isset($data['score']) ? (float) $data['score'] : null,
             $data['feedback'] ?? null, $request->input('action') === 'return');
@@ -202,11 +217,18 @@ class AssessmentController extends Controller
     {
         $this->belongs($course, $assessment);
         abort_unless($submission->assessment_id === $assessment->id && $submission->file_path && Storage::disk('local')->exists($submission->file_path), 404);
+        $this->mayMark($submission);
 
         return Storage::disk('local')->download($submission->file_path, $submission->file_name);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────
+
+    /** Instructors mark only the students of their own classes. */
+    protected function mayMark(Submission|Attempt $work): void
+    {
+        abort_unless(app(LearningService::class)->teachesEnrollment(request()->user(), $work->enrollment), 403, 'This student is not in a class you teach.');
+    }
 
     protected function belongs(Course $course, Assessment $assessment): void
     {

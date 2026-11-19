@@ -11,9 +11,9 @@ class Record extends Model
 {
     protected $table = 'checkin_records';
 
-    public const METHODS = ['screen' => 'Scanned the door QR', 'badge' => 'Badge scanned', 'manual' => 'Marked by hand'];
+    public const METHODS = ['screen' => 'Scanned the door QR', 'gps' => 'On site (GPS)', 'badge' => 'Badge scanned', 'manual' => 'Marked by hand'];
 
-    protected $fillable = ['event_id', 'user_id', 'guest_id', 'status', 'method', 'checked_in_at', 'checked_out_at', 'scanned_by', 'lat', 'lng', 'distance_m', 'note'];
+    protected $fillable = ['event_id', 'user_id', 'guest_id', 'status', 'method', 'checked_in_at', 'checked_out_at', 'scanned_by', 'lat', 'lng', 'distance_m', 'accuracy_m', 'note'];
 
     protected $casts = ['checked_in_at' => 'datetime', 'checked_out_at' => 'datetime', 'lat' => 'float', 'lng' => 'float'];
 

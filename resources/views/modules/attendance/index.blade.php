@@ -3,7 +3,12 @@
 @section('content')
 <div class="main-content"><div class="page-content"><div class="container-fluid">
 
-    <x-cb.hero title="Attendance" icon="ri-calendar-check-line" subtitle="Class sessions and registers." />
+    <x-cb.hero title="Attendance" icon="ri-calendar-check-line" subtitle="Class sessions and registers. Students check in from the app by GPS or the class QR.">
+        <x-slot:actions>
+            <a href="{{ route('attendance.report') }}" class="cb-hero-btn"><i class="ri-bar-chart-grouped-line"></i>Report</a>
+            @can('Manage check-in places')<a href="{{ route('checkin.places.index') }}" class="cb-hero-btn"><i class="ri-map-pin-line"></i>Campuses</a>@endcan
+        </x-slot:actions>
+    </x-cb.hero>
 
     @include('partials.flash')
 

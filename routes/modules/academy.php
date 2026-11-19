@@ -55,7 +55,7 @@ Route::prefix('academy')->name('academy.')->group(function () {
     });
 
     // ── Course content (academy staff and instructors) ──────────────────
-    Route::middleware('permission:Manage academy|Manage course content')->prefix('/courses/{course}/content')->name('content.')->group(function () {
+    Route::middleware(['permission:Manage academy|Manage course content|Manage all course content', 'teaches'])->prefix('/courses/{course}/content')->name('content.')->group(function () {
         Route::get('/', [ContentController::class, 'index'])->name('index');
         Route::post('/sections', [ContentController::class, 'storeSection'])->name('sections.store');
         Route::put('/sections/{section}', [ContentController::class, 'updateSection'])->name('sections.update');
@@ -70,7 +70,7 @@ Route::prefix('academy')->name('academy.')->group(function () {
     });
 
     // ── Quizzes and assignments: building and marking ───────────────────
-    Route::middleware('permission:Manage academy|Manage course content')->prefix('/courses/{course}/assessments')->name('assessments.')->group(function () {
+    Route::middleware(['permission:Manage academy|Manage course content|Manage all course content', 'teaches'])->prefix('/courses/{course}/assessments')->name('assessments.')->group(function () {
         Route::get('/create', [AssessmentController::class, 'create'])->name('create');
         Route::post('/', [AssessmentController::class, 'store'])->name('store');
         Route::get('/{assessment}/edit', [AssessmentController::class, 'edit'])->name('edit');
@@ -99,15 +99,16 @@ Route::prefix('academy')->name('academy.')->group(function () {
     });
 
     Route::get('/cohorts/{cohort}/gradebook', [CohortController::class, 'gradebook'])
-        ->middleware('permission:Manage academy|Manage course content')->name('cohorts.gradebook');
+        ->middleware(['permission:Manage academy|Manage course content|Manage all course content', 'teaches'])->name('cohorts.gradebook');
 
     Route::post('/enrollments/{enrollment}/access', [EnrollmentController::class, 'grantAccess'])
         ->middleware('permission:Grant course access')->name('enrollments.access');
 
     // ── Everyone with academy access (students, instructors, management) ─
-    Route::middleware('permission:View academy|Manage academy|Manage course content')->group(function () {
+    Route::middleware('permission:View academy|Manage academy|Manage course content|Manage all course content')->group(function () {
         Route::get('/', [AcademyController::class, 'index'])->name('index');
         Route::get('/my', [AcademyController::class, 'my'])->name('my');
+        Route::get('/my/attendance/{enrollment}', [AcademyController::class, 'attendance'])->name('my.attendance');
         Route::post('/my/applications/{application}/withdraw', [ApplicationController::class, 'withdraw'])->name('applications.withdraw');
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
         Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');

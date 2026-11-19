@@ -37,6 +37,8 @@ class CheckinService
 {
     public const WINDOW = 20;        // seconds per door code
     public const WINDOWS_OK = 3;     // accept the current code and the two before it
+    public const MAX_ACCURACY = 150; // metres: a GPS fix rougher than this is refused
+    public const GPS_SLACK = 50;     // metres of GPS error allowed beyond the campus radius
 
     public function __construct(protected AttendanceService $attendance) {}
 
@@ -108,20 +110,48 @@ class CheckinService
         return new Event($attrs + ['secret' => Str::random(40), 'status' => 'open']);
     }
 
-    public function forClassSession(ClassSession $session, User $by): Event
+    public function forClassSession(ClassSession $session, ?User $by = null): Event
     {
         $existing = Event::where('subject_type', $session->getMorphClass())->where('subject_id', $session->id)->first();
-        if ($existing) return $existing;
+        if ($existing) {
+            if ($existing->status === 'open') $existing->update($this->classSettings($session));
+
+            return $existing;
+        }
         $cohort = $session->cohort()->with('course')->first();
-        $date = $session->date->toDateString();
-        $starts = Carbon::parse($date . ' ' . ($session->starts_at ? substr((string) $session->starts_at, 0, 5) : '09:00'));
-        $ends = $session->ends_at ? Carbon::parse($date . ' ' . substr((string) $session->ends_at, 0, 5)) : $starts->copy()->addHours(3);
         $e = $this->make(['kind' => 'class', 'title' => trim(($cohort->course->title ?? 'Class') . ' · ' . ($cohort->name ?? '') . ($session->topic ? ' · ' . $session->topic : ''), ' ·'),
-            'starts_at' => $starts, 'ends_at' => $ends, 'audience' => 'invited', 'opens_minutes' => 30, 'late_minutes' => 15, 'created_by' => $by->id]);
+            'audience' => 'invited', 'created_by' => $by?->id ?? $cohort->instructor_id] + $this->classSettings($session));
         $e->subject()->associate($session);
         $e->save();
 
         return $e;
+    }
+
+    /**
+     * A class check-in follows its class's settings: the campus (where students must be),
+     * QR and/or GPS, when it opens and when arriving counts as late.
+     */
+    protected function classSettings(ClassSession $session): array
+    {
+        $cohort = $session->cohort()->with('place')->first();
+        $place = $cohort?->place;
+        $self = $cohort ? $cohort->selfCheckin() : true;
+
+        return [
+            'starts_at'        => $session->startsAt(),
+            'ends_at'          => $session->endsAt(),
+            'opens_minutes'    => (int) ($cohort->checkin_opens_minutes ?? 30),
+            'late_minutes'     => (int) ($cohort->late_after_minutes ?? 15),
+            'place_id'         => $place?->id,
+            'location'         => $place ? ($place->name . ($place->address ? ', ' . $place->address : '')) : null,
+            'lat'              => $place?->lat,
+            'lng'              => $place?->lng,
+            'radius_m'         => $place?->radius_m ?? 150,
+            // On campus to check in: GPS always is; the class QR too when the class has a campus.
+            'require_location' => $place && $place->lat !== null,
+            'allow_screen'     => $self && (!$cohort || $cohort->allowsQr()),
+            'allow_gps'        => $self && $cohort && $cohort->allowsGps(),
+        ];
     }
 
     public function forMeeting(Meeting $meeting, User $by): Event
@@ -248,6 +278,12 @@ class CheckinService
             if (now()->lt($event->opensAt())) $this->fail('Check-in opens at ' . $event->opensAt()->format('g:i A') . '.');
             if (now()->gt($event->closesAt())) $this->fail('Check-in for this has closed.');
         }
+        if ($method === 'screen' && $event->kind === 'class' && !$event->allow_screen) {
+            $this->fail($event->allow_gps ? 'This class uses GPS check-in: tap "I\'m here" when you are on campus.' : 'Your instructor takes the register for this class.');
+        }
+        if ($method === 'gps' && (!$event->allow_gps || !$event->hasLocation())) {
+            $this->fail($event->allow_screen ? 'Scan the class QR code to check in.' : 'Self check-in is off for this. Your instructor takes the register.', 'location');
+        }
         if ($guest) {
             if ($guest->event_id !== $event->id) $this->fail('This ticket is for a different event.');
             if ($guest->cancelled_at) $this->fail('This ticket was cancelled.');
@@ -258,17 +294,24 @@ class CheckinService
             $this->fail('Nobody to check in.');
         }
 
-        // Near the venue? Only for the door QR (a scanner at the door is already there).
+        // Near the venue? For the door QR and GPS (a scanner at the door is already there).
         $lat = $opts['lat'] ?? null;
         $lng = $opts['lng'] ?? null;
+        $accuracy = isset($opts['accuracy']) && is_numeric($opts['accuracy']) ? (int) round((float) $opts['accuracy']) : null;
         $distance = null;
-        if ($method === 'screen' && $event->require_location && $event->hasLocation()) {
-            if ($lat === null || $lng === null) $this->fail('Allow location so we can check you are at ' . ($event->location ?: 'the venue') . '.', 'location');
+        if (($method === 'gps' || ($method === 'screen' && $event->require_location)) && $event->hasLocation()) {
+            $where = $event->place?->name ?: ($event->location ?: 'the venue');
+            if ($lat === null || $lng === null) $this->fail('Turn on location so we can check you are at ' . $where . '.', 'location');
+            // A rough fix (e.g. indoors, or "approximate location" on) can't prove where someone is.
+            if ($method === 'gps' && $accuracy !== null && $accuracy > self::MAX_ACCURACY) {
+                $this->fail('Your location is not precise enough (about ' . number_format($accuracy) . ' m). Turn on precise location, step near a window or outside, and try again.', 'location');
+            }
             $distance = self::distance($event->lat, $event->lng, (float) $lat, (float) $lng);
-            if ($distance > $event->radius_m + 50) $this->fail('You seem to be about ' . number_format($distance) . ' m away. Check in when you get there.', 'location');
+            $slack = $method === 'gps' ? min(self::GPS_SLACK, max(15, (int) $accuracy)) : 50;
+            if ($distance > $event->radius_m + $slack) $this->fail('You seem to be about ' . number_format($distance) . ' m away from ' . $where . '. Check in when you get there.', 'location');
         }
 
-        return DB::transaction(function () use ($event, $user, $guest, $method, $by, $opts, $lat, $lng, $distance) {
+        return DB::transaction(function () use ($event, $user, $guest, $method, $by, $opts, $lat, $lng, $distance, $accuracy) {
             $q = Record::where('event_id', $event->id)->lockForUpdate();
             $existing = $guest ? (clone $q)->where('guest_id', $guest->id)->first() : (clone $q)->where('user_id', $user->id)->first();
             if (!$existing && $guest && $user) $existing = (clone $q)->where('user_id', $user->id)->first();
@@ -292,7 +335,7 @@ class CheckinService
             $status = $opts['status'] ?? (now()->gt($event->lateAt()) ? 'late' : 'present');
             $record = Record::create([
                 'event_id' => $event->id, 'user_id' => $user?->id, 'guest_id' => $guest?->id, 'status' => $status, 'method' => $method,
-                'checked_in_at' => now(), 'scanned_by' => $by?->id, 'lat' => $lat, 'lng' => $lng, 'distance_m' => $distance, 'note' => $opts['note'] ?? null,
+                'checked_in_at' => now(), 'scanned_by' => $by?->id, 'lat' => $lat, 'lng' => $lng, 'distance_m' => $distance, 'accuracy_m' => $accuracy, 'note' => $opts['note'] ?? null,
             ]);
             $this->syncClass($event, $record);
             $who = $user?->name ?? $guest?->name;
@@ -311,7 +354,8 @@ class CheckinService
         $enrollment = $this->enrollmentFor($event, $record->user);
         if (!$enrollment) return;
         Attendance::updateOrCreate(['class_session_id' => $event->subject_id, 'enrollment_id' => $enrollment->id],
-            ['status' => $record->status, 'marked_by' => $record->scanned_by ?? $record->user_id, 'note' => 'QR check-in']);
+            ['status' => $record->status, 'marked_by' => $record->scanned_by ?? $record->user_id,
+                'note' => ['gps' => 'Checked in on campus (GPS)', 'screen' => 'Scanned the class QR', 'badge' => 'Badge scanned'][$record->method] ?? 'Check-in']);
         $session = $event->subject;
         if ($session->status === 'scheduled') $session->update(['status' => 'held', 'register_taken_at' => $session->register_taken_at ?? now()]);
         $this->attendance->recompute($enrollment);
@@ -465,5 +509,56 @@ class CheckinService
         usort($rows, fn ($a, $b) => strcmp($a['user']?->name ?? '', $b['user']?->name ?? ''));
 
         return ['rows' => $rows, 'workdays' => $workdays, 'from' => $from, 'to' => $to];
+    }
+
+    // ── Classes: reminders and closing ──────────────────────────────
+
+    /**
+     * Every minute: open check-in for class sessions about to start and tell their
+     * students (once), and close the ones that have ended, marking anyone who didn't
+     * check in absent (if the class does that). Returns [reminded, closed].
+     *
+     * @return array{0:int, 1:int}
+     */
+    public function tickClasses(): array
+    {
+        $reminded = 0;
+        $closed = 0;
+        $sessions = ClassSession::with('cohort.course', 'cohort.place')
+            ->whereDate('date', '>=', today()->subDay())->whereDate('date', '<=', today())
+            ->where('status', '!=', 'cancelled')->whereNull('checkin_closed_at')
+            ->whereHas('cohort', fn ($c) => $c->whereIn('status', ['open', 'running'])->where('checkin_mode', '!=', 'off'))
+            ->get();
+
+        foreach ($sessions as $session) {
+            $cohort = $session->cohort;
+            $opens = $session->startsAt()->subMinutes((int) $cohort->checkin_opens_minutes);
+            $ends = $session->endsAt();
+
+            if (!$session->reminded_at && now()->between($opens, $ends)) {
+                $event = $this->forClassSession($session);
+                $session->update(['reminded_at' => now()]);
+                $students = $this->attendance->roster($session)->filter(fn ($e) => $e->status === 'active')->map(fn ($e) => $e->student->user_id)
+                    ->diff($event->records()->pluck('user_id'))->values()->all();
+                $how = $event->allow_gps && $event->allow_screen ? 'tap "I\'m here" or scan the class QR'
+                    : ($event->allow_gps ? 'tap "I\'m here"' : 'scan the class QR');
+                \App\Services\Messaging\PortalNotifier::toUsers($students, 'Check in: ' . $cohort->course->title,
+                    $cohort->name . ' starts at ' . $session->startsAt()->format('g:ia') . '. When you are '
+                        . ($cohort->place ? 'at ' . $cohort->place->name : 'in class') . ', open the app and ' . $how . '.',
+                    route('checkin.index'), 'course', 'class-checkin-' . $session->id, ['level' => 'urgent']);
+                $reminded++;
+            }
+
+            if (now()->gt($ends)) {
+                $event = $session->checkinEvent;
+                if ($event && $event->status === 'open') {
+                    $this->close($event, (bool) $cohort->auto_absent);
+                    $closed++;
+                }
+                $session->update(['checkin_closed_at' => now()]);
+            }
+        }
+
+        return [$reminded, $closed];
     }
 }

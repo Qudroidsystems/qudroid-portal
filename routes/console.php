@@ -22,6 +22,9 @@ Schedule::command('notifications:prune --days=180')->dailyAt('02:45');
 // Meeting reminders (each meeting's own "remind me" time before it starts).
 Schedule::command('meetings:remind')->everyMinute()->withoutOverlapping(2);
 
+// Class check-in: remind students when it opens, mark absentees when the class ends.
+Schedule::command('attendance:tick')->everyMinute()->withoutOverlapping(2);
+
 // Scheduled chat messages and "remind me" reminders.
 Schedule::command('connect:later')->everyMinute()->withoutOverlapping(2);
 

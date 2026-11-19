@@ -156,6 +156,9 @@ test('a withdrawn student loses access; a completed one can still revise but not
 test('instructors can build content; students cannot', function () {
     $instructor = User::factory()->create();
     $instructor->assignRole('Instructor');
+    // Only once they teach a class of the course.
+    $this->actingAs($instructor)->get(route('academy.content.index', $this->course))->assertForbidden();
+    $this->course->cohorts()->first()->update(['instructor_id' => $instructor->id]);
     $this->actingAs($instructor)->get(route('academy.content.index', $this->course))->assertOk();
     $this->actingAs($instructor)->post(route('academy.content.sections.store', $this->course), ['title' => 'Week 9'])->assertSessionHasNoErrors();
 

@@ -116,6 +116,74 @@ class AttendanceService
         return $rate;
     }
 
+    /**
+     * One student's attendance on a class: the counts, the rate, and every session
+     * with their mark (null while it hasn't happened or wasn't marked).
+     *
+     * @return array{rate: ?float, counts: array<string,int>, sessions: \Illuminate\Support\Collection}
+     */
+    public function forEnrollment(Enrollment $enrollment): array
+    {
+        $marks = Attendance::where('enrollment_id', $enrollment->id)->get()->keyBy('class_session_id');
+        $events = \App\Models\Checkin\Event::where('subject_type', (new ClassSession)->getMorphClass())
+            ->whereIn('subject_id', ClassSession::where('cohort_id', $enrollment->cohort_id)->select('id'))->pluck('id', 'subject_id');
+        $records = \App\Models\Checkin\Record::whereIn('event_id', $events->values())->where('user_id', $enrollment->student->user_id)->get()->keyBy('event_id');
+        $sessions = ClassSession::where('cohort_id', $enrollment->cohort_id)->orderBy('date')->orderBy('starts_at')->get()
+            ->map(function (ClassSession $s) use ($marks, $events, $records) {
+                $mark = $marks->get($s->id);
+                $rec = $events->has($s->id) ? $records->get($events[$s->id]) : null;
+
+                return [
+                    'id' => $s->id, 'date' => $s->date, 'time' => $s->timeRange(), 'topic' => $s->topic, 'session_status' => $s->status,
+                    'status' => $s->status === 'cancelled' ? 'cancelled' : $mark?->status, 'note' => $mark?->note,
+                    'method' => $rec?->method, 'checked_in_at' => $rec?->checked_in_at,
+                ];
+            });
+        $counts = collect(Attendance::STATUSES)->map(fn ($_, $k) => $sessions->where('status', $k)->count())->all();
+
+        return ['rate' => $enrollment->attendance_percent !== null ? (float) $enrollment->attendance_percent : null, 'counts' => $counts, 'sessions' => $sessions];
+    }
+
+    /**
+     * The attendance report: one row per student and class, counted over a date range.
+     * $cohortIds limits it (null: every class). Rate = (present + late) / (present + late + absent).
+     *
+     * @return \Illuminate\Support\Collection<int, array>
+     */
+    public function report(?array $cohortIds, ?int $courseId, ?int $cohortId, ?Carbon $from, ?Carbon $to, ?float $below = null)
+    {
+        $enrollments = Enrollment::with('student.user', 'course', 'cohort')
+            ->whereIn('status', ['active', 'pending', 'completed'])
+            ->when($cohortIds !== null, fn ($q) => $q->whereIn('cohort_id', $cohortIds))
+            ->when($courseId, fn ($q) => $q->where('course_id', $courseId))
+            ->when($cohortId, fn ($q) => $q->where('cohort_id', $cohortId))
+            ->get();
+        if ($enrollments->isEmpty()) return collect();
+
+        $counts = Attendance::query()->whereIn('enrollment_id', $enrollments->pluck('id'))
+            ->whereHas('session', fn ($s) => $s->where('status', 'held')
+                ->when($from, fn ($q) => $q->whereDate('date', '>=', $from))->when($to, fn ($q) => $q->whereDate('date', '<=', $to)))
+            ->selectRaw('enrollment_id, status, count(*) as n')->groupBy('enrollment_id', 'status')->get()
+            ->groupBy('enrollment_id')->map(fn ($g) => $g->pluck('n', 'status'));
+
+        return $enrollments->map(function (Enrollment $e) use ($counts) {
+            $c = $counts->get($e->id, collect());
+            $present = (int) ($c['present'] ?? 0);
+            $late = (int) ($c['late'] ?? 0);
+            $absent = (int) ($c['absent'] ?? 0);
+            $excused = (int) ($c['excused'] ?? 0);
+            $counted = $present + $late + $absent;
+
+            return [
+                'enrollment' => $e, 'name' => $e->student->user->name, 'student_no' => $e->student->student_no,
+                'course' => $e->course?->title, 'cohort' => $e->cohort?->name,
+                'present' => $present, 'late' => $late, 'absent' => $absent, 'excused' => $excused,
+                'rate' => $counted ? round(($present + $late) * 100 / $counted, 1) : null,
+            ];
+        })->when($below !== null, fn ($rows) => $rows->filter(fn ($r) => $r['rate'] !== null && $r['rate'] < $below))
+            ->sortBy([['course', 'asc'], ['cohort', 'asc'], ['name', 'asc']])->values();
+    }
+
     public function recomputeCohort(Cohort $cohort): void
     {
         $cohort->enrollments()->each(fn ($e) => $this->recompute($e));

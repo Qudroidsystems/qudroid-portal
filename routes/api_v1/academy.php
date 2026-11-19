@@ -18,6 +18,7 @@ Route::prefix('academy')->name('academy.')->controller(AcademyApiController::cla
     Route::put('attempts/{attempt}', 'save')->whereNumber('attempt')->middleware('throttle:120,1,api_v1-academy.attempts.save')->name('attempts.save');
     Route::post('attempts/{attempt}/submit', 'submit')->whereNumber('attempt')->middleware('throttle:20,1,api_v1-academy.attempts.submit')->name('attempts.submit');
     Route::get('certificates', 'certificates')->name('certificates');
+    Route::get('attendance', 'attendance')->name('attendance');
     Route::get('courses', 'courses')->name('courses');
     Route::get('courses/{course:id}', 'course')->whereNumber('course')->name('courses.show');
 });

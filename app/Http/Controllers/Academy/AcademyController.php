@@ -49,4 +49,13 @@ class AcademyController extends Controller
                                 ->where('instructor_id', $user->id)->whereNotIn('status', ['cancelled'])->orderByDesc('starts_on')->get(),
         ]);
     }
+
+    /** A student's own attendance on one class: every session and how they checked in. */
+    public function attendance(\Illuminate\Http\Request $request, \App\Models\Academy\Enrollment $enrollment)
+    {
+        $enrollment->load('student.user', 'course', 'cohort.place');
+        abort_unless($enrollment->student->user_id === $request->user()->id, 404);
+
+        return view('modules.academy.my-attendance', ['enrollment' => $enrollment] + app(\App\Services\Academy\AttendanceService::class)->forEnrollment($enrollment));
+    }
 }

@@ -50,7 +50,7 @@ class CourseController extends Controller
     public function show(Request $request, Course $course)
     {
         $manager = $request->user()->can('Manage academy');
-        abort_unless($manager || $course->isPublished() || $request->user()->can('Manage course content'), 404);
+        abort_unless($manager || $course->isPublished() || app(\App\Services\Academy\LearningService::class)->isTeacher($request->user(), $course), 404);
 
         $course->load('programme', 'prerequisites', 'creator');
         $cohorts = $course->cohorts()->with('instructor')

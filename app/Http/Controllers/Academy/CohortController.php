@@ -20,6 +20,7 @@ class CohortController extends Controller
             'course'      => $course,
             'cohort'      => new Cohort(['code' => $course->code . '-' . now()->format('y') . '-' . str_pad((string) $n, 2, '0', STR_PAD_LEFT), 'name' => $course->title . ' — Cohort ' . $n, 'status' => 'planned']),
             'instructors' => $this->instructors(),
+            'places'      => $this->places(),
         ]);
     }
 
@@ -45,7 +46,7 @@ class CohortController extends Controller
 
     public function edit(Cohort $cohort)
     {
-        return view('modules.academy.cohorts.form', ['course' => $cohort->course, 'cohort' => $cohort, 'instructors' => $this->instructors()]);
+        return view('modules.academy.cohorts.form', ['course' => $cohort->course, 'cohort' => $cohort, 'instructors' => $this->instructors(), 'places' => $this->places()]);
     }
 
     public function update(Request $request, Cohort $cohort)
@@ -53,6 +54,12 @@ class CohortController extends Controller
         $cohort->update($this->validated($request, $cohort));
 
         return redirect()->route('academy.cohorts.show', $cohort)->with('success', 'Cohort updated.');
+    }
+
+    /** Campuses (check-in places) a class can be held at. */
+    protected function places()
+    {
+        return \App\Models\Checkin\Place::where('is_active', true)->orderBy('name')->get();
     }
 
     protected function instructors()
@@ -74,9 +81,20 @@ class CohortController extends Controller
             'fee_override'           => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'instructor_id'          => ['nullable', 'exists:users,id'],
             'schedule'               => ['nullable', 'string', 'max:255'],
+            'place_id'               => ['nullable', 'exists:checkin_places,id'],
+            'checkin_mode'           => ['nullable', Rule::in(array_keys(Cohort::CHECKIN_MODES))],
+            'checkin_opens_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
+            'late_after_minutes'     => ['nullable', 'integer', 'min:0', 'max:240'],
             'status'                 => ['required', Rule::in(array_keys(Cohort::STATUSES))],
         ]);
         $data['code'] = strtoupper($data['code']);
+        $data['checkin_mode'] = $data['checkin_mode'] ?? 'either';
+        $data['checkin_opens_minutes'] = (int) ($data['checkin_opens_minutes'] ?? 15);
+        $data['late_after_minutes'] = (int) ($data['late_after_minutes'] ?? 15);
+        $data['auto_absent'] = $request->boolean('auto_absent');
+        if ($data['checkin_mode'] === 'gps' && empty($data['place_id'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['place_id' => 'Choose the campus: GPS check-in needs to know where the class is.']);
+        }
 
         if ($cohort && !empty($data['capacity'])) {
             $taken = $cohort->seatsTaken();

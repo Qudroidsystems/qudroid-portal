@@ -13,17 +13,50 @@ use Illuminate\Support\Collection;
 /**
  * Who may open which lesson, and each enrollment's progress.
  *
- *  - academy staff (Manage academy / Manage course content) and the course's
- *    cohort instructors see every lesson, published or not;
+ *  - academy staff (Manage academy, or Manage all course content) and the
+ *    instructors of the course's classes see every lesson, published or not.
+ *    An instructor builds and marks only the courses they teach a class on,
+ *    and sees only the students of their own classes;
  *  - a student whose enrollment has course access sees published lessons;
  *  - anyone who can see the course sees published preview lessons.
  */
 class LearningService
 {
+    /** Academy staff who may build and mark every course and see every class. */
+    public function teachesAll(User $user): bool
+    {
+        return $user->can('Manage academy') || $user->can('Manage all course content');
+    }
+
+    /** May build this course's content and assessments and mark its students' work. */
     public function isTeacher(User $user, Course $course): bool
     {
-        return $user->can('Manage academy') || $user->can('Manage course content')
-            || $course->cohorts()->where('instructor_id', $user->id)->exists();
+        return $this->teachesAll($user) || $course->cohorts()->where('instructor_id', $user->id)->exists();
+    }
+
+    /** The classes of this course whose students this person teaches; null means all of them. */
+    public function taughtCohortIds(User $user, Course $course): ?array
+    {
+        return $this->teachesAll($user) ? null : $course->cohorts()->where('instructor_id', $user->id)->pluck('id')->all();
+    }
+
+    /** May see and mark this student's work (a student of one of their classes). */
+    public function teachesEnrollment(User $user, Enrollment $enrollment): bool
+    {
+        return $this->teachesAll($user) || (int) $enrollment->cohort?->instructor_id === $user->id;
+    }
+
+    public function teachesCohort(User $user, \App\Models\Academy\Cohort $cohort): bool
+    {
+        return $this->teachesAll($user) || (int) $cohort->instructor_id === $user->id;
+    }
+
+    /** Courses this person may build and mark: every course for academy staff, else the ones they teach. */
+    public function taughtCourses(User $user)
+    {
+        $q = Course::query();
+
+        return $this->teachesAll($user) ? $q : $q->whereHas('cohorts', fn ($c) => $c->where('instructor_id', $user->id));
     }
 
     /** The user's most relevant enrollment on this course (one with access first). */

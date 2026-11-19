@@ -16,9 +16,9 @@
             @if($enrollment && $enrollment->canLearn())
                 <a href="{{ route('academy.learn.course', $course) }}" class="cb-hero-btn"><i class="ri-play-line"></i>{{ $enrollment->progress_percent ? 'Continue learning' : 'Start learning' }}</a>
             @endif
-            @canany(['Manage academy', 'Manage course content'])
+            @if($teacher)
                 <a href="{{ route('academy.content.index', $course) }}" class="cb-hero-btn"><i class="ri-folder-open-line"></i>Content</a>
-            @endcanany
+            @endif
             @if($manager)
                 <a href="{{ route('academy.cohorts.create', $course) }}" class="cb-hero-btn"><i class="ri-add-line"></i>New cohort</a>
                 <a href="{{ route('academy.courses.edit', $course) }}" class="cb-hero-btn"><i class="ri-edit-line"></i>Edit</a>

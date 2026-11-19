@@ -245,6 +245,29 @@ class AcademyApiController extends ApiController
             'from_student' => $c->user_id === $e->student->user_id, 'created_at' => $c->created_at?->toIso8601String()];
     }
 
+    /** My attendance on each class I'm in: rate, counts and every session's mark. */
+    public function attendance(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)->first();
+        if (!$student) return $this->ok([]);
+        $svc = app(\App\Services\Academy\AttendanceService::class);
+
+        return $this->ok($student->enrollments()->with('course', 'cohort.place', 'student')->whereIn('status', ['active', 'pending', 'completed'])->latest('id')->get()
+            ->map(function (Enrollment $e) use ($svc) {
+                $a = $svc->forEnrollment($e);
+
+                return [
+                    'enrollment_id' => $e->id, 'course' => $e->course?->title, 'cohort' => $e->cohort?->name,
+                    'campus' => $e->cohort?->place?->name, 'checkin_mode' => $e->cohort?->checkin_mode,
+                    'rate' => $a['rate'], 'counts' => $a['counts'],
+                    'sessions' => $a['sessions']->map(fn ($s) => [
+                        'id' => $s['id'], 'date' => $s['date']?->toDateString(), 'time' => $s['time'], 'topic' => $s['topic'],
+                        'status' => $s['status'], 'note' => $s['note'], 'method' => $s['method'], 'checked_in_at' => $s['checked_in_at']?->toIso8601String(),
+                    ])->values(),
+                ];
+            })->values());
+    }
+
     public function certificates(Request $request)
     {
         $student = Student::where('user_id', $request->user()->id)->first();

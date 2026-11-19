@@ -33,7 +33,7 @@
                                     </div>
                                     <a href="{{ route('academy.learn.course', $e->course) }}" class="btn btn-sm btn-soft-success mt-1"><i class="ri-play-line"></i> {{ $e->status === 'completed' ? 'Revise' : ($e->progress_percent ? 'Continue' : 'Start') }}</a>
                                     @if($e->grade_percent !== null)<div class="small mt-1">Grade: <strong>{{ rtrim(rtrim(number_format((float) $e->grade_percent, 1), '0'), '.') }}%</strong></div>@endif
-                                    @if($e->attendance_percent !== null)<div class="small">Attendance: <strong>{{ rtrim(rtrim(number_format((float) $e->attendance_percent, 1), '0'), '.') }}%</strong></div>@endif
+                                    <div class="small">Attendance: <a href="{{ route('academy.my.attendance', $e) }}"><strong>{{ $e->attendance_percent !== null ? rtrim(rtrim(number_format((float) $e->attendance_percent, 1), '0'), '.') . '%' : 'see sessions' }}</strong></a></div>
                                 @endif
                                 @if($e->certificate && $e->certificate->status === 'issued')
                                     <a href="{{ route('certificates.show', $e->certificate) }}" class="btn btn-sm btn-warning mt-1"><i class="ri-award-line"></i> Certificate</a>
@@ -77,16 +77,21 @@
     @endif
 
     @if($teaching->isNotEmpty())
-        <x-cb.card title="Cohorts I teach" icon="ri-presentation-line" :count="$teaching->count()" :flush="true">
+        <x-cb.card title="Classes I teach" icon="ri-presentation-line" :count="$teaching->count()" :flush="true">
             <div class="table-responsive"><table class="cb-table stack">
-                <thead><tr><th>Cohort</th><th>Dates</th><th>Status</th><th class="num">Students</th></tr></thead>
+                <thead><tr><th>Class</th><th>Dates</th><th>Status</th><th class="num">Students</th><th></th></tr></thead>
                 <tbody>
                 @foreach($teaching as $c)
                     <tr>
                         <td data-label="Cohort"><span class="fw-semibold">{{ $c->name }}</span><div class="small text-muted">{{ $c->course->title }}</div></td>
                         <td data-label="Dates">{{ $c->starts_on?->format('j M Y') ?? '—' }} – {{ $c->ends_on?->format('j M Y') ?? '—' }}</td>
                         <td data-label="Status">@include('modules.academy.partials.pill', ['status' => $c->status, 'label' => $c->status_label])</td>
-                        <td data-label="Students" class="num">{{ $c->seats }}@can('View attendance')<div><a href="{{ route('attendance.cohort', $c) }}" class="small">Attendance</a></div>@endcan</td>
+                        <td data-label="Students" class="num">{{ $c->seats }}</td>
+                        <td class="text-end text-nowrap">
+                            <a href="{{ route('academy.content.index', $c->course_id) }}" class="btn btn-sm btn-soft-primary"><i class="ri-folder-open-line"></i> Content &amp; assessments</a>
+                            <a href="{{ route('academy.cohorts.gradebook', $c) }}" class="btn btn-sm btn-soft-secondary"><i class="ri-table-line"></i> Gradebook</a>
+                            @canany(['View attendance', 'Manage attendance'])<a href="{{ route('attendance.cohort', $c) }}" class="btn btn-sm btn-soft-secondary"><i class="ri-calendar-check-line"></i> Attendance</a>@endcanany
+                        </td>
                     </tr>
                 @endforeach
                 </tbody>

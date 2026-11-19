@@ -27,6 +27,15 @@ class Cohort extends Model
         'course_id', 'code', 'name', 'starts_on', 'ends_on', 'registration_opens_on',
         'registration_closes_on', 'capacity', 'delivery_mode', 'fee_override',
         'instructor_id', 'schedule', 'status',
+        'place_id', 'checkin_mode', 'checkin_opens_minutes', 'late_after_minutes', 'auto_absent',
+    ];
+
+    /** How students check themselves in to this class's sessions. */
+    public const CHECKIN_MODES = [
+        'either' => 'Scan the class QR or tap "I\'m here" (GPS)',
+        'gps'    => 'Tap "I\'m here" (GPS) only',
+        'qr'     => 'Scan the class QR only',
+        'off'    => 'No self check-in: the instructor takes the register',
     ];
 
     protected $casts = [
@@ -36,7 +45,32 @@ class Cohort extends Model
         'registration_closes_on' => 'date',
         'capacity'               => 'integer',
         'fee_override'           => 'decimal:2',
+        'auto_absent'            => 'boolean',
+        'checkin_opens_minutes'  => 'integer',
+        'late_after_minutes'     => 'integer',
     ];
+
+    /** The campus students must be at to check in. */
+    public function place(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Checkin\Place::class, 'place_id');
+    }
+
+    public function allowsQr(): bool
+    {
+        return in_array($this->checkin_mode ?: 'either', ['qr', 'either'], true);
+    }
+
+    /** GPS check-in needs a campus with a location. */
+    public function allowsGps(): bool
+    {
+        return in_array($this->checkin_mode ?: 'either', ['gps', 'either'], true) && $this->place && $this->place->lat !== null && $this->place->lng !== null;
+    }
+
+    public function selfCheckin(): bool
+    {
+        return ($this->checkin_mode ?: 'either') !== 'off';
+    }
 
     public function course(): BelongsTo
     {

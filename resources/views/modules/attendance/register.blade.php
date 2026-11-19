@@ -12,7 +12,10 @@
         </x-slot:pills>
         @if($session->status !== 'cancelled' && \Illuminate\Support\Facades\Route::has('checkin.session'))
             <x-slot:actions>
-                <form method="POST" action="{{ route('checkin.session', $session) }}">@csrf<button class="cb-hero-btn"><i class="ri-qr-scan-2-line"></i>QR check-in</button></form>
+                <form method="POST" action="{{ route('checkin.session', $session) }}">@csrf<button class="cb-hero-btn"><i class="ri-qr-scan-2-line"></i>Class QR screen</button></form>
+                @if($canTake && $session->date->isToday())
+                    <form method="POST" action="{{ route('attendance.sessions.remind', $session) }}">@csrf<button class="cb-hero-btn"><i class="ri-notification-3-line"></i>Remind to check in</button></form>
+                @endif
             </x-slot:actions>
         @endif
     </x-cb.hero>
@@ -36,12 +39,21 @@
                 <div class="empty-state"><i class="ri-team-line"></i><h6>No students on this cohort</h6></div>
             @else
                 <div class="table-responsive"><table class="cb-table stack">
-                    <thead><tr><th>Student</th><th>Mark</th><th>Note</th></tr></thead>
+                    <thead><tr><th>Student</th><th>Checked in</th><th>Mark</th><th>Note</th></tr></thead>
                     <tbody>
                     @foreach($roster as $e)
                         @php $m = $marks->get($e->id); $current = old("marks.{$e->id}.status", $m?->status); @endphp
                         <tr>
                             <td data-label="Student"><span class="fw-semibold">{{ $e->student->user->name }}</span><div class="small text-muted">{{ $e->student->student_no }}@if($e->status === 'pending') · awaiting payment @endif</div></td>
+                            <td data-label="Checked in">
+                                @php $rec = $records->get($e->student->user_id); @endphp
+                                @if($rec)
+                                    <span class="{{ $rec->status === 'late' ? 'text-warning' : 'text-success' }}"><i class="{{ $rec->method === 'gps' ? 'ri-map-pin-user-line' : ($rec->method === 'screen' ? 'ri-qr-code-line' : 'ri-user-follow-line') }}"></i> {{ $rec->checked_in_at->format('g:ia') }}</span>
+                                    <div class="small text-muted">{{ \App\Models\Checkin\Record::METHODS[$rec->method] ?? $rec->method }}@if($rec->distance_m !== null) · {{ $rec->distance_m }} m from campus @endif @if($rec->accuracy_m) (±{{ $rec->accuracy_m }} m)@endif</div>
+                                @else
+                                    <span class="text-muted small">—</span>
+                                @endif
+                            </td>
                             <td data-label="Mark">
                                 <div class="btn-group btn-group-sm flex-wrap" role="group">
                                     @foreach(\App\Models\Academy\Attendance::STATUSES as $k => $v)

@@ -30,13 +30,13 @@ class Event extends Model
     ];
 
     protected $fillable = ['kind', 'title', 'description', 'subject_type', 'subject_id', 'place_id', 'day', 'location', 'lat', 'lng', 'radius_m', 'require_location',
-        'starts_at', 'ends_at', 'opens_minutes', 'late_minutes', 'audience', 'allow_screen', 'allow_badge', 'public_registration', 'slug', 'capacity',
+        'starts_at', 'ends_at', 'opens_minutes', 'late_minutes', 'audience', 'allow_screen', 'allow_badge', 'allow_gps', 'public_registration', 'slug', 'capacity',
         'registration_closes_at', 'status', 'secret', 'created_by'];
 
     protected $hidden = ['secret'];
 
     protected $casts = ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'registration_closes_at' => 'datetime', 'day' => 'date',
-        'require_location' => 'boolean', 'allow_screen' => 'boolean', 'allow_badge' => 'boolean', 'public_registration' => 'boolean', 'lat' => 'float', 'lng' => 'float'];
+        'require_location' => 'boolean', 'allow_gps' => 'boolean', 'allow_screen' => 'boolean', 'allow_badge' => 'boolean', 'public_registration' => 'boolean', 'lat' => 'float', 'lng' => 'float'];
 
     public function subject(): MorphTo
     {

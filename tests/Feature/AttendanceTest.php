@@ -70,7 +70,7 @@ test('the instructor takes the register and attendance rates follow', function (
     expect((float) $bola->fresh()->attendance_percent)->toBe(100.0)->and(Attendance::count())->toBe(6);
 
     $this->actingAs($this->teacher)->get(route('attendance.cohort', $this->cohort))->assertOk()->assertSee('2 of 2 registers taken');
-    $this->actingAs($ada->student->user)->get(route('academy.my'))->assertOk()->assertSee('Attendance: <strong>100%</strong>', false);
+    $this->actingAs($ada->student->user)->get(route('academy.my'))->assertOk()->assertSee('<strong>100%</strong>', false)->assertSee(route('academy.my.attendance', $ada));
     $this->actingAs($this->admin)->get(route('academy.cohorts.gradebook', $this->cohort))->assertOk();
 });
 

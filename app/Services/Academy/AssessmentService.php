@@ -250,7 +250,7 @@ class AssessmentService
         $enrollment = $work->enrollment;
         $assessment = $work->assessment;
         $student = $enrollment->student->user_id === $by->id;
-        $this->check(!$student && !app(LearningService::class)->isTeacher($by, $assessment->course), 'You cannot comment on this work.');
+        $this->check(!$student && !app(LearningService::class)->teachesEnrollment($by, $enrollment), 'You cannot comment on this work.');
         if ($questionId !== null) {
             $this->check(!($work instanceof Attempt) || !$assessment->questions()->whereKey($questionId)->exists(), 'That question is not on this quiz.');
         }
