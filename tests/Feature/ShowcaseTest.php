@@ -173,3 +173,33 @@ test('staff add testimonials, and blocks and the menu show students and quotes',
     $this->get('/people')->assertOk()->assertSee('Meet the class')->assertSee('Ada Lovelace')->assertSee('Great partner.')->assertSee('Read more stories');
     $this->get(route('site.contact'))->assertSee(route('site.students'), false)->assertSee(route('site.testimonials'), false);
 });
+
+test('alumni filter and the yearbook show only graduates who agreed', function () {
+    // Ada (published) and Tunde (no profile) both graduate from the class.
+    fillProfile($this);
+    app(Showcase::class)->review(StudentProfile::firstOrFail(), 'published', $this->admin);
+    \App\Models\Academy\Enrollment::query()->update(['status' => 'completed']);
+    $this->cohort->update(['ends_on' => '2026-08-30']);
+
+    $this->get(route('site.students', ['show' => 'alumni']))->assertOk()->assertSee('Meet our alumni.')->assertSee('Ada Lovelace')->assertSee('Class of 2026');
+    $this->get(route('site.students', ['show' => 'current']))->assertOk()->assertDontSee('Ada Lovelace');
+
+    // Not in the yearbook until staff tick it on the class.
+    $this->get(route('site.yearbook'))->assertOk()->assertSee('The yearbook is on its way.');
+    $this->actingAs($this->admin)->put(route('academy.cohorts.update', $this->cohort), [
+        'code' => 'W-26', 'name' => 'Spring 2026 class', 'status' => 'completed', 'starts_on' => '2026-03-01', 'ends_on' => '2026-08-30',
+        'in_yearbook' => 1, 'yearbook_note' => 'Our first full-stack class.', 'yearbook_photo_file' => UploadedFile::fake()->image('class.jpg', 1200, 500),
+    ])->assertSessionHasNoErrors();
+    $c = $this->cohort->fresh();
+    expect($c->in_yearbook)->toBeTrue();
+    Storage::disk('public')->assertExists($c->yearbook_photo);
+
+    $this->get(route('site.yearbook'))->assertOk()->assertSee('Class of 2026')->assertSee('Spring 2026 class')->assertSee('Our first full-stack class.')
+        ->assertSee('2 graduates')->assertSee('Ada Lovelace')->assertDontSee('Tunde Bello');
+    $this->get(route('site.yearbook', ['year' => 2026]))->assertOk()->assertSee('Ada Lovelace');
+    $this->get(route('site.contact'))->assertSee(route('site.yearbook'), false);
+
+    // A block can show alumni only.
+    Page::create(['title' => 'Alumni', 'slug' => 'our-alumni', 'status' => 'published', 'blocks' => [['type' => 'students', 'heading' => 'Our alumni', 'who' => 'alumni']]]);
+    $this->get('/our-alumni')->assertOk()->assertSee('Ada Lovelace')->assertSee('Meet all our alumni');
+});

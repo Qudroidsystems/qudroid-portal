@@ -9,7 +9,7 @@
 
     @include('partials.flash')
 
-    <form method="POST" action="{{ $editing ? route('academy.cohorts.update', $cohort) : route('academy.cohorts.store', $course) }}">
+    <form method="POST" action="{{ $editing ? route('academy.cohorts.update', $cohort) : route('academy.cohorts.store', $course) }}" enctype="multipart/form-data">
         @csrf @if($editing) @method('PUT') @endif
         <div class="row g-3">
             <div class="col-xl-8">
@@ -57,6 +57,19 @@
                     <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="auto_absent" value="1" id="autoabsent" @checked(old('auto_absent', $cohort->auto_absent ?? true))>
                         <label class="form-check-label" for="autoabsent">Mark students who didn't check in absent when the class ends</label></div>
                     <div class="form-text">Students get a notification on their phone when check-in opens.</div>
+                </x-cb.card>
+                <x-cb.card title="Website yearbook" icon="ri-book-3-line">
+                    <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="in_yearbook" value="1" id="inYearbook" @checked(old('in_yearbook', $cohort->in_yearbook ?? false))>
+                        <label class="form-check-label" for="inYearbook">Show this class in the yearbook</label></div>
+                    <label class="form-label small">Class photo</label>
+                    @if($cohort->yearbook_photo ?? null)
+                        <img src="{{ $cohort->yearbookPhotoUrl() }}" alt="" class="img-fluid rounded mb-2">
+                        <div class="form-check small mb-2"><input class="form-check-input" type="checkbox" name="remove_yearbook_photo" value="1" id="rmYb"><label class="form-check-label" for="rmYb">Remove photo</label></div>
+                    @endif
+                    <input type="file" name="yearbook_photo_file" accept="image/*" class="form-control mb-2">
+                    <label class="form-label small">A note about the class</label>
+                    <textarea name="yearbook_note" class="form-control" rows="3" maxlength="1000" placeholder="e.g. Our first full-stack class: 18 graduates, 40 projects.">{{ old('yearbook_note', $cohort->yearbook_note ?? '') }}</textarea>
+                    <div class="form-text">Graduates appear with their photo only if they agreed to be on the website and their profile is published (Website → Students).</div>
                 </x-cb.card>
                 <x-cb.card title="Status" icon="ri-flag-line">
                     <select name="status" class="form-select mb-2">@foreach(\App\Models\Academy\Cohort::STATUSES as $k => $v)<option value="{{ $k }}" @selected(old('status', $cohort->status) === $k)>{{ $v }}</option>@endforeach</select>

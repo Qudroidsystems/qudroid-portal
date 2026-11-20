@@ -28,6 +28,7 @@ class Cohort extends Model
         'registration_closes_on', 'capacity', 'delivery_mode', 'fee_override',
         'instructor_id', 'schedule', 'status',
         'place_id', 'checkin_mode', 'checkin_opens_minutes', 'late_after_minutes', 'auto_absent',
+        'in_yearbook', 'yearbook_photo', 'yearbook_note',
     ];
 
     /** How students check themselves in to this class's sessions. */
@@ -46,9 +47,21 @@ class Cohort extends Model
         'capacity'               => 'integer',
         'fee_override'           => 'decimal:2',
         'auto_absent'            => 'boolean',
+        'in_yearbook'            => 'boolean',
         'checkin_opens_minutes'  => 'integer',
         'late_after_minutes'     => 'integer',
     ];
+
+    /** The year this class graduates (its end date, else its start). */
+    public function classOf(): ?int
+    {
+        return $this->ends_on?->year ?? $this->starts_on?->year ?? $this->created_at?->year;
+    }
+
+    public function yearbookPhotoUrl(): ?string
+    {
+        return \App\Models\Website\Product::url($this->yearbook_photo);
+    }
 
     /** The campus students must be at to check in. */
     public function place(): BelongsTo

@@ -13,6 +13,7 @@
         <h3>{{ $p->name() }}</h3>
         @if($p->headline)<p class="sc-headline">{{ $p->headline }}</p>@endif
         @if($en)<span class="sc-course"><i class="ri-graduation-cap-fill"></i> {{ $en->course?->title }}@if($en->cohort) · {{ $en->cohort->name }}@endif</span>@endif
+        @if($en && $en->status === 'completed' && $en->cohort?->classOf())<span class="sc-classof">Class of {{ $en->cohort->classOf() }}</span>@endif
         @if($p->skills)<div class="s-tags">@foreach(array_slice($p->skills, 0, 3) as $s)<span class="s-tag">{{ $s }}</span>@endforeach</div>@endif
         <div class="sc-foot">
             <span>@if($p->open_to_work)<span class="sc-badge"><i class="ri-briefcase-line"></i> Open to work</span>@else{{ $p->projects_count ?? $p->projects()->count() }} {{ \Illuminate\Support\Str::plural('project', $p->projects_count ?? 0) }}@endif</span>

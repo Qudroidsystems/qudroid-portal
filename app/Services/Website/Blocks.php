@@ -103,6 +103,7 @@ class Blocks
             'students' => ['label' => 'Our students', 'icon' => 'ri-user-star-line', 'hint' => 'Student profiles from Website → Students (only those published).', 'fields' => [
                 'heading' => ['type' => 'text', 'label' => 'Heading'],
                 'intro' => ['type' => 'textarea', 'label' => 'Intro'],
+                'who' => ['type' => 'select', 'label' => 'Show', 'options' => ['all' => 'Everyone', 'alumni' => 'Alumni only', 'current' => 'Current students only']],
                 'featured_only' => ['type' => 'toggle', 'label' => 'Featured students only'],
                 'theme' => ['type' => 'select', 'label' => 'Background', 'options' => self::THEMES],
             ]],

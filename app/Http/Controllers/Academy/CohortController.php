@@ -86,7 +86,17 @@ class CohortController extends Controller
             'checkin_opens_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
             'late_after_minutes'     => ['nullable', 'integer', 'min:0', 'max:240'],
             'status'                 => ['required', Rule::in(array_keys(Cohort::STATUSES))],
+            'yearbook_note'          => ['nullable', 'string', 'max:1000'],
+            'yearbook_photo_file'    => ['nullable', 'image', 'max:8192'],
+            'remove_yearbook_photo'  => ['nullable', 'boolean'],
         ]);
+        $data['in_yearbook'] = $request->boolean('in_yearbook');
+        if ($request->hasFile('yearbook_photo_file')) {
+            $data['yearbook_photo'] = $request->file('yearbook_photo_file')->store('website/yearbook', 'public');
+        } elseif ($request->boolean('remove_yearbook_photo')) {
+            $data['yearbook_photo'] = null;
+        }
+        unset($data['yearbook_photo_file'], $data['remove_yearbook_photo']);
         $data['code'] = strtoupper($data['code']);
         $data['checkin_mode'] = $data['checkin_mode'] ?? 'either';
         $data['checkin_opens_minutes'] = (int) ($data['checkin_opens_minutes'] ?? 15);

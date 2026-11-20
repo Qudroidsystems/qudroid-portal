@@ -25,6 +25,7 @@ Route::name('site.')->middleware('throttle:240,1,site.l17')->group(function () {
 
     // Our students and what people say
     Route::get('/students', [\App\Http\Controllers\Website\ShowcaseController::class, 'students'])->name('students');
+    Route::get('/yearbook', [\App\Http\Controllers\Website\ShowcaseController::class, 'yearbook'])->name('yearbook');
     Route::get('/students/{profile:slug}', [\App\Http\Controllers\Website\ShowcaseController::class, 'student'])->name('students.show');
     Route::get('/testimonials', [\App\Http\Controllers\Website\ShowcaseController::class, 'testimonials'])->name('testimonials');
     Route::get('/testimonials/share', [\App\Http\Controllers\Website\ShowcaseController::class, 'share'])->middleware('signed')->name('testimonials.share');

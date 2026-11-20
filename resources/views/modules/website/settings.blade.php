@@ -40,7 +40,7 @@
                     <div class="form-text">Off: <code>/</code> goes to the sign-in page as before.</div>
                 </x-cb.card>
                 <x-cb.card title="Top menu" icon="ri-menu-line" class="mt-3">
-                    @foreach(['products' => 'Products', 'work' => 'Our work', 'academy' => 'Courses', 'students' => 'Our students', 'testimonials' => 'Testimonials (Stories)', 'contact' => 'Contact'] as $k => $label)
+                    @foreach(['products' => 'Products', 'work' => 'Our work', 'academy' => 'Courses', 'students' => 'Our students', 'yearbook' => 'Yearbook', 'testimonials' => 'Testimonials (Stories)', 'contact' => 'Contact'] as $k => $label)
                         <div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" id="nav{{ $k }}" name="nav[{{ $k }}]" value="1" @checked(old("nav.$k", $cfg['nav'][$k] ?? true))><label class="form-check-label" for="nav{{ $k }}">{{ $label }}</label></div>
                     @endforeach
                     <div class="form-text">Pages you mark "Show in the top menu" are added after these.</div>

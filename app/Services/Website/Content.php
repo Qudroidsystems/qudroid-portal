@@ -25,9 +25,10 @@ class Content
     }
 
     /** Published student profiles for a Students block (featured first). */
-    public static function students(bool $featuredOnly = false, int $limit = 8): Collection
+    public static function students(bool $featuredOnly = false, int $limit = 8, string $who = 'all'): Collection
     {
-        return \App\Models\Website\StudentProfile::published()->when($featuredOnly, fn ($q) => $q->where('featured', true))->ordered()
+        return \App\Models\Website\StudentProfile::published()->when($featuredOnly, fn ($q) => $q->where('featured', true))
+            ->when(in_array($who, ['alumni', 'current'], true), fn ($q) => $q->whereHas('student.enrollments', fn ($e) => $e->where('status', $who === 'alumni' ? 'completed' : 'active')))->ordered()
             ->with(['student.user', 'student.enrollments' => fn ($e) => $e->whereIn('status', ['active', 'completed'])->with('course', 'cohort')])
             ->withCount('projects')->limit($limit)->get();
     }

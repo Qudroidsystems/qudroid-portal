@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Website;
 
 use App\Http\Controllers\Controller;
+use App\Models\Academy\Cohort;
 use App\Models\Academy\Course;
+use App\Models\Academy\Enrollment;
 use App\Models\Website\StudentProfile;
 use App\Models\Website\Testimonial;
 use App\Services\Website\Showcase;
@@ -19,10 +21,14 @@ class ShowcaseController extends Controller
     {
         $course = $request->filled('course') ? Course::published()->where('slug', $request->query('course'))->first() : null;
         $q = trim((string) $request->query('q', ''));
+        // Alumni: finished a course with us. Current: studying now.
+        $show = in_array($request->query('show'), ['alumni', 'current'], true) ? $request->query('show') : null;
         $profiles = StudentProfile::published()->ordered()
             ->with(['student.user', 'student.enrollments' => fn ($e) => $e->whereIn('status', ['active', 'completed'])->with('course', 'cohort')])
             ->withCount('projects')
             ->when($course, fn ($w) => $w->whereHas('student.enrollments', fn ($e) => $e->where('course_id', $course->id)->whereIn('status', ['active', 'completed'])))
+            ->when($show === 'alumni', fn ($w) => $w->whereHas('student.enrollments', fn ($e) => $e->where('status', 'completed')))
+            ->when($show === 'current', fn ($w) => $w->whereHas('student.enrollments', fn ($e) => $e->where('status', 'active')))
             ->when($q !== '', fn ($w) => $w->where(fn ($x) => $x->where('headline', 'like', "%{$q}%")->orWhere('skills', 'like', "%{$q}%")
                 ->orWhereHas('student.user', fn ($u) => $u->where('name', 'like', "%{$q}%"))))
             ->get();
@@ -32,7 +38,8 @@ class ShowcaseController extends Controller
             ->whereHas('student.profile', fn ($p) => $p->where('status', 'published')->whereNotNull('consented_at')))->orderBy('title')->get();
 
         return view('site.students', [
-            'profiles' => $profiles, 'courses' => $courses, 'course' => $course, 'q' => $q,
+            'profiles' => $profiles, 'courses' => $courses, 'course' => $course, 'q' => $q, 'show' => $show,
+            'hasYearbook' => Cohort::where('in_yearbook', true)->exists(),
             'stats' => [
                 'students' => StudentProfile::published()->count(),
                 'projects' => \App\Models\Website\StudentProject::whereHas('profile', fn ($p) => $p->published())->count(),
@@ -53,6 +60,31 @@ class ShowcaseController extends Controller
             'quotes' => Testimonial::published()->where('student_id', $profile->student_id)->ordered()->get(),
             'more' => StudentProfile::published()->whereKeyNot($profile->id)->with('student.user')->inRandomOrder()->limit(3)->get(),
         ]);
+    }
+
+    /**
+     * The yearbook: classes staff chose to show, newest year first. Each lists its
+     * graduates who agreed to be on the website; others are only counted.
+     */
+    public function yearbook(Request $request)
+    {
+        $cohorts = Cohort::where('in_yearbook', true)->with('course')
+            ->withCount(['enrollments as graduates_count' => fn ($e) => $e->where('status', 'completed')])->get()
+            ->filter(fn ($c) => $c->course && !$c->course->trashed());
+        $profiles = StudentProfile::published()->with('student.user')
+            ->whereHas('student.enrollments', fn ($e) => $e->where('status', 'completed')->whereIn('cohort_id', $cohorts->pluck('id')))->get()->keyBy('student_id');
+        $grads = Enrollment::where('status', 'completed')->whereIn('cohort_id', $cohorts->pluck('id'))->whereIn('student_id', $profiles->keys())->get(['cohort_id', 'student_id'])->groupBy('cohort_id');
+
+        $years = $cohorts->map(function ($c) use ($grads, $profiles) {
+            $c->setRelation('graduates', ($grads[$c->id] ?? collect())->map(fn ($e) => $profiles[$e->student_id] ?? null)->filter()->sortBy(fn ($p) => $p->name())->values());
+
+            return $c;
+        })->sortByDesc(fn ($c) => [$c->classOf(), $c->ends_on?->timestamp ?? 0])->groupBy(fn ($c) => $c->classOf() ?? 'Earlier')->toBase();
+        $year = $request->query('year');
+        if ($year && $years->has($year)) $shown = $years->only([$year]); else { $shown = $years; $year = null; }
+
+        return view('site.yearbook', ['years' => $shown, 'allYears' => $years->keys(), 'year' => $year,
+            'totals' => ['classes' => $cohorts->count(), 'graduates' => $cohorts->sum('graduates_count')]]);
     }
 
     /** All testimonials, or only students' / clients'. */

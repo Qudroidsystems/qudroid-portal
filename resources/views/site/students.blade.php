@@ -6,8 +6,8 @@
     <section class="s-section s-hero" data-site-theme="dark">
         <div class="s-wrap">
             <div class="s-eyebrow">Academy</div>
-            <h1 class="s-headline">Meet our students.</h1>
-            <p class="s-sub">Engineers, designers and analysts in the making, and the real projects they have shipped.</p>
+            <h1 class="s-headline">{{ $show === 'alumni' ? 'Meet our alumni.' : 'Meet our students.' }}</h1>
+            <p class="s-sub">{{ $show === 'alumni' ? 'Graduates of our academy, and the real projects they built with us.' : 'Engineers, designers and analysts in the making, and the real projects they have shipped.' }}</p>
             @if($stats['students'])
                 <div class="sc-stats">
                     <div><b>{{ $stats['students'] }}</b><span>{{ \Illuminate\Support\Str::plural('student', $stats['students']) }}</span></div>
@@ -21,11 +21,18 @@
     @if($stats['students'])
         <div class="sc-bar">
             <div class="s-wrap">
-                <nav class="sc-chips" aria-label="Filter by course">
-                    <a class="sc-chip {{ $course ? '' : 'is-on' }}" href="{{ route('site.students', array_filter(['q' => $q])) }}">All</a>
-                    @foreach($courses as $c)<a class="sc-chip {{ $course?->id === $c->id ? 'is-on' : '' }}" href="{{ route('site.students', array_filter(['course' => $c->slug, 'q' => $q])) }}">{{ $c->title }}</a>@endforeach
+                <nav class="sc-seg" aria-label="Who to show">
+                    @foreach([null => 'Everyone', 'alumni' => 'Alumni', 'current' => 'Studying now'] as $k => $label)
+                        <a class="{{ $show === ($k ?: null) ? 'is-on' : '' }}" href="{{ route('site.students', array_filter(['show' => $k ?: null, 'course' => $course?->slug, 'q' => $q])) }}">{{ $label }}</a>
+                    @endforeach
                 </nav>
+                <nav class="sc-chips" aria-label="Filter by course">
+                    <a class="sc-chip {{ $course ? '' : 'is-on' }}" href="{{ route('site.students', array_filter(['show' => $show, 'q' => $q])) }}">All courses</a>
+                    @foreach($courses as $c)<a class="sc-chip {{ $course?->id === $c->id ? 'is-on' : '' }}" href="{{ route('site.students', array_filter(['show' => $show, 'course' => $c->slug, 'q' => $q])) }}">{{ $c->title }}</a>@endforeach
+                </nav>
+                @if($hasYearbook)<a class="s-more" href="{{ route('site.yearbook') }}" style="white-space:nowrap;font-size:14px">Yearbook</a>@endif
                 <form class="sc-search" method="GET" role="search">
+                    @if($show)<input type="hidden" name="show" value="{{ $show }}">@endif
                     @if($course)<input type="hidden" name="course" value="{{ $course->slug }}">@endif
                     <i class="ri-search-line"></i><input name="q" value="{{ $q }}" placeholder="Search names or skills" aria-label="Search students">
                 </form>
